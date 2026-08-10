@@ -1,0 +1,15 @@
+{
+  "name": "igl",
+  "version": "0.2.0",
+  "description": "Identity-Governed Language — reference lexer, parser, static checker and interpreter",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./runtime": "./src/runtime.js"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "license": "UNLICENSED"
+}
