@@ -1,0 +1,27 @@
+# identity_demo.igl
+# Demonstrates IGL identity frames, trust, and anchoring.
+
+# Declare an identity frame for an AI reasoning agent
+identity agent_alpha {
+    role: "primary_reasoner"
+    model: "transformer_v3"
+    max_drift: 0.05
+    verified: true
+}
+
+# Set trust level
+trust agent_alpha = 0.92
+
+# Verify the identity before using it
+verify @agent_alpha : "agent_alpha must be trustworthy"
+
+print("Agent identity:")
+print(agent_alpha.role)
+print(agent_alpha.trust)
+
+# Anchor a computed value to the identity
+let prediction = 0.87
+anchor prediction in @agent_alpha
+
+print("Anchored prediction:")
+print(agent_alpha.bindings)

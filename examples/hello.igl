@@ -1,0 +1,6 @@
+# hello.igl – Hello, World! in IGL
+
+print("Hello, Identity-Governed World!")
+
+let greeting = "Welcome to IGL"
+print(greeting)
