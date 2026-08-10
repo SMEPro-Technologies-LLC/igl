@@ -62,6 +62,7 @@ class TokenType(Enum):
     MINUS = auto()
     STAR = auto()
     SLASH = auto()
+    SLASH_SLASH = auto()
     PERCENT = auto()
     STAR_STAR = auto()  # **  exponentiation
 

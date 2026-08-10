@@ -135,6 +135,7 @@ class Environment:
         self._consts: set[str] = set()
         self._identities: Dict[str, IGLIdentity] = {}
         self._drifts: Dict[str, float] = {}
+        self._active_drift: Optional[float] = 1e-9 if parent is None else None
         self._frames: Dict[str, IGLFrame] = {}
         self.udm_mode = udm_mode  # deterministic-only mode
 
@@ -189,6 +190,7 @@ class Environment:
 
     def set_drift(self, name: str, tolerance: float) -> None:
         self._drifts[name] = tolerance
+        self._active_drift = tolerance
 
     def get_drift(self, name: str) -> float:
         if name in self._drifts:
@@ -196,6 +198,13 @@ class Environment:
         if self._parent is not None:
             return self._parent.get_drift(name)
         return 1e-9  # default epsilon
+
+    def get_active_drift(self) -> float:
+        if self._active_drift is not None:
+            return self._active_drift
+        if self._parent is not None:
+            return self._parent.get_active_drift()
+        return 1e-9
 
     # ── Frames ────────────────────────────────────────────────────────────────
 

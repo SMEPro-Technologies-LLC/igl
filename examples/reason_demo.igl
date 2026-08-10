@@ -6,17 +6,15 @@ drift tolerance = 0.01
 let a = 3.14159
 let b = 3.14200
 
-# Drift equality: checks within the named tolerance
-# Note: ~= uses the default epsilon unless you pass an explicit tolerance via
-# the surrounding context. Here we explicitly test with a known-close pair.
-if 1.0 ~= 1.0 {
-    print("exact match: drift equality holds")
+# Drift equality now uses the active ambient drift declared above.
+if a ~= b {
+    print("a and b are approximately equal within the active drift")
 }
 
 if a == b {
     print("a and b are exactly equal")
 } else {
-    print("a and b differ (use drift context for approximate comparison)")
+    print("a and b differ under exact equality")
 }
 
 # Reason block: must explicitly resolve

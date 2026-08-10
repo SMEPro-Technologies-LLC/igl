@@ -115,10 +115,16 @@ class TestOperators:
         assert types(src) == expected
 
     def test_arithmetic_ops(self):
-        src = "+ - * / % **"
+        src = "+ - * / // % **"
         expected = [TokenType.PLUS, TokenType.MINUS, TokenType.STAR,
-                    TokenType.SLASH, TokenType.PERCENT, TokenType.STAR_STAR]
+                    TokenType.SLASH, TokenType.SLASH_SLASH,
+                    TokenType.PERCENT, TokenType.STAR_STAR]
         assert types(src) == expected
+
+    def test_floor_division_is_distinct_token(self):
+        ts = tokenize("/ //")
+        assert ts[0].type == TokenType.SLASH
+        assert ts[1].type == TokenType.SLASH_SLASH
 
     def test_assign_ops(self):
         src = "+= -= *= /= %="

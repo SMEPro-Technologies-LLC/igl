@@ -133,6 +133,17 @@ class TestExpressions:
     def test_drift_equality(self):
         n = first_expr("a ~= b")
         assert isinstance(n, DriftEquality)
+        assert n.tolerance is None
+
+    def test_drift_equality_within_tolerance(self):
+        n = first_expr("a ~= b within tol")
+        assert isinstance(n, DriftEquality)
+        assert isinstance(n.tolerance, Identifier)
+
+    def test_floor_division(self):
+        n = first_expr("7 // 2")
+        assert isinstance(n, BinaryOp)
+        assert n.op == "//"
 
     def test_trust_annotation(self):
         n = first_expr("#! 0.9 42")

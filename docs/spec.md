@@ -92,7 +92,7 @@ An identifier begins with a letter or underscore, followed by letters, digits, o
 | Comparison | `== != < > <= >= ~=` |
 | Arrow pipe | `->` |
 | Additive | `+ -` |
-| Multiplicative | `* / % **` |
+| Multiplicative | `* / // % **` |
 | Unary | `-` `~` `not` |
 | Call / member | `f()` `.attr` `[idx]` |
 | Primary | literals, identifiers, `@ref`, `#!`, `(expr)` |
@@ -123,10 +123,11 @@ unwrap(v)        # 42.0
 
 ### 4.5 Drift Equality (`~=`)
 
-Tests approximate numerical equality.  Returns `true` if `|left - right| ≤ ε`.  The default epsilon is `1e-9`.  Future versions will allow per-expression tolerance via `drift` context.
+Tests approximate numerical equality. Returns `true` if `|left - right| ≤ ε`. A bare `~=` uses the active ambient drift from the nearest enclosing `drift` declaration, falling back to `1e-9` if none is active. An explicit per-expression tolerance may be supplied with `within`, which takes precedence over the ambient drift.
 
 ```igl
 0.1 + 0.2 ~= 0.30000000000000004   # true
+3.14159 ~= 3.14200 within 0.01     # true
 ```
 
 ### 4.6 Arrow Pipe (`->`)
@@ -300,6 +301,12 @@ drift name = tolerance
 
 Registers a named drift (tolerance) value in the current scope.
 
+The most recently declared `drift` in the current lexical scope becomes that scope's active ambient drift. Bare drift equality expressions (`left ~= right`) use the nearest active ambient drift from the enclosing scope chain. To override it for a single comparison, use:
+
+```igl
+left ~= right within tolerance
+```
+
 ### 6.13 Frame Declaration
 
 ```igl
@@ -434,10 +441,10 @@ assignment    ::= or_expr [ assign_op assignment ]
 or_expr       ::= and_expr { "or" and_expr }
 and_expr      ::= not_expr { "and" not_expr }
 not_expr      ::= "not" not_expr | comparison
-comparison    ::= arrow_pipe { cmp_op arrow_pipe }
+comparison    ::= arrow_pipe { cmp_op arrow_pipe [ "within" arrow_pipe ] }
 arrow_pipe    ::= addition { "->" addition }
 addition      ::= multiplication { ("+" | "-") multiplication }
-multiplication::= unary { ("*" | "/" | "%" | "**") unary }
+multiplication::= unary { ("*" | "/" | "//" | "%" | "**") unary }
 unary         ::= ("-" | "~") unary | call
 call          ::= primary { "(" arg_list ")" | "." IDENT | "[" expr "]" }
 primary       ::= INT | FLOAT | STRING | "true" | "false" | "null"

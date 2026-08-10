@@ -35,6 +35,8 @@ class TestBasicEvaluation:
         assert run("2 + 3 * 4") == 14
         assert run("(2 + 3) * 4") == 20
         assert run("10 / 4") == 2.5
+        assert run("7 // 2") == 3
+        assert run("-7 // 2") == -4
         assert run("10 % 3") == 1
         assert run("2 ** 8") == 256
 
@@ -329,12 +331,43 @@ class TestTrustAnnotations:
         # Identical values should be within drift
         assert run("1.0 ~= 1.0") is True
 
+    def test_drift_equality_uses_default_epsilon(self):
+        assert run("1.0 ~= 1.0000000001") is True
+
     def test_drift_equality_close(self):
         # Values within floating-point epsilon should be equal
         assert run("0.1 + 0.2 ~= 0.30000000000000004") is True
 
     def test_drift_equality_outside(self):
         assert run("0.0 ~= 1.0") is False
+
+    def test_drift_equality_uses_ambient_drift(self):
+        src = """
+drift tolerance = 0.01
+3.14159 ~= 3.14200
+"""
+        assert run(src) is True
+
+    def test_drift_equality_explicit_tolerance_overrides_ambient(self):
+        src = """
+drift tolerance = 0.1
+3.14159 ~= 3.14200 within 0.0001
+"""
+        assert run(src) is False
+
+    def test_drift_equality_child_scope_does_not_leak(self):
+        src = """
+if true {
+    drift tolerance = 0.1
+    1.0 ~= 1.05
+}
+1.0 ~= 1.05
+"""
+        assert run(src) is False
+
+    def test_drift_equality_non_numeric_falls_back_to_equality(self):
+        assert run('"igl" ~= "igl"') is True
+        assert run('"igl" ~= "lang"') is False
 
 
 class TestArrowPipe:

@@ -151,8 +151,7 @@ class Lexer:
                     self._emit(TokenType.STAR, "*", start_line, start_col)
             case "/":
                 if self._match("/"):
-                    # Floor division – treat as two tokens or add SLASH_SLASH later
-                    self._emit(TokenType.SLASH, "//", start_line, start_col)
+                    self._emit(TokenType.SLASH_SLASH, "//", start_line, start_col)
                 elif self._match("="):
                     self._emit(TokenType.SLASH_ASSIGN, "/=", start_line, start_col)
                 else:

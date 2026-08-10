@@ -499,7 +499,12 @@ class Parser:
             op = cmp_ops[op_tok.type]
             right = self._parse_arrow_pipe()
             if op == "~=":
-                left = DriftEquality(left=left, right=right, tolerance=None,
+                tolerance = None
+                if (self._current().type == TokenType.IDENTIFIER
+                        and self._current().value == "within"):
+                    self._advance()
+                    tolerance = self._parse_arrow_pipe()
+                left = DriftEquality(left=left, right=right, tolerance=tolerance,
                                      line=op_tok.line, col=op_tok.column)
             else:
                 left = BinaryOp(op=op, left=left, right=right,
@@ -526,8 +531,13 @@ class Parser:
 
     def _parse_multiplication(self) -> Node:
         left = self._parse_unary()
-        while self._match(TokenType.STAR, TokenType.SLASH, TokenType.PERCENT,
-                          TokenType.STAR_STAR):
+        while self._match(
+            TokenType.STAR,
+            TokenType.SLASH,
+            TokenType.SLASH_SLASH,
+            TokenType.PERCENT,
+            TokenType.STAR_STAR,
+        ):
             op = self._advance().value
             right = self._parse_unary()
             left = BinaryOp(op=op, left=left, right=right,

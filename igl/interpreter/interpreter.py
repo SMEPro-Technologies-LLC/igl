@@ -565,8 +565,8 @@ class Interpreter:
             left = left.value
         if isinstance(right, IGLTrustedValue):
             right = right.value
-        tol = 1e-9
-        if node.tolerance:
+        tol = env.get_active_drift()
+        if node.tolerance is not None:
             tol = float(self._eval(node.tolerance, env))
         try:
             return abs(float(left) - float(right)) <= tol

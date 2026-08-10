@@ -7,7 +7,7 @@ name = "igl-lang"
 version = "0.1.0"
 description = "IGL – Identity-Governed Language: the first language built for intelligence instead of software"
 readme = "README.md"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 keywords = ["igl", "language", "identity", "AI", "UDM", "reasoning"]
 classifiers = [
