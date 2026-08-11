@@ -139,6 +139,32 @@ udm normalise {
 }
 ```
 
+Every `udm` block **must** contain a `resolve` or `loop_close` statement – the static checker enforces this before execution.  Side-effecting calls such as `print()` or `emit` are forbidden inside `udm` blocks.
+
+### Staged Value Model
+
+IGL values pass through three stages that form the trust boundary:
+
+| Stage | Type | How it is created |
+|---|---|---|
+| **Unvalidated** | raw primitive | literals, arithmetic |
+| **Trust-annotated** | `trusted<T>` | `#! <score> <expr>` |
+| **Validated/computed** | `udm_result` | result of a `udm` block |
+
+The `unwrap()` built-in is the **only** sanctioned way to exit the trust domain back to a raw value.  Calling `unwrap()` on an unvalidated primitive is a runtime error – the value was never annotated or computed through the pipeline.
+
+### Closed-Loop Static Checks
+
+IGL runs a static checker after parsing and before execution.  Any violation halts the program:
+
+| Rule | What is checked |
+|---|---|
+| **UDM loop-close obligation** | every `udm` block must contain `resolve` or `loop_close` |
+| **UDM effect check** | `print()` and `emit` are forbidden inside `udm` blocks |
+| **Anchored-only escape** *(runtime)* | `unwrap()` only accepts `trusted<T>` or `udm_result` values |
+
+See [`docs/static_semantics.md`](docs/static_semantics.md) for the full specification.
+
 ### Trust Annotations
 
 Any value can carry a **trust score** using the `#!` annotation:

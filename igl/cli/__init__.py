@@ -64,10 +64,12 @@ def _check_file(path: str) -> None:
     try:
         with open(path, "r", encoding="utf-8") as f:
             source = f.read()
-        from igl.lexer import Lexer
-        from igl.parser import Parser
-        tokens = Lexer(source, path).tokenize()
-        Parser(tokens, path).parse()
+        import igl
+        errors = igl.check(source, path)
+        if errors:
+            for err in errors:
+                print(f"error: {err}", file=sys.stderr)
+            sys.exit(1)
         print(f"OK: {path}")
     except Exception as e:
         _die(str(e))

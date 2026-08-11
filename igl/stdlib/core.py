@@ -180,10 +180,22 @@ def _trust_score(v) -> float:
 
 
 def _unwrap(v) -> Any:
-    """Unwrap a trusted value, returning its inner value."""
+    """Unwrap a trusted or UDM value, returning its inner value.
+
+    Anchored-only escape: only ``IGLTrustedValue`` and ``IGLUDMResult``
+    objects may be unwrapped.  Attempting to unwrap a plain (unannotated)
+    value is a runtime error – it means the value never passed through the
+    trust/validation pipeline.
+    """
     if isinstance(v, IGLTrustedValue):
         return v.value
-    return v
+    if isinstance(v, IGLUDMResult):
+        return v.value
+    raise IGLRuntimeError(
+        f"unwrap() requires a trust-annotated value (#! <score> <expr>) or "
+        f"a udm result, but received {type(v).__name__!r}; "
+        "values must be validated before they can escape the trust boundary"
+    )
 
 
 def _assert(condition, message="Assertion failed") -> bool:
