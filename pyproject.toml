@@ -9,6 +9,7 @@ description = "IGL – Identity-Governed Language: the first language built for 
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
+authors = [{ name = "SMEPro Technologies LLC" }]
 keywords = ["igl", "language", "identity", "AI", "UDM", "reasoning"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -16,9 +17,20 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
     "Topic :: Software Development :: Interpreters",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+
+[project.urls]
+Homepage = "https://github.com/SMEPro-Technologies-LLC/igl"
+Repository = "https://github.com/SMEPro-Technologies-LLC/igl"
+Issues = "https://github.com/SMEPro-Technologies-LLC/igl/issues"
+Changelog = "https://github.com/SMEPro-Technologies-LLC/igl/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "build"]
 
 [project.scripts]
 igl = "igl.cli:main"

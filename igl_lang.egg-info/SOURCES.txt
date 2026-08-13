@@ -1,6 +1,9 @@
+LICENSE
 README.md
 pyproject.toml
 igl/__init__.py
+igl/__main__.py
+igl/checker.py
 igl/cli/__init__.py
 igl/interpreter/__init__.py
 igl/interpreter/interpreter.py
@@ -23,7 +26,9 @@ igl_lang.egg-info/PKG-INFO
 igl_lang.egg-info/SOURCES.txt
 igl_lang.egg-info/dependency_links.txt
 igl_lang.egg-info/entry_points.txt
+igl_lang.egg-info/requires.txt
 igl_lang.egg-info/top_level.txt
 tests/test_interpreter.py
 tests/test_lexer.py
 tests/test_parser.py
+tests/test_static_checks.py
