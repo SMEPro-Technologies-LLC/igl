@@ -13,7 +13,7 @@ import { sha256, canonical, Signer } from "./sign.js";
 export const VOCAB = ["allow", "deny", "escalate", "report", "summarize", "redact", "file", "ABSTAIN"];
 
 export class IOSPlus {
-  constructor({ graph = null, signer = null, graphVersion = "graph-v1", now = () => new Date().toISOString(), seed = 1 } = {}) {
+  constructor({ graph = null, signer = null, graphVersion = "graph-v1", now = () => new Date().toISOString(), seed = 1, matrices = null } = {}) {
     this.graph = graph || { nodes: {}, edges: [] };   // identity graph (Article VIII)
     this.signer = signer || Signer.generate("ios-plus-default");
     this.graphVersion = graphVersion;
@@ -23,6 +23,11 @@ export class IOSPlus {
     this.auditLog = [];
     this.traceStore = [];
     this.knownMatrixDigests = new Set();
+    /* Matrices loaded from the backing store (Cloudflare D1 udmcore), keyed by
+       `${source}|${version}`. When a program injects a constraint whose source and
+       version are present here, the real UDM cells are used; otherwise IOS+ falls
+       back to the deterministic stand-in. See src/d1.js. */
+    this.matrices = matrices || {};
   }
 
   /* ios.nextSequenceNo() */
@@ -66,6 +71,13 @@ export class IOSPlus {
      A real IOS+ selects rows and columns from the UDM jurisdiction matrix. */
   getConstraintMatrix(decl) {
     const { source, version } = decl;
+    // Prefer a matrix loaded from the backing store (D1 udmcore) when present.
+    const key = `${source}|${version}`;
+    if (this.matrices[key]) {
+      const m = this.matrices[key];
+      this.knownMatrixDigests.add(m.digest);
+      return m;
+    }
     const cells = VOCAB.map((tok, i) => {
       const h = parseInt(sha256(`${source}|${version}|${tok}`).slice(0, 8), 16);
       // deterministically forbid a couple of tokens to demonstrate w=0 support restriction
