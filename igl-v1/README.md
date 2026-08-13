@@ -136,5 +136,39 @@ produce Governance Receipts that verify, and their FUSE steps recompute
 independently. The corrected RECURSE semantics of the Schedule B drafting note
 are honoured: a declared depth of 3 yields four governed steps.
 
-This is a reference runtime, not a production service. The identity graph, the
-UDM matrix source, and the model are seams meant to be pointed at real systems.
+This is a reference runtime, not a production service. Its two governance seams
+are meant to be pointed at Cloudflare D1: the `udmcore` database houses the UDM
+constraint matrices and the identity graph, and the model is attached through the
+adapter seam. `src/d1.js` is the concrete D1 adapter.
+
+## Backing store: Cloudflare D1 (udmcore)
+
+The identity graph and the UDM matrices are not invented by the runtime. In
+deployment they live in the `udmcore` D1 database and are loaded into IOS+ before
+a governed session runs. `src/d1.js` provides that adapter:
+
+```
+import { bootstrapIOSPlus, persistReceipt } from "./src/d1.js";
+import { Interpreter } from "./src/interpreter.js";
+
+const ios = await bootstrapIOSPlus(env.DB, {
+  graphVersion: "udmcore",
+  matrixSpecs: [{ source: "udm://module/tx-rrc-production-v3", version: "3.2.0" }],
+});
+const result = new Interpreter({ ios }).run(program);   // + a real model behind invoke
+await persistReceipt(env.DB, result.receipt);
+```
+
+`loadIdentityGraph` reads the authority tables into the identity graph that drives
+authority resolution and delegation. `loadConstraintMatrix` reads `udm_matrix_cells`
+into a constraint matrix, projected onto the governed action vocabulary, with an
+action absent from the matrix treated as prohibited so the store fails closed.
+`persistReceipt` writes the signed Governance Receipt back to `igl_receipts`.
+`test/d1.mjs` proves the whole path against a mock D1 binding: the receipt then
+carries the digest of the real D1 matrix, not the deterministic stand-in.
+
+Because D1 access is asynchronous and the interpreter is synchronous, governance
+state is loaded from D1 once, then the governed session runs against that snapshot,
+the same load-then-execute pattern the v0.2 journal used. The deterministic
+stand-in remains the fallback for a source and version that D1 does not supply, so
+the runtime is still runnable with no database attached.

@@ -17,6 +17,8 @@ jobs:
         run: node test/suite.mjs
       - name: Model adapter seam
         run: node test/adapters.mjs
+      - name: Cloudflare D1 backing-store adapter
+        run: node test/d1.mjs
       - name: WellSite governed session
         run: node run-wellsite.mjs
       - name: Independent verification from the artifact
