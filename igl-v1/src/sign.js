@@ -3,7 +3,7 @@
    program hash, graph version, and outcome, with a signature over all preceding
    fields under the Approved Signature Algorithm (Section 1.01). Ed25519 here. */
 
-import { generateKeyPairSync, createPublicKey, sign as edSign, verify as edVerify, createHash } from "node:crypto";
+import { generateKeyPairSync, createPublicKey, createPrivateKey, sign as edSign, verify as edVerify, createHash } from "node:crypto";
 
 export const sha256 = s => createHash("sha256").update(typeof s === "string" ? s : canonical(s)).digest("hex");
 
@@ -21,6 +21,20 @@ export class Signer {
   constructor({ id, privateKey, publicKey }) { Object.assign(this, { id, privateKey, publicKey }); }
   static generate(id) {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+    return new Signer({ id, privateKey, publicKey });
+  }
+
+  /* Deterministic key from a 32-byte seed, so a deployment has a STABLE signing
+     identity whose receipts verify across sessions and processes. A per-instance
+     generate() key only proves integrity, not attribution to a known key; a
+     persistent signer is what makes a receipt attributable. In production the
+     seed comes from a KMS or secret, never a constant. */
+  static fromSeed(id, seed) {
+    const s = Buffer.isBuffer(seed) ? seed : Buffer.from(seed);
+    if (s.length !== 32) throw new Error("Ed25519 seed must be 32 bytes");
+    const der = Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), s]);
+    const privateKey = createPrivateKey({ key: der, format: "der", type: "pkcs8" });
+    const publicKey = createPublicKey(privateKey);
     return new Signer({ id, privateKey, publicKey });
   }
   pub() { return this.publicKey.export({ type: "spki", format: "der" }).toString("base64"); }

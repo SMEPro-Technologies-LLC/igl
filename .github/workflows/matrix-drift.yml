@@ -1,0 +1,18 @@
+name: UDM matrix drift check
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: igl-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Assert live matrix digests still equal the pinned fixtures
+        run: node scripts/check-matrix-drift.mjs
