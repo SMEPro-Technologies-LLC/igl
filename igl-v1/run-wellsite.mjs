@@ -2,9 +2,14 @@
    then verify the receipt and recompute a FUSE step the way a third party would. */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { run, verify, recomputeFuse } from "./src/index.js";
+import { IOSPlus } from "./src/iosplus.js";
+import { Signer } from "./src/sign.js";
 
 const src = readFileSync(new URL("./programs/wellsite.igl", import.meta.url), "utf8");
-const r = run(src, { seed: 7 });
+// DEV signing key: fixed seed so the receipt verifies across sessions. In
+// production the seed comes from a KMS/secret, never a constant.
+const signer = Signer.fromSeed("udm.igl.dev", Buffer.alloc(32, 7));
+const r = run(src, { ios: new IOSPlus({ signer }), seed: 7 });
 
 console.log("WellSite production filing  -  IGL v1.0 governed session");
 console.log("=".repeat(66));

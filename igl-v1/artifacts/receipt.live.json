@@ -1,0 +1,57 @@
+{
+  "receipt": {
+    "receiptUUID": "gov-4fdfe364d4d46502f70b",
+    "kind": "governed_turn",
+    "subject": null,
+    "jurisdiction": "US-TX",
+    "agency": "RRC",
+    "constraintMatrixDigest": "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160",
+    "matrixVersion": "1.0.0",
+    "source": "udm://module/us-tx-rrc-v1",
+    "matrixId": "udm-ustx-rrc-001",
+    "outcome": "COMPLIANT",
+    "query_hash": "e9aeac21d6033fd2973277cfacdf02a874d59c1db0bac6bfd2a96969f7b1f388",
+    "answer_hash": "6c03cdda3f7e654f39596450d0b5e715e7bc671b1dbceeb579f7acadcc96cd3e",
+    "prev_receipt_hash": null,
+    "chain_hash": "4fdfe364d4d46502f70bc7f0f9f4e547fb72a2ebb87e05c9dfd6d15d6d63c27d",
+    "provenance": {
+      "digestSource": "live",
+      "service": "https://udm.igl.dev",
+      "via": "desktop-bridge-fetch",
+      "url": "https://udm.igl.dev/udm/matrix/get?jurisdiction=US-TX&agency=RRC",
+      "fetchedAt": "2026-08-13T09:17:51.565Z"
+    },
+    "payload": {
+      "answer": {
+        "jurisdiction": "US-TX",
+        "agency": "RRC",
+        "outcome": "COMPLIANT",
+        "paths": [
+          "path-financial-detail",
+          "path-pii-disclosure",
+          "path-production-report",
+          "path-well-identity"
+        ],
+        "governed": [
+          0.111111,
+          0,
+          0.666667,
+          0.222222
+        ],
+        "violations": [],
+        "missingMandatory": []
+      },
+      "distByPath": {
+        "path-production-report": 0.6,
+        "path-well-identity": 0.2,
+        "path-financial-detail": 0.1,
+        "path-pii-disclosure": 0.1
+      }
+    },
+    "created_at": 1786612671.57,
+    "publicKey": "MCowBQYDK2VwAyEA6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw=",
+    "algorithm": "Ed25519",
+    "signature": "A8yW8wEI2iN7jg7k2jiDWXehhrRQEJBkbklpyBrPlakFKG8OSPTNywT1WYupAiZAqkDlF7HiUr8b1iGfpQbTAg=="
+  },
+  "publicKey": "MCowBQYDK2VwAyEA6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw="
+}
