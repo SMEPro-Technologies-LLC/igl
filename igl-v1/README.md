@@ -136,39 +136,36 @@ produce Governance Receipts that verify, and their FUSE steps recompute
 independently. The corrected RECURSE semantics of the Schedule B drafting note
 are honoured: a declared depth of 3 yields four governed steps.
 
-This is a reference runtime, not a production service. Its two governance seams
-are meant to be pointed at Cloudflare D1: the `udmcore` database houses the UDM
-constraint matrices and the identity graph, and the model is attached through the
-adapter seam. `src/d1.js` is the concrete D1 adapter.
+This is a reference runtime, not a production service. Its governance state is
+meant to come from Cloudflare D1, the `udmcore` database, and the model is
+attached through the adapter seam. `src/d1.js` is the concrete D1 adapter, bound
+to the real udmcore schema.
 
 ## Backing store: Cloudflare D1 (udmcore)
 
-The identity graph and the UDM matrices are not invented by the runtime. In
-deployment they live in the `udmcore` D1 database and are loaded into IOS+ before
-a governed session runs. `src/d1.js` provides that adapter:
+A note on the model, because it matters. The v1.0 spec frames governance as a
+numeric constraint matrix and boundary tensor. The deployed `udmcore` does not
+work that way, and the adapter binds to what is actually there rather than invent
+a matrix:
 
-```
-import { bootstrapIOSPlus, persistReceipt } from "./src/d1.js";
-import { Interpreter } from "./src/interpreter.js";
+- `boundary_rules` is a categorical allow list between systems (`allowed` 1 or 0).
+  `loadBoundaryAllow` reads it and `allowVector` turns it into the one FUSE
+  property that carries over cleanly, support restriction: a denied option gets
+  zero mass. No graded weights are fabricated, because udmcore has none.
+- `udm_intent_rules`, `udm_obligations`, and `udm_routing_rules` are the rules and
+  citations that decide what applies. `loadObligations` and `loadIntentRules`
+  attach the governing citations to the trace, so the receipt cites the actual
+  obligation that governed it.
+- `authority_scopes` records which regulatory body governs which domain. Identity
+  context comes from the tenant-scoped `ig_nodes` graph via `loadIdentityNodes`.
+- `audit_receipts` and `receipt_edges` are a hash-chained receipt store.
+  `persistReceipt` writes the IGL Governance Receipt into `audit_receipts`, keeping
+  the Ed25519-signed receipt whole inside `output_json` so both guarantees hold at
+  once: the signature in the JSON and the hash chain in the table. A prior receipt
+  links through `prev_receipt_id`, `chain_hash`, and a `receipt_edges` row.
 
-const ios = await bootstrapIOSPlus(env.DB, {
-  graphVersion: "udmcore",
-  matrixSpecs: [{ source: "udm://module/tx-rrc-production-v3", version: "3.2.0" }],
-});
-const result = new Interpreter({ ios }).run(program);   // + a real model behind invoke
-await persistReceipt(env.DB, result.receipt);
-```
-
-`loadIdentityGraph` reads the authority tables into the identity graph that drives
-authority resolution and delegation. `loadConstraintMatrix` reads `udm_matrix_cells`
-into a constraint matrix, projected onto the governed action vocabulary, with an
-action absent from the matrix treated as prohibited so the store fails closed.
-`persistReceipt` writes the signed Governance Receipt back to `igl_receipts`.
-`test/d1.mjs` proves the whole path against a mock D1 binding: the receipt then
-carries the digest of the real D1 matrix, not the deterministic stand-in.
-
-Because D1 access is asynchronous and the interpreter is synchronous, governance
-state is loaded from D1 once, then the governed session runs against that snapshot,
-the same load-then-execute pattern the v0.2 journal used. The deterministic
-stand-in remains the fallback for a source and version that D1 does not supply, so
-the runtime is still runnable with no database attached.
+`test/d1.mjs` proves all of this against a mock D1 binding whose columns match the
+live DDL, including a two-receipt chain. `src/d1.js` carries the real udmcore DDL
+in `UDMCORE_SCHEMA` so the binding is pinned to the deployed schema. Because D1 is
+asynchronous and the interpreter is synchronous, governance state is loaded from
+D1 first, the governed session runs, then the receipt is persisted back.
