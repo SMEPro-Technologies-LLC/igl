@@ -1,0 +1,36 @@
+# reason_demo.igl
+# Demonstrates IGL reasoning blocks, assert_reason, and drift equality.
+
+drift tolerance = 0.01
+
+let a = 3.14159
+let b = 3.14200
+
+# Drift equality now uses the active ambient drift declared above.
+if a ~= b {
+    print("a and b are approximately equal within the active drift")
+}
+
+if a == b {
+    print("a and b are exactly equal")
+} else {
+    print("a and b differ under exact equality")
+}
+
+# Reason block: must explicitly resolve
+reason compute_pi {
+    let approx = 355.0 / 113.0
+    assert_reason approx > 3.14 : "Pi approximation must be > 3.14"
+    assert_reason approx < 3.15 : "Pi approximation must be < 3.15"
+    resolve approx
+}
+
+print("Computed pi approximation:")
+print(compute_pi)
+
+# Trust annotation on a value
+let confident_value = #! 0.95 42.0
+print("Trusted value:")
+print(confident_value)
+print("Trust score:")
+print(trust_score(confident_value))

@@ -1,0 +1,38 @@
+# closed_loop.igl
+# Demonstrates the closed-loop condition unique to IGL.
+# An AI numerical signal feeds into a UDM deterministic step,
+# whose output resolves back into the identity frame –
+# closing the loop that existing languages cannot express.
+
+identity sensor {
+    source: "AI_numerical_model"
+    unit: "probability"
+}
+
+trust sensor = 0.88
+
+# Simulate an AI numerical output (trusted signal)
+let raw_signal = #! 0.88 0.7432
+
+# Reason block: validate and normalise the signal
+reason validate_signal {
+    assert_reason trust_score(raw_signal) > 0.5 : "Signal trust too low"
+    assert_reason unwrap(raw_signal) > 0.0      : "Signal must be positive"
+    assert_reason unwrap(raw_signal) < 1.0      : "Signal must be < 1"
+    resolve raw_signal
+}
+
+# UDM block: deterministic computation on the validated signal
+udm normalise {
+    let v = unwrap(validate_signal)
+    resolve round(v * 100.0, 2)
+}
+
+# Anchor the UDM output back into the identity frame, closing the loop
+anchor normalise in @sensor
+
+print("Closed-loop result (%):")
+print(normalise)
+print("Anchored in identity:")
+print(sensor.name)
+loop_close normalise
