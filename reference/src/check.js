@@ -23,7 +23,6 @@ export function check(program) {
   }
 
   const boundaryNames = new Set(program.constraints.boundaries.map(b => b.name));
-  const matrixNames = new Set(program.constraints.matrices.map(m => m.name));
 
   // boundary references on identities must resolve
   for (const d of program.identities) {
