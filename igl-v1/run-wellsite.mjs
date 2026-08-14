@@ -1,20 +1,33 @@
-/* Execute the WellSite v1.0 program end to end and print the governed ledger,
-   then verify the receipt and recompute a FUSE step the way a third party would. */
+/* Execute the WellSite v1.0 program end to end against the DEPLOYED governance
+   matrix, print the governed ledger, then verify the receipt and recompute a
+   FUSE step the way a third party would.
+
+   Default: constraints resolved from the pinned live fixtures (the digests the
+   service itself computed, captured from the wire; drift-guarded in CI).
+   IGL_LIVE=1: constraints fetched from udm.igl.dev on this run — the receipt
+   then binds to the live wire digest with provenance "live". Fail closed either
+   way; there is no stand-in on this path. */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { run, verify, recomputeFuse } from "./src/index.js";
+import { resolveConstraints, pinnedConstraints } from "./src/resolve.js";
 import { IOSPlus } from "./src/iosplus.js";
 import { Signer } from "./src/sign.js";
 
 const src = readFileSync(new URL("./programs/wellsite.igl", import.meta.url), "utf8");
+const live = process.env.IGL_LIVE === "1";
+const constraints = live
+  ? await resolveConstraints(src, { provenance: "live" })
+  : pinnedConstraints(src);
 // DEV signing key: fixed seed so the receipt verifies across sessions. In
 // production the seed comes from a KMS/secret, never a constant.
 const signer = Signer.fromSeed("udm.igl.dev", Buffer.alloc(32, 7));
-const r = run(src, { ios: new IOSPlus({ signer }), seed: 7 });
+const r = run(src, { ios: new IOSPlus({ signer, matrices: constraints }), seed: 1 });
 
 console.log("WellSite production filing  -  IGL v1.0 governed session");
 console.log("=".repeat(66));
 console.log("session   :", r.sessionId);
 console.log("programHash:", r.programHash.slice(0, 32), "...");
+console.log("constraints:", live ? "LIVE (udm.igl.dev)" : "PINNED (service digests, hermetic)");
 console.log("");
 console.log("TURN LEDGER");
 console.log("-".repeat(66));
@@ -34,7 +47,7 @@ console.log("");
 console.log("GOVERNANCE RECEIPT (terminal)");
 console.log("-".repeat(66));
 const rc = r.receipt;
-for (const k of ["receiptUUID", "boundIdentity", "outcome", "constraintMatrixDigest", "cognitiveTraceRef", "identityGraphVersion", "timeOfIssuance"])
+for (const k of ["receiptUUID", "boundIdentity", "outcome", "constraintMatrixDigest", "constraintProvenance", "cognitiveTraceRef", "identityGraphVersion", "timeOfIssuance"])
   console.log("  " + k.padEnd(24), (rc[k] || "").toString().slice(0, 40));
 console.log("  " + "algorithm".padEnd(24), rc.algorithm);
 console.log("  " + "signature".padEnd(24), rc.signature.slice(0, 40) + " ...");

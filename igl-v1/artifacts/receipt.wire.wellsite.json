@@ -1,0 +1,80 @@
+{
+  "receipt": {
+    "receiptUUID": "rcpt-0f0889ef934479c0f185",
+    "boundIdentity": "igl://identity/allco/compliance-001",
+    "constraintMatrixDigest": "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160",
+    "constraintProvenance": "live",
+    "cognitiveTraceRef": "trc-458c5660ad06253b",
+    "timeOfIssuance": "2026-08-14T09:06:21.424Z",
+    "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+    "identityGraphVersion": "graph-v1",
+    "sessionId": "sess-6d0229ddfd1ad8eb",
+    "turnSequenceNo": 2,
+    "outcome": "COMPLIANT",
+    "publicKey": "MCowBQYDK2VwAyEA6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw=",
+    "algorithm": "Ed25519",
+    "signature": "ONhJ9YTl7dFAHJg/4ZJt+LvM8HKNejDUMprzDjBja7jBO1Sjzj/ySATdKHzIrBPrFmc3NPtiOJtXIXPXCXFEDw=="
+  },
+  "publicKey": "MCowBQYDK2VwAyEA6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw=",
+  "fuseRecord": {
+    "inputDist": [
+      0.212104,
+      0.168524,
+      0.009089,
+      0.154791,
+      0.014836,
+      0.324432,
+      0.034195,
+      0.082029
+    ],
+    "weights": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1
+    ],
+    "outputDist": [
+      0.313964,
+      0.249455,
+      0.013454,
+      0.229127,
+      0.021961,
+      0,
+      0.050617,
+      0.121422
+    ],
+    "inputDigest": "a272c7ed54b2cfbfb167ddd7f3f4863f9c2b892506b49df4d8413af9528f31ce",
+    "matrixDigest": "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160",
+    "outputDigest": "bab15fa61997541e80f82b493f5c7dfb3c52cf9814db5bef3ad756da4896547c",
+    "entropy": 2.303336,
+    "vocab": [
+      "allow",
+      "deny",
+      "escalate",
+      "report",
+      "summarize",
+      "redact",
+      "file",
+      "ABSTAIN"
+    ],
+    "ceilings": [
+      1,
+      1,
+      1,
+      0.8,
+      0.3,
+      0,
+      0.8,
+      1
+    ],
+    "violations": [],
+    "missingMandatory": [],
+    "provenance": "live",
+    "crosswalkDigest": "39d2de377bf7ddd2055a316f903407ad610c6dc61225ae2ebbd5b05d7a035e74"
+  },
+  "sessionId": "sess-6d0229ddfd1ad8eb"
+}

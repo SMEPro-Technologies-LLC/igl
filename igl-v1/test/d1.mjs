@@ -4,7 +4,7 @@
    hash-chained audit_receipts / receipt_edges tables. */
 
 import { readFileSync } from "node:fs";
-import { run } from "../src/index.js";
+import { pinnedConstraints, run } from "../src/index.js";
 import {
   loadBoundaryAllow, allowVector, loadObligations, loadIdentityNodes, persistReceipt,
 } from "../src/d1.js";
@@ -68,7 +68,8 @@ const nodes = await loadIdentityNodes(db, { tenantId: "allco" });
 ok("identity nodes loaded from ig_nodes with parsed value", nodes[0].value.role === "operator");
 
 // persist a real receipt into the hash-chained audit tables
-const r = run(readFileSync(new URL("../programs/wellsite.igl", import.meta.url), "utf8"), { seed: 7 });
+const _ws = readFileSync(new URL("../programs/wellsite.igl", import.meta.url), "utf8");
+const r = run(_ws, { constraints: pinnedConstraints(_ws), seed: 1 });
 const a = await persistReceipt(db, r.receipt, { tenantId: "allco", citations: obs.map(o => o.citation) });
 ok("receipt written to audit_receipts under its own id", data.audit_receipts.length === 1 && data.audit_receipts[0][0] === r.receipt.receiptUUID);
 ok("signed receipt preserved whole inside output_json", data.audit_receipts[0][5].includes(r.receipt.signature));

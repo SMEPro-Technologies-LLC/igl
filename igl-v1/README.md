@@ -17,6 +17,11 @@ src/lexer.js         tokens for the block grammar of Schedule A
 src/parser.js        recursive-descent parser to an AST
 src/check.js         static checks: block structure, INJECT before inference,
                      RECURSE depth, one terminal CAPTURE
+src/resolve.js       Constraint resolution (async, BEFORE interpret): fetch the
+                     live udm.igl.dev matrix or the pinned wire captures, project
+                     through the crosswalk, hand the interpreter resolved cells.
+src/crosswalk.js     The Section 12.03 seam as data: token->path mapping, MIN
+                     composition, zero discipline, its own digest in receipts.
 src/iosplus.js       IOS+ orchestrator: identity resolution and authority
                      resolution, constraint matrix provision, receipt signing,
                      trace logging, sequence numbers (Section 10.04)

@@ -9,12 +9,17 @@
    and optionally the *_MODEL overrides. */
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { parse, run, verify, recomputeFuse } from "./src/index.js";
+import { parse, run, verify, recomputeFuse, pinnedConstraints, resolveConstraints } from "./src/index.js";
 import { VOCAB } from "./src/iosplus.js";
 import { availableVendors, liveAdapter, mockAdapter, resolveDistributions, cachedInvoke, ACTIONS } from "./src/vendors.js";
 
 const src = readFileSync(new URL("./programs/wellsite.igl", import.meta.url), "utf8");
 const program = parse(src);
+// Constraints resolve BEFORE any vendor is invoked: pinned service digests by
+// default, the live wire under IGL_LIVE=1. Same fail-closed path as run-wellsite.
+const constraints = process.env.IGL_LIVE === "1"
+  ? await resolveConstraints(src, { provenance: "live" })
+  : pinnedConstraints(src);
 const argmax = (a) => a.indexOf(Math.max(...a));
 const denyIdx = VOCAB.indexOf("deny"), redactIdx = VOCAB.indexOf("redact");
 
@@ -35,14 +40,15 @@ for (const v of vendors) {
   try {
     const { cache, mode } = await resolveDistributions(program, adapter);
     const proposedDist = [...cache.values()][0] || VOCAB.map(() => 1 / VOCAB.length);
-    const r = run(program, { invoke: cachedInvoke(cache) });
+    const r = run(program, { invoke: cachedInvoke(cache), constraints });
     const fuse = r.traces.map(t => t.trace.fuse).find(Boolean);
     const vr = verify(r.receipt);
     const fc = recomputeFuse(fuse);
-    const zeroed = fuse.outputDist[denyIdx] === 0 && fuse.outputDist[redactIdx] === 0;
+    const zeroed = fuse.outputDist[redactIdx] === 0;   // provision zero: path-pii-disclosure
+    const ceilingsOk = !fuse.ceilings || fuse.outputDist.every((m, i) => m <= fuse.ceilings[i] + 1e-9);
     const proposedTop = ACTIONS[argmax(proposedDist)];
     const governedTop = VOCAB[argmax(fuse.outputDist)];
-    rows.push({ vendor: v.label, mode, ok: vr.ok && fc.ok && zeroed });
+    rows.push({ vendor: v.label, mode, ok: vr.ok && fc.ok && zeroed && ceilingsOk });
     console.log(
       v.label.padEnd(17),
       mode.padEnd(5),
@@ -61,11 +67,12 @@ for (const v of vendors) {
 
 console.log("-".repeat(78));
 const good = rows.filter(r => r.ok).length;
-console.log(`${good}/${rows.length} vendors: receipt verified, FUSE recomputed, forbidden actions carried zero mass.`);
+console.log(`${good}/${rows.length} vendors: receipt verified, FUSE recomputed, PII path zero-mass, ceilings held.`);
 console.log("");
-console.log("The model proposed the action. IGL governed it: 'deny' and 'redact' are");
-console.log("forbidden by the UDM constraint and carry zero mass in every column above,");
-console.log("and every receipt verifies from the artifact alone regardless of vendor.");
+console.log("The model proposed the action. IGL governed it: the PII-disclosure path is a");
+console.log("provision zero in the DEPLOYED US-TX/RRC matrix and carries zero mass in every");
+console.log("column above; graded ceilings held; and every receipt verifies from the");
+console.log("artifact alone -- bound to the service digest -- regardless of vendor.");
 
 mkdirSync(new URL("./out/", import.meta.url), { recursive: true });
 writeFileSync(new URL("./out/vendor-receipts.json", import.meta.url), JSON.stringify(artifacts, null, 2));

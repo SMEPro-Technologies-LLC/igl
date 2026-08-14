@@ -4,7 +4,8 @@
    restriction, delegation denial, and static rejection. */
 
 import { readFileSync } from "node:fs";
-import { run, verify, recomputeFuse } from "../src/index.js";
+import { run, verify, recomputeFuse, pinnedConstraints } from "../src/index.js";
+import { IOSPlus } from "../src/iosplus.js";
 import { Interpreter } from "../src/interpreter.js";
 import { VOCAB } from "../src/iosplus.js";
 
@@ -37,13 +38,17 @@ console.log("A. Positive conformance (Schedule C + WellSite)");
   const files = { WellSite: "../programs/wellsite.igl" };
   // samples are exercised by test/samples.mjs; here confirm WellSite end to end
   const src = readFileSync(new URL(files.WellSite, import.meta.url), "utf8");
-  const r = run(src, { seed: 7 });
+  const constraints = pinnedConstraints(src);
+  const r = run(src, { constraints, seed: 1 });
   ok("WellSite executes and issues a receipt", !!r.receipt.signature);
   ok("WellSite receipt verifies", verify(r.receipt).ok);
   const f = r.traces.map(t => t.trace.fuse).find(Boolean);
   ok("WellSite FUSE recomputes independently", recomputeFuse(f).ok);
   ok("terminal receipt bound to compliance identity (escalation happened)",
     r.receipt.boundIdentity === "igl://identity/allco/compliance-001", r.receipt.boundIdentity);
+  ok("receipt binds the SERVICE digest (1252a4e5...), not a stand-in",
+    r.receipt.constraintMatrixDigest === "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160", r.receipt.constraintMatrixDigest);
+  ok("receipt provenance is signed and pinned", r.receipt.constraintProvenance === "pinned");
 }
 
 console.log("B. Support restriction (Section 5.01)");
@@ -53,7 +58,7 @@ console.log("B. Support restriction (Section 5.01)");
   LET g = FUSE ( o, c ) ;
   LET t = CAPTURE_TRACE ( g ) INTO ct ;
   LET turn = BIND ( a, ct ) AS turn ;`);
-  const r = run(src, { seed: 7 });
+  const r = run(src, { seed: 7, offline: true });
   const fuse = r.traces.map(t => t.trace.fuse).find(Boolean);
   const denyIdx = VOCAB.indexOf("deny"), redactIdx = VOCAB.indexOf("redact");
   ok("forbidden token 'deny' has zero mass", fuse.outputDist[denyIdx] === 0);
@@ -72,7 +77,7 @@ console.log("C. Fail-closed: zero partition (Section 5.01 / point-of-inflection.
 console.log("D. Tamper evidence on the receipt");
 {
   const src = readFileSync(new URL("../programs/wellsite.igl", import.meta.url), "utf8");
-  const r = run(src, { seed: 7 });
+  const r = run(src, { constraints: pinnedConstraints(src), seed: 1 });
   ok("clean receipt verifies", verify(r.receipt).ok);
   const flippedOutcome = { ...r.receipt, outcome: "VIOLATION" };
   ok("flipping outcome breaks verification", verify(flippedOutcome).ok === false);
@@ -85,7 +90,7 @@ console.log("D. Tamper evidence on the receipt");
 console.log("E. Tamper evidence on the FUSE record");
 {
   const src = readFileSync(new URL("../programs/wellsite.igl", import.meta.url), "utf8");
-  const r = run(src, { seed: 7 });
+  const r = run(src, { seed: 7, offline: true });
   const fuse = r.traces.map(t => t.trace.fuse).find(Boolean);
   ok("clean FUSE record recomputes", recomputeFuse(fuse).ok);
   const doctored = { ...fuse, outputDist: fuse.outputDist.map((x, i) => i === 0 ? Math.min(1, x + 0.1) : x) };
@@ -112,7 +117,7 @@ BEGIN
   LET turn = BIND ( high, ct ) AS turn ;
 END
 RECEIPT { CAPTURE ( turn ) AS r ; }`;
-  throwsWith("FUSE UNDER higher authority without delegation is refused", () => run(noDelegate, { seed: 1 }), "BOUNDARY_VIOLATION");
+  throwsWith("FUSE UNDER higher authority without delegation is refused", () => run(noDelegate, { seed: 1, offline: true }), "BOUNDARY_VIOLATION");
 }
 
 console.log("G. Static rejection before execution (Article IV, Section 4.03, 5.06)");
@@ -138,8 +143,53 @@ console.log("H. Governed Context and injection (Section 5.06)");
   LET g = FUSE ( AI_INFER("q", ctx), c ) ;
   LET t = CAPTURE_TRACE ( g ) INTO ct ;
   LET turn = BIND ( a, ct ) AS turn ;`);
-  const r = run(clean, { seed: 3 });
+  const r = run(clean, { seed: 3, offline: true });
   ok("single INJECT then FUSE is COMPLIANT", r.receipt.outcome === "COMPLIANT");
+}
+
+console.log("I. Fail-closed default: no stand-ins on the governed path (ADR 0001/0002)");
+{
+  const src = readFileSync(new URL("../programs/wellsite.igl", import.meta.url), "utf8");
+  throwsWith("unresolved udm:// constraint fails closed (no silent stand-in)",
+    () => run(src, { seed: 1 }), "CONSTRAINT_SOURCE_UNRESOLVED");
+  const offline = run(prog(`  INJECT ( c, ctx ) ;
+  LET g = FUSE ( AI_INFER("q", ctx), c ) ;
+  LET t = CAPTURE_TRACE ( g ) INTO ct ;
+  LET turn = BIND ( a, ct ) AS turn ;`), { seed: 3, offline: true });
+  ok("offline receipt carries SIGNED provenance 'standin'", offline.receipt.constraintProvenance === "standin");
+  ok("stand-in digest is tainted and cannot impersonate a service digest",
+    offline.receipt.constraintMatrixDigest.startsWith("standin-"));
+}
+
+console.log("J. Graded ceilings enforced after FUSE (apply, then check)");
+{
+  const src = readFileSync(new URL("../programs/wellsite.igl", import.meta.url), "utf8");
+  // seed 7's draft puts 0.3266 mass on financial detail against the live 0.3 ceiling
+  throwsWith("mass over a live graded ceiling HALTS (HARD), seals partial trace, no receipt",
+    () => run(src, { constraints: pinnedConstraints(src), seed: 7 }), "BOUNDARY_VIOLATION");
+  try { run(src, { constraints: pinnedConstraints(src), seed: 7 }); } catch (e) { /* sealed above */ }
+}
+
+console.log("K. Authority composes by intersection (ADR 0002: MIN, never MAX)");
+{
+  const graph = {
+    nodes: {
+      "igl://identity/x/parent": { authority: 0.4 },
+      "igl://identity/x/child":  { authority: 0.9 },
+      "igl://identity/x/low-parented": { authority: 0.3 },
+    },
+    edges: [
+      { type: "INHERITS_FROM", from: "igl://identity/x/child", to: "igl://identity/x/parent" },
+      { type: "INHERITS_FROM", from: "igl://identity/x/low-parented", to: "igl://identity/x/parent" },
+    ],
+  };
+  const ios = new IOSPlus({ graph });
+  const child = ios.resolveIdentity("igl://identity/x/child");
+  ok("declared 0.9 inheriting from 0.4 clamps DOWN to 0.4 (never raises)", child.authority === 0.4, String(child.authority));
+  const low = ios.resolveIdentity("igl://identity/x/low-parented");
+  ok("declared 0.3 under a 0.4 parent stays 0.3 (min of own and chain)", low.authority === 0.3, String(low.authority));
+  const alone = new IOSPlus({}).resolveIdentity("igl://identity/x/a", { authority: 0.85 });
+  ok("graphless declared value still governs", alone.authority === 0.85);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

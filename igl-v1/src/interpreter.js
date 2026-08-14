@@ -38,8 +38,10 @@ function shannon(dist) {
 }
 
 export class Interpreter {
-  constructor({ ios = null, invoke = null, seed = 7, boundaryMode = "normal" } = {}) {
-    this.ios = ios || new IOSPlus({ seed });
+  constructor({ ios = null, invoke = null, seed = 7, boundaryMode = "normal", constraints = null, offline = false } = {}) {
+    this.ios = ios || new IOSPlus({ seed, matrices: constraints, offline });
+    if (ios && constraints) ios.matrices = { ...ios.matrices, ...constraints };
+    if (ios && offline) ios.offline = true;
     this.invoke = invoke || ((call) => defaultInvoke(call, seed));
     this.seed = seed;
     this.boundaryMode = boundaryMode;             // "normal" or "tight" (demo a HARD violation)
@@ -253,7 +255,9 @@ export class Interpreter {
     return gov;
   }
 
-  /* The core operation, Schedule B E-FUSE-COMPUTE: normalize(v (x) project(M)). */
+  /* The core operation, Schedule B E-FUSE-COMPUTE: normalize(v (x) project(M)),
+     followed by the graded boundary check the live matrix carries (apply, THEN
+     check — the step FUSE alone does not provide; see src/udm.js and ADR 0001). */
   fuseDist(dist, matrix, state, ios, actor) {
     // Compute from the rounded operands that the record will store, so an external
     // recomputation over those same stored values reproduces the output exactly.
@@ -267,14 +271,42 @@ export class Interpreter {
     rWeights.forEach((w, i) => { if (w === 0 && out[i] !== 0) throw new IGLError("support restriction violated", { phase: "exec", code: "FUSION_TYPE_ERROR" }); });
 
     let outcome = "COMPLIANT";
+    const violations = [], missingMandatory = [];
+    if (matrix.ceilings) {
+      const rCeil = roundArr(matrix.ceilings);
+      rCeil.forEach((c, i) => { if (out[i] > c + 1e-9) violations.push({ token: VOCAB[i], mass: out[i], ceiling: c }); });
+      for (const g of matrix.mandatoryGroups || []) {
+        const mass = g.tokens.reduce((acc, t) => acc + out[VOCAB.indexOf(t)], 0);
+        if (mass === 0) missingMandatory.push(g.path);
+      }
+      if (violations.length || missingMandatory.length) {
+        outcome = (matrix.strictness || "HARD") === "HARD" ? "HARD_VIOLATION" : "SOFT_VIOLATION";
+      }
+    }
+
     const fuseRecord = {
       inputDist: rInput, weights: rWeights, outputDist: out,
       inputDigest: sha256(canonical(rInput)),
       matrixDigest: matrix.digest,
       outputDigest: sha256(canonical(out)),
       entropy: shannon(out), vocab: VOCAB,
+      ...(matrix.ceilings ? { ceilings: roundArr(matrix.ceilings), violations, missingMandatory } : {}),
+      ...(matrix.provenance ? { provenance: matrix.provenance } : {}),
+      ...(matrix.crosswalkDigest ? { crosswalkDigest: matrix.crosswalkDigest } : {}),
     };
-    const gov = { type: "governed", dist: out, entropy: fuseRecord.entropy, fuseRecord, outcome, matrixDigest: matrix.digest };
+
+    if (outcome === "HARD_VIOLATION") {
+      // Section 7.03: HARD halts. Seal the partial trace for audit, issue no output.
+      const partial = { sealed: true, partial: true, at: ios.now(), fuse: fuseRecord, outcome };
+      partial.ref = ios.logTrace(partial);
+      ios.audit({ op: "BOUNDARY_HALT", violations, missingMandatory, traceRef: partial.ref });
+      throw new IGLError(
+        `HARD boundary violation: ${violations.map(v => `${v.token} ${v.mass} > ceiling ${v.ceiling}`).join("; ")}` +
+        (missingMandatory.length ? `; mandatory path(s) with zero mass: ${missingMandatory.join(", ")}` : ""),
+        { phase: "exec", code: "BOUNDARY_VIOLATION" });
+    }
+
+    const gov = { type: "governed", dist: out, entropy: fuseRecord.entropy, fuseRecord, outcome, matrixDigest: matrix.digest, provenance: matrix.provenance || null };
     state.lastGoverned = gov;
     return gov;
   }
@@ -313,23 +345,32 @@ function composeTurnTrace(identity, trace, state, ios, parentSeq = null) {
     parentId: parentSeq,
     identity: { id: identity.id, authority: identity.authority },
     constraintDigest: trace.fuse?.matrixDigest || null,
+    constraintProvenance: trace.fuse?.provenance || null,
     cognitiveTraceRef: trace.ref,
     output: { outputDigest: trace.fuse?.outputDigest, entropy: trace.entropy },
     outcome: trace.outcome,
   };
 }
 function issueReceipt(turn, outcomeOverride, { ios, programHash, sessionId, graphVersion }) {
+  const provenance = turn.constraintProvenance || (typeof turn.constraintDigest === "string" && turn.constraintDigest.startsWith("standin-") ? "standin" : null);
+  const outcome = outcomeOverride || turn.outcome || "COMPLIANT";
+  /* Receipt-integrity invariant (ADR 0001 §5, hardened): a COMPLIANT receipt may
+     never carry a stand-in constraint outside the explicit offline mode, and even
+     in offline mode the receipt says so — the provenance field is SIGNED. */
+  if (outcome === "COMPLIANT" && provenance === "standin" && !ios.offline)
+    throw new IGLError("refusing to issue a COMPLIANT receipt against a stand-in constraint outside offline mode", { phase: "trace", code: "STANDIN_RECEIPT_REFUSED" });
   const fields = {
     receiptUUID: "rcpt-" + sha256(canonical(turn) + sessionId).slice(0, 20),
     boundIdentity: turn.identity.id,
     constraintMatrixDigest: turn.constraintDigest,
+    constraintProvenance: provenance,
     cognitiveTraceRef: turn.cognitiveTraceRef,
     timeOfIssuance: ios.now(),
     programHash,
     identityGraphVersion: graphVersion,
     sessionId,
     turnSequenceNo: turn.sequenceNo,
-    outcome: outcomeOverride || turn.outcome || "COMPLIANT",
+    outcome,
   };
   return ios.signReceipt(fields);
 }
