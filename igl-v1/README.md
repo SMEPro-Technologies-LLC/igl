@@ -1,5 +1,41 @@
 # IGL v1.0 reference runtime, with WellSite rebuilt on it
 
+> **⚠ Preview / pre-production notice**
+> This package is published as `@smepro-technologies-llc/igl` at version
+> `1.0.0-preview.N`. It is a **reference runtime**, not a production service.
+> Security review, legal review, and third-party reproduction remain open — see
+> [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md). Do not use in
+> production without completing those items.
+
+## Install / Consume
+
+This package is hosted on **GitHub Packages** (private, scoped registry). You
+must authenticate before installing.
+
+**1. Create or update `~/.npmrc` (or the project-level `.npmrc`):**
+
+```
+@smepro-technologies-llc:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
+```
+
+Use a GitHub Personal Access Token (classic or fine-grained) with at least
+`read:packages` scope. **Do not commit the token.**
+
+**2. Install:**
+
+```sh
+npm install @smepro-technologies-llc/igl
+```
+
+**3. Use:**
+
+```js
+import { run, verify, parse, check, Interpreter } from "@smepro-technologies-llc/igl";
+```
+
+---
+
 This is a working reference implementation of the IGL v1.0 language defined in
 the specification instrument IGL-SPEC-2026-001, together with the WellSite
 production filing logic expressed as an IGL v1.0 program and executed on it.
