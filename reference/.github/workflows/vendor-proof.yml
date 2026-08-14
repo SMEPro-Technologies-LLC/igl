@@ -1,0 +1,36 @@
+name: IGL cross-vendor governed proof
+
+# Run manually so it never burns API credits on an ordinary push.
+# Put vendor keys in the repository's encrypted Actions secrets, never in code
+# or in chat. Missing keys simply run that vendor in MOCK mode.
+on:
+  workflow_dispatch:
+
+jobs:
+  cross-vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run WellSite through every vendor with a key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node run-vendors.mjs
+      - name: Verify each vendor receipt from the artifact alone
+        run: node verify-receipt.mjs || true
+      - name: Upload signed cross-vendor receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vendor-receipts
+          path: out/vendor-receipts.json

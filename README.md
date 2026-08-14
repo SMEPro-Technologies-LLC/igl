@@ -78,3 +78,14 @@ that is well-formed and wrong. Decay and the depth cap are what make the loop
 converge rather than merely repeat.
 
 See `docs/SPEC.md` §9 and `docs/CRITIQUE.md` §C1.
+
+## Repository structure
+
+- `README.md` — repository overview.
+- `package.json` — Node package metadata and scripts.
+- `docs/` — documentation hub (see [`docs/README.md`](./docs/README.md)).
+  - [`docs/architecture.md`](./docs/architecture.md)
+  - [`docs/point-of-inflection.md`](./docs/point-of-inflection.md)
+  - `docs/spec/` — Markdown conversions of archived `.docx` specs.
+  - `docs/archive/` — original `.docx` source documents.
+- `reference/` — unpacked contents of `igl-v1-reference_3.zip`.

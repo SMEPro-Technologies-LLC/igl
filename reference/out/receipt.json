@@ -1,0 +1,65 @@
+{
+  "receipt": {
+    "receiptUUID": "rcpt-d00ae2b54363f7fdf4d2",
+    "boundIdentity": "igl://identity/allco/compliance-001",
+    "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+    "cognitiveTraceRef": "trc-27648b137eb53968",
+    "timeOfIssuance": "2026-08-13T06:47:23.326Z",
+    "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+    "identityGraphVersion": "graph-v1",
+    "sessionId": "sess-77c1d6558cff55bd",
+    "turnSequenceNo": 2,
+    "outcome": "COMPLIANT",
+    "publicKey": "MCowBQYDK2VwAyEAtpbZ3+CnURzbu6aKNEOTBTvjLkN67mYsBlolJ4lO5fs=",
+    "algorithm": "Ed25519",
+    "signature": "EP/7MXTLhsK5dbcmJWnDp8ocs4XfDGhkntiv/sZETni3nJfy1TI0D8r6uG4McKWS3pqArO/uema7PtZwPtXPAQ=="
+  },
+  "publicKey": "MCowBQYDK2VwAyEAtpbZ3+CnURzbu6aKNEOTBTvjLkN67mYsBlolJ4lO5fs=",
+  "fuseRecord": {
+    "inputDist": [
+      0.046589,
+      0.096676,
+      0.106843,
+      0.114019,
+      0.31305,
+      0.041528,
+      0.273517,
+      0.007778
+    ],
+    "weights": [
+      0.5645,
+      0,
+      0.719,
+      0.836,
+      0.5925,
+      0,
+      0.5275,
+      0.766
+    ],
+    "outputDist": [
+      0.049235,
+      0,
+      0.143815,
+      0.178448,
+      0.347241,
+      0,
+      0.270107,
+      0.011154
+    ],
+    "inputDigest": "0e7b6dce69fcdc6a4e28d13d2a66de262a7b37b57e26620a65f657f09582f0bf",
+    "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+    "outputDigest": "0a34bc0062134016bf67fc9a9d3eff2470ba959d02ddb57dbba457eddab06eac",
+    "entropy": 2.17224,
+    "vocab": [
+      "allow",
+      "deny",
+      "escalate",
+      "report",
+      "summarize",
+      "redact",
+      "file",
+      "ABSTAIN"
+    ]
+  },
+  "sessionId": "sess-77c1d6558cff55bd"
+}
