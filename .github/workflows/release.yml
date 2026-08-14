@@ -1,0 +1,77 @@
+name: Publish to GitHub Packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Test and publish @smepro-technologies-llc/igl
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: igl-v1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@smepro-technologies-llc"
+
+      # ── Full hermetic test suite (must be green before any publish) ──────────
+      - name: Schedule C conformance (explicit offline mode)
+        run: node test/samples.mjs
+
+      - name: Adversarial and tamper suite (incl. fail-closed default, ceilings, MIN authority)
+        run: node test/suite.mjs
+
+      - name: Crosswalk + resolver laws (Section 12.03 seam under test)
+        run: node test/resolve.mjs
+
+      - name: Model adapter seam
+        run: node test/adapters.mjs
+
+      - name: Cloudflare D1 backing-store adapter
+        run: node test/d1.mjs
+
+      - name: Determination engine (parked design track; still green)
+        run: node test/determination.mjs
+
+      - name: Live UDM service binding (hermetic wire captures)
+        run: node test/udm.mjs
+
+      - name: Governed turn + digest-bound receipt (hermetic)
+        run: node test/govern.mjs
+
+      - name: WellSite governed session (pinned service digest)
+        run: node run-wellsite.mjs
+
+      - name: Independent verification from the artifact
+        run: node verify-receipt.mjs
+
+      # ── Guard against re-publishing an existing version ──────────────────────
+      - name: Check version is not already published
+        run: |
+          PKG=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if npm view "${PKG}@${VER}" version --registry https://npm.pkg.github.com 2>/dev/null; then
+            echo "::error::${PKG}@${VER} is already published. Bump the version before releasing."
+            exit 1
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Publish ──────────────────────────────────────────────────────────────
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

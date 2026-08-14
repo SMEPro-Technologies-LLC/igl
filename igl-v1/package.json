@@ -1,14 +1,39 @@
 {
-  "name": "igl-v1-reference",
-  "version": "1.0.0-ref.8",
+  "name": "@smepro-technologies-llc/igl",
+  "version": "1.0.0-preview.1",
   "description": "IGL v1.0 reference runtime with WellSite rebuilt on it, adversarially tested",
   "type": "module",
   "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/",
+    "programs/",
+    "README.md",
+    "docs/"
+  ],
   "scripts": {
     "test": "node test/samples.mjs && node test/suite.mjs && node test/resolve.mjs && node test/adapters.mjs && node test/d1.mjs && node test/determination.mjs && node test/udm.mjs && node test/govern.mjs",
     "wellsite": "node run-wellsite.mjs",
     "verify": "node verify-receipt.mjs",
     "govern": "node run-govern.mjs"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SMEPro-Technologies-LLC/igl.git",
+    "directory": "igl-v1"
+  },
+  "homepage": "https://github.com/SMEPro-Technologies-LLC/igl#readme",
+  "bugs": {
+    "url": "https://github.com/SMEPro-Technologies-LLC/igl/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }
