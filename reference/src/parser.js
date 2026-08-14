@@ -23,7 +23,6 @@ export function parse(src) {
     if (!atKw(v)) err(`expected keyword ${v}, found ${JSON.stringify(peek().value ?? peek().type)}`, "UNEXPECTED_TOKEN");
     return next();
   }
-  const node = (o) => ({ ...o, line: peek().line, col: peek().col });
 
   /* ---------- program ---------- */
   function parseProgram() {
