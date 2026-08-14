@@ -168,7 +168,7 @@ const samples = { C1, C2, C3, C4, C5 };
 let pass = 0, fail = 0;
 for (const [name, src] of Object.entries(samples)) {
   try {
-    const r = run(src, { seed: 7 });
+    const r = run(src, { seed: 7, offline: true });   // Schedule C conformance: language semantics, explicit offline mode
     const v = verify(r.receipt);
     // recompute the FUSE of the first sealed trace we can find
     const firstTrace = r.traces.find(t => t.trace.fuse);

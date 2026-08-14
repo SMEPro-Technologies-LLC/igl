@@ -42,12 +42,14 @@ list is real and nothing here is claimed as done that is not.
 2. Produce the live digest artifact: run `run-govern.mjs` from a Worker or a
    networked host, commit `out/governed-receipt.json`, and let `verify-governed.mjs`
    check it. That makes `constraintMatrixDigest === 1252a4e5...` a third-party fact.
-3. Switch the execution surface (`workers/igl-api`) FUSE path to `src/udm.js` so
-   the deployed runtime governs against the live matrix, not the stand-in.
-4. Resolve the authority semantics (ADR open item): INHERITS_FROM raise-to-max vs
-   delegation min-clamping. Pick one, encode it, test both sample paths.
-5. Reconcile the three runtimes per ADR 0001: d1-igl authority, igl-v1 reference,
-   igl-api surface; park the entailment design explicitly.
+3. DONE (ADR 0002): the reference runtime's default FUSE path binds the resolved
+   live/pinned matrix; stand-ins are quarantined behind `offline: true` with
+   tainted digests and signed provenance. `workers/igl-api` (separate repo) must
+   adopt the same binding when it embeds this runtime.
+4. DONE (ADR 0002): authority composes by intersection (MIN, never MAX);
+   delegation switches the acting identity. Encoded and tested (suite §K).
+5. DONE (ADR 0001 accepted + ADR 0002): graded matrix canonical; determination
+   engine and 100-table adapter parked as a non-canonical design track.
 
 ### P1 — assurance and operability
 6. Key management: move the signing seed to a KMS or Worker secret; publish the
@@ -77,5 +79,3 @@ execution path, no live digest receipt exists yet, and the code is not yet lande
 in CI. Those three P0 items, plus the authority decision and the runtime
 reconciliation, are the gate to calling it production ready. The rest is the
 normal assurance, scale, and commercial work that follows.
-EOF
-echo "GTM doc written"

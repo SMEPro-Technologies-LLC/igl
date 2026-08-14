@@ -20,6 +20,13 @@ Done and checkable in this package:
   static rejection.
 - A defined model adapter seam with working logprobs and logits adapters.
 
+Update 2026-08-14 (ADR 0002): the constraint stand-in is no longer on the
+default path. udm:// constraints resolve against the deployed matrix (live or
+pinned wire captures) through the explicit crosswalk, fail closed when
+unresolved, and carry signed provenance; the stand-in survives only behind
+`offline: true` with tainted digests. Remaining stand-ins below are the model
+seam and the identity graph backing store.
+
 Explicit stand-ins, not yet real:
 
 - The model. The input distribution comes through the seam, not a live model.

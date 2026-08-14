@@ -1,6 +1,6 @@
 # ADR 0001 — Canonical governance model, runtime, authority, and keys
 
-Status: proposed. Date: 2026-08-13.
+Status: accepted. Date: 2026-08-13. §3 resolved by ADR 0002 (2026-08-14).
 
 ## Context
 
@@ -35,10 +35,9 @@ authority, one surface, one reference.
 the live path. They are a newer design, retained but parked; migrating the deployed
 service to entailment is a future ADR.
 
-**3. Authority policy.** DEPLOY.md 7.3 is undecided: INHERITS_FROM raise-to-max
-(implemented per 8.02) vs delegation min-clamping (proposed). These give different
-results. Decide and encode it, with both sample paths tested, BEFORE any external
-security audit. Until then no authority claim is final.
+**3. Authority policy.** DECIDED in ADR 0002: authority composes by intersection
+(MIN), inheritance never amplifies, explicit delegation switches the acting
+identity. Encoded in `IOSPlus.resolveAuthority`, tested in `test/suite.mjs` §K.
 
 **4. Key persistence.** DEPLOY.md 7.1. Production receipts MUST be signed by a
 persistent key (`Signer.fromSeed`, seeded from a KMS or secret), public key

@@ -9,6 +9,8 @@ export { check } from "./check.js";
 export { Interpreter } from "./interpreter.js";
 export { IOSPlus, VOCAB } from "./iosplus.js";
 export { Signer, sha256, canonical } from "./sign.js";
+export { resolveConstraints, pinnedConstraints } from "./resolve.js";
+export { MODULES, projectConstraint, crosswalkDigest } from "./crosswalk.js";
 
 import { Interpreter } from "./interpreter.js";
 import { Signer, sha256, canonical } from "./sign.js";

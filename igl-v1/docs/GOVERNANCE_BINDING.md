@@ -44,12 +44,14 @@ model, and it is graded, not categorical. This is what is live.
   check, and carries the service digest so a receipt binds to the same digest the
   service published. `test/udm.mjs` exercises this against the real US-TX/RRC and
   EU/EDPB matrices captured from the wire.
-- What is NOT yet true: the interpreter's default execution path still uses the
-  deterministic stand-in matrix, not the live service. No runtime receipt has yet
-  been produced against the live digest 1252a4e5..., because this build environment
-  cannot reach `udm.igl.dev`; only the desktop bridge can. The end-to-end live
-  digest match happens when the runtime runs in a Worker, or anywhere with network
-  to the service, with FUSE switched to `src/udm.js`.
+- NOW TRUE (2026-08-14, ADR 0002): the interpreter's default execution path
+  binds the resolved live/pinned matrix through `src/resolve.js` and the explicit
+  crosswalk (`src/crosswalk.js`). An unresolved udm:// constraint fails closed;
+  the stand-in survives only behind `offline: true` with `standin-`-prefixed
+  digests and signed `standin` provenance. `run-wellsite.mjs` binds the service
+  digest `1252a4e5...` by default (pinned) and fetches the wire under
+  `IGL_LIVE=1`. The live-wire receipt is produced by the `live-proof` CI job,
+  which runs where the network reaches `udm.igl.dev` and verifies the artifact.
 - `src/d1.js` (obligations, boundary_rules, audit_receipts, ig_nodes) targets the
   100-table console database, which is NOT the deployed service. `src/determination.js`
   implements the entailment model from the IG_Schema sheets, which is also not the

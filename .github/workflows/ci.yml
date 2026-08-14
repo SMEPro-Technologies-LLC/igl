@@ -2,6 +2,7 @@ name: IGL v1.0 reference CI
 on: [push, pull_request]
 jobs:
   test:
+    name: Hermetic suite (pinned service digests)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -11,23 +12,53 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Schedule C conformance
+      - name: Schedule C conformance (explicit offline mode)
         run: node test/samples.mjs
-      - name: Adversarial and tamper suite
+      - name: Adversarial and tamper suite (incl. fail-closed default, ceilings, MIN authority)
         run: node test/suite.mjs
+      - name: Crosswalk + resolver laws (Section 12.03 seam under test)
+        run: node test/resolve.mjs
       - name: Model adapter seam
         run: node test/adapters.mjs
       - name: Cloudflare D1 backing-store adapter
         run: node test/d1.mjs
-      - name: Determination engine (entailment + resolution contract)
+      - name: Determination engine (parked design track; still green)
         run: node test/determination.mjs
-      - name: Live UDM service binding (matrix + boundary check)
+      - name: Live UDM service binding (hermetic wire captures)
         run: node test/udm.mjs
       - name: Governed turn + digest-bound receipt (hermetic)
         run: node test/govern.mjs
-      - name: Cloudflare D1 backing-store adapter
-        run: node test/d1.mjs
-      - name: WellSite governed session
+      - name: WellSite governed session (pinned service digest 1252a4e5…)
         run: node run-wellsite.mjs
       - name: Independent verification from the artifact
         run: node verify-receipt.mjs
+
+  live-proof:
+    name: Live-digest proof (udm.igl.dev on the wire)
+    runs-on: ubuntu-latest
+    needs: test
+    defaults:
+      run:
+        working-directory: igl-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: WellSite against the LIVE matrix (provenance "live")
+        run: IGL_LIVE=1 node run-wellsite.mjs
+      - name: Governed turn against the LIVE matrix
+        run: node run-govern.mjs
+      - name: Verify the live receipts from the artifacts alone
+        run: |
+          node verify-receipt.mjs
+          node verify-governed.mjs
+      - name: Assert the wire digest matches the pinned digest (drift gate)
+        run: node scripts/check-matrix-drift.mjs
+      - name: Upload live receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-receipts
+          path: |
+            igl-v1/out/*.json
+          if-no-files-found: error

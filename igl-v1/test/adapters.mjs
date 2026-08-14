@@ -32,7 +32,7 @@ for (const [name, adapter] of [
   ["logitsAdapter", logitsAdapter((tok) => (tok === "report" ? 3 : tok === "summarize" ? 2 : 1))],
   ["uniformAdapter", uniformAdapter()],
 ]) {
-  const r = run(src, { invoke: adapter, seed: 1 });
+  const r = run(src, { invoke: adapter, seed: 1, offline: true });
   const fuse = r.traces.map(t => t.trace.fuse).find(Boolean);
   ok(`${name}: receipt verifies`, verify(r.receipt).ok);
   ok(`${name}: FUSE recomputes`, recomputeFuse(fuse).ok);

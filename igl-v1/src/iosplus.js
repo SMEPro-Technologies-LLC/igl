@@ -13,7 +13,7 @@ import { sha256, canonical, Signer } from "./sign.js";
 export const VOCAB = ["allow", "deny", "escalate", "report", "summarize", "redact", "file", "ABSTAIN"];
 
 export class IOSPlus {
-  constructor({ graph = null, signer = null, graphVersion = "graph-v1", now = () => new Date().toISOString(), seed = 1, matrices = null } = {}) {
+  constructor({ graph = null, signer = null, graphVersion = "graph-v1", now = () => new Date().toISOString(), seed = 1, matrices = null, offline = false } = {}) {
     this.graph = graph || { nodes: {}, edges: [] };   // identity graph (Article VIII)
     this.signer = signer || Signer.generate("ios-plus-default");
     this.graphVersion = graphVersion;
@@ -23,11 +23,15 @@ export class IOSPlus {
     this.auditLog = [];
     this.traceStore = [];
     this.knownMatrixDigests = new Set();
-    /* Matrices loaded from the backing store (Cloudflare D1 udmcore), keyed by
-       `${source}|${version}`. When a program injects a constraint whose source and
-       version are present here, the real UDM cells are used; otherwise IOS+ falls
-       back to the deterministic stand-in. See src/d1.js. */
+    /* Resolved constraint matrices keyed `${source}|${version}` — the output of
+       src/resolve.js (live fetch or pinned fixtures, projected through the
+       crosswalk). This is the DEFAULT execution path: a udm:// constraint that
+       is not present here fails closed (CONSTRAINT_SOURCE_UNRESOLVED).
+       The deterministic stand-in survives ONLY behind `offline: true`, for
+       language-conformance testing; its digests are prefixed "standin-" so a
+       stand-in can never impersonate a service digest in any receipt. */
     this.matrices = matrices || {};
+    this.offline = !!offline;
   }
 
   /* ios.nextSequenceNo() */
@@ -49,9 +53,13 @@ export class IOSPlus {
     };
   }
 
-  /* Section 8.02 / Schedule B-4: own level raised to the max along INHERITS_FROM,
-     depth-bounded, then clamped. Graphless (no edges) means the declared value
-     governs, which is the behaviour the C-2 note describes. */
+  /* Section 8.02, as decided by ADR 0002: authority composes by INTERSECTION.
+     Effective authority = MIN(own declared level, effective authority of every
+     INHERITS_FROM parent), depth-bounded and cycle-safe. Inheritance can only
+     restrict — it can NEVER amplify. The only sanctioned way to act at a higher
+     level is explicit declared delegation, which switches the acting identity
+     to one that holds its own granted authority (the WellSite escalation).
+     Graphless (no edges) means the declared value governs, unchanged. */
   resolveAuthority(uri, node, depth = 0, seen = new Set()) {
     let a = node && typeof node.authority === "number" ? node.authority : 0.0;
     if (depth >= 8 || seen.has(uri)) return Math.max(0, Math.min(1, a));
@@ -59,24 +67,30 @@ export class IOSPlus {
     for (const e of this.graph.edges) {
       if (e.type === "INHERITS_FROM" && e.from === uri) {
         const parent = this.graph.nodes[e.to];
-        if (parent) a = Math.max(a, this.resolveAuthority(e.to, parent, depth + 1, seen));
+        if (parent) a = Math.min(a, this.resolveAuthority(e.to, parent, depth + 1, seen));
       }
     }
     return Math.max(0, Math.min(1, a));
   }
 
   /* ios.getConstraintMatrix(ctx) - Section 9.01 derivation, digest per 3.03.
-     Deterministic stand-in: per-token weights in [0,1] derived from the source
-     and version, with a subset forced to 0.0 so support restriction is visible.
-     A real IOS+ selects rows and columns from the UDM jurisdiction matrix. */
+     DEFAULT PATH: return the resolved live/pinned matrix (src/resolve.js). A
+     udm:// source with no resolved matrix FAILS CLOSED — the deterministic
+     stand-in is reachable only under the explicit `offline` flag, and its
+     digest is prefixed "standin-" so it can never pass for a service digest. */
   getConstraintMatrix(decl) {
     const { source, version } = decl;
-    // Prefer a matrix loaded from the backing store (D1 udmcore) when present.
     const key = `${source}|${version}`;
     if (this.matrices[key]) {
       const m = this.matrices[key];
       this.knownMatrixDigests.add(m.digest);
       return m;
+    }
+    if (!this.offline) {
+      const e = new Error(`constraint ${source}@${version} is not resolved against the UDM service; ` +
+        `resolve with src/resolve.js (live or pinned) before running, or pass offline:true for conformance testing`);
+      e.code = "CONSTRAINT_SOURCE_UNRESOLVED"; e.phase = "exec";
+      throw e;
     }
     const cells = VOCAB.map((tok, i) => {
       const h = parseInt(sha256(`${source}|${version}|${tok}`).slice(0, 8), 16);
@@ -84,8 +98,8 @@ export class IOSPlus {
       if (tok === "deny" || tok === "redact") return 0.0;
       return Number(((h % 1000) / 1000 * 0.5 + 0.5).toFixed(4));  // in [0.5, 1.0]
     });
-    const matrix = { source, version, vocab: VOCAB, cells };
-    matrix.digest = sha256(canonical(matrix.cells));
+    const matrix = { source, version, vocab: VOCAB, cells, provenance: "standin" };
+    matrix.digest = "standin-" + sha256(canonical(matrix.cells));
     this.knownMatrixDigests.add(matrix.digest);
     return matrix;
   }
