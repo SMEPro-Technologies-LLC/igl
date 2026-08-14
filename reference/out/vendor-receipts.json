@@ -1,0 +1,478 @@
+[
+  {
+    "vendor": "openai",
+    "label": "OpenAI",
+    "mode": "MOCK",
+    "model": "gpt-4.1-mini",
+    "receipt": {
+      "receiptUUID": "rcpt-c0ea1886807228e61c00",
+      "boundIdentity": "igl://identity/allco/compliance-001",
+      "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+      "cognitiveTraceRef": "trc-80ec2a2cb6a4fce1",
+      "timeOfIssuance": "2026-08-13T06:55:59.543Z",
+      "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+      "identityGraphVersion": "graph-v1",
+      "sessionId": "sess-2824e8f7e90c4275",
+      "turnSequenceNo": 2,
+      "outcome": "COMPLIANT",
+      "publicKey": "MCowBQYDK2VwAyEAsAPnPpk2tRE0EqO4YOv3v65Jyg050YD7lUgQ8eyBZNA=",
+      "algorithm": "Ed25519",
+      "signature": "7BPpm8lN1rD+7UmVyV2+rvNfTPQsM/77v4aSRvzxar7lbvmZy2rIt01lpJzV1eRUYsTzflTZfV1BmIp9s2DRCg=="
+    },
+    "publicKey": "MCowBQYDK2VwAyEAsAPnPpk2tRE0EqO4YOv3v65Jyg050YD7lUgQ8eyBZNA=",
+    "fuseRecord": {
+      "inputDist": [
+        0.099854,
+        0.089605,
+        0.141728,
+        0.054173,
+        0.212006,
+        0.050952,
+        0.253294,
+        0.098389
+      ],
+      "weights": [
+        0.5645,
+        0,
+        0.719,
+        0.836,
+        0.5925,
+        0,
+        0.5275,
+        0.766
+      ],
+      "outputDist": [
+        0.104743,
+        0,
+        0.189357,
+        0.084156,
+        0.233417,
+        0,
+        0.248281,
+        0.140046
+      ],
+      "inputDigest": "139e5fadd51c77877b9f58857b77e7495cd1cf3da80452f3689b8be0293a6235",
+      "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+      "outputDigest": "0429417d05dcff369e95de33619433fc0be4847fffb56086e63c4e4aae866bc9",
+      "entropy": 2.482216,
+      "vocab": [
+        "allow",
+        "deny",
+        "escalate",
+        "report",
+        "summarize",
+        "redact",
+        "file",
+        "ABSTAIN"
+      ]
+    }
+  },
+  {
+    "vendor": "anthropic",
+    "label": "Anthropic",
+    "mode": "MOCK",
+    "model": "claude-3-7-sonnet-latest",
+    "receipt": {
+      "receiptUUID": "rcpt-a99b73fd68caef67097a",
+      "boundIdentity": "igl://identity/allco/compliance-001",
+      "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+      "cognitiveTraceRef": "trc-8a85d53aafd1f9fe",
+      "timeOfIssuance": "2026-08-13T06:55:59.548Z",
+      "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+      "identityGraphVersion": "graph-v1",
+      "sessionId": "sess-45789b07cd427274",
+      "turnSequenceNo": 2,
+      "outcome": "COMPLIANT",
+      "publicKey": "MCowBQYDK2VwAyEAjc/JhcYC3WDlxg5ipFZYOax0X6CCB0kwAB8hi/MvKKA=",
+      "algorithm": "Ed25519",
+      "signature": "Jbf0gI98vdqQ5+Gf69TAfozxVVnxf+BdehPhHVCLw10lVdIwM+pTK4502UtZVGlSDHwOhY8H1AjSpo5W1hvsBA=="
+    },
+    "publicKey": "MCowBQYDK2VwAyEAjc/JhcYC3WDlxg5ipFZYOax0X6CCB0kwAB8hi/MvKKA=",
+    "fuseRecord": {
+      "inputDist": [
+        0.144795,
+        0.061318,
+        0.15702,
+        0.074308,
+        0.185864,
+        0.18128,
+        0.13467,
+        0.060745
+      ],
+      "weights": [
+        0.5645,
+        0,
+        0.719,
+        0.836,
+        0.5925,
+        0,
+        0.5275,
+        0.766
+      ],
+      "outputDist": [
+        0.168721,
+        0,
+        0.233043,
+        0.128231,
+        0.227319,
+        0,
+        0.146638,
+        0.096049
+      ],
+      "inputDigest": "8f1b1b3400132e86eedfcdb6a6fe9b7e1818f1a1a4b655e9d47324cb854ffce5",
+      "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+      "outputDigest": "9ad04059e2749ef09a55db2d1505f2d4e27d43c998f9c2154b2b32885317a5ef",
+      "entropy": 2.519449,
+      "vocab": [
+        "allow",
+        "deny",
+        "escalate",
+        "report",
+        "summarize",
+        "redact",
+        "file",
+        "ABSTAIN"
+      ]
+    }
+  },
+  {
+    "vendor": "google",
+    "label": "Google Gemini",
+    "mode": "MOCK",
+    "model": "gemini-2.5-flash",
+    "receipt": {
+      "receiptUUID": "rcpt-8735545df06c2200f76f",
+      "boundIdentity": "igl://identity/allco/compliance-001",
+      "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+      "cognitiveTraceRef": "trc-ffc97d9139c068c1",
+      "timeOfIssuance": "2026-08-13T06:55:59.550Z",
+      "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+      "identityGraphVersion": "graph-v1",
+      "sessionId": "sess-f1e8161f6248fb0c",
+      "turnSequenceNo": 2,
+      "outcome": "COMPLIANT",
+      "publicKey": "MCowBQYDK2VwAyEALqCAt19A5jQA4hygz5caKiB4G8JIQFQNBi+aCmJTnY8=",
+      "algorithm": "Ed25519",
+      "signature": "lB/JbLJkRA3q8ooRhEdFXPokc8ds4uBmomNLdi1AzoNHzPvPUertAXGvpsewiGzVWEzKV4WQuPu6w9f9xeBDBw=="
+    },
+    "publicKey": "MCowBQYDK2VwAyEALqCAt19A5jQA4hygz5caKiB4G8JIQFQNBi+aCmJTnY8=",
+    "fuseRecord": {
+      "inputDist": [
+        0.111714,
+        0.194143,
+        0.029555,
+        0.164317,
+        0.17679,
+        0.077007,
+        0.194414,
+        0.052061
+      ],
+      "weights": [
+        0.5645,
+        0,
+        0.719,
+        0.836,
+        0.5925,
+        0,
+        0.5275,
+        0.766
+      ],
+      "outputDist": [
+        0.134501,
+        0,
+        0.045323,
+        0.292984,
+        0.223409,
+        0,
+        0.218728,
+        0.085054
+      ],
+      "inputDigest": "6f3d625db27ccb656293f533021fe182094f38d691c944236ce5d9fe31b762d7",
+      "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+      "outputDigest": "6e31067d9b9ea487bfbc66b88a91d9c07e766c68e3d19f842e08f6b27a6d6249",
+      "entropy": 2.375594,
+      "vocab": [
+        "allow",
+        "deny",
+        "escalate",
+        "report",
+        "summarize",
+        "redact",
+        "file",
+        "ABSTAIN"
+      ]
+    }
+  },
+  {
+    "vendor": "xai",
+    "label": "xAI Grok",
+    "mode": "MOCK",
+    "model": "grok-2-latest",
+    "receipt": {
+      "receiptUUID": "rcpt-578a418ab5dee42f1363",
+      "boundIdentity": "igl://identity/allco/compliance-001",
+      "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+      "cognitiveTraceRef": "trc-31a2410d6b994c3e",
+      "timeOfIssuance": "2026-08-13T06:55:59.552Z",
+      "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+      "identityGraphVersion": "graph-v1",
+      "sessionId": "sess-f0180100604c48f6",
+      "turnSequenceNo": 2,
+      "outcome": "COMPLIANT",
+      "publicKey": "MCowBQYDK2VwAyEANHs/tSkfyHsd4W2dYkiQFQ8WHr1swBh/d8vhTa1Zeq4=",
+      "algorithm": "Ed25519",
+      "signature": "E6xlbYEdGr7dE3WZFA3Z05rUAjWzFbfE1BWlgk6foNK9pNeR0Qku0jY/2HC1zT+AQKxwQOHgZunrMy+lQaXIDg=="
+    },
+    "publicKey": "MCowBQYDK2VwAyEANHs/tSkfyHsd4W2dYkiQFQ8WHr1swBh/d8vhTa1Zeq4=",
+    "fuseRecord": {
+      "inputDist": [
+        0.090076,
+        0.062595,
+        0.078953,
+        0.208506,
+        0.077208,
+        0.136968,
+        0.160305,
+        0.185387
+      ],
+      "weights": [
+        0.5645,
+        0,
+        0.719,
+        0.836,
+        0.5925,
+        0,
+        0.5275,
+        0.766
+      ],
+      "outputDist": [
+        0.091744,
+        0,
+        0.102424,
+        0.314505,
+        0.082538,
+        0,
+        0.152571,
+        0.256219
+      ],
+      "inputDigest": "93ee91d71fedbeb103f60788535c33c64276b5214719489cd7f6ad12fa920d3d",
+      "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+      "outputDigest": "0b89ef089a0c5d078e55aca03f4bc5069155e837fa802e76ee5075b5e01e4503",
+      "entropy": 2.391972,
+      "vocab": [
+        "allow",
+        "deny",
+        "escalate",
+        "report",
+        "summarize",
+        "redact",
+        "file",
+        "ABSTAIN"
+      ]
+    }
+  },
+  {
+    "vendor": "mistral",
+    "label": "Mistral",
+    "mode": "MOCK",
+    "model": "mistral-large-latest",
+    "receipt": {
+      "receiptUUID": "rcpt-a067ccac544059bde5b8",
+      "boundIdentity": "igl://identity/allco/compliance-001",
+      "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+      "cognitiveTraceRef": "trc-244cdbaa06899c0e",
+      "timeOfIssuance": "2026-08-13T06:55:59.554Z",
+      "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+      "identityGraphVersion": "graph-v1",
+      "sessionId": "sess-b529cf4ed6ea6658",
+      "turnSequenceNo": 2,
+      "outcome": "COMPLIANT",
+      "publicKey": "MCowBQYDK2VwAyEAvVT1WCMo1hoVUiCW/9Adcz4Qse1FNKqb+49GmIyJ64U=",
+      "algorithm": "Ed25519",
+      "signature": "8ZAfQ2HpbudTFUYDyAnng1Z6mmlIzYBCabdG5MAwl4JSopHRlUQbA3kLzAO9Xwh9/uVAvgrpFIepXEJUk+81BA=="
+    },
+    "publicKey": "MCowBQYDK2VwAyEAvVT1WCMo1hoVUiCW/9Adcz4Qse1FNKqb+49GmIyJ64U=",
+    "fuseRecord": {
+      "inputDist": [
+        0.158339,
+        0.049965,
+        0.012667,
+        0.172766,
+        0.074595,
+        0.085151,
+        0.217101,
+        0.229416
+      ],
+      "weights": [
+        0.5645,
+        0,
+        0.719,
+        0.836,
+        0.5925,
+        0,
+        0.5275,
+        0.766
+      ],
+      "outputDist": [
+        0.154809,
+        0,
+        0.015774,
+        0.250154,
+        0.076549,
+        0,
+        0.198348,
+        0.304366
+      ],
+      "inputDigest": "fde6cc5b45f69f99b8fcd9d678f01b5343aa646645898d1b6bb6fe60ce52a9b2",
+      "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+      "outputDigest": "b00ab5e72f48d8fe1feddb2d69e4a1ad03bdf1b5511906b23424048a2a86d0da",
+      "entropy": 2.280228,
+      "vocab": [
+        "allow",
+        "deny",
+        "escalate",
+        "report",
+        "summarize",
+        "redact",
+        "file",
+        "ABSTAIN"
+      ]
+    }
+  },
+  {
+    "vendor": "deepseek",
+    "label": "DeepSeek",
+    "mode": "MOCK",
+    "model": "deepseek-chat",
+    "receipt": {
+      "receiptUUID": "rcpt-33d1ff8756bc27fd98ce",
+      "boundIdentity": "igl://identity/allco/compliance-001",
+      "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+      "cognitiveTraceRef": "trc-e79e0f832d532103",
+      "timeOfIssuance": "2026-08-13T06:55:59.557Z",
+      "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+      "identityGraphVersion": "graph-v1",
+      "sessionId": "sess-2d59702ae315a742",
+      "turnSequenceNo": 2,
+      "outcome": "COMPLIANT",
+      "publicKey": "MCowBQYDK2VwAyEA0Hk9+6UCI0tsnbj32xpIRJDjIhGdpuAgRN9z+5fKwGw=",
+      "algorithm": "Ed25519",
+      "signature": "f/XCB5ffLcFHVLyJByfDOdmfiLlP2QeT+l99v95TyHeOWOu3S2Rr0yKcNYIdqIf+HzOood97jxm1Q/PG9JDtBg=="
+    },
+    "publicKey": "MCowBQYDK2VwAyEA0Hk9+6UCI0tsnbj32xpIRJDjIhGdpuAgRN9z+5fKwGw=",
+    "fuseRecord": {
+      "inputDist": [
+        0.182768,
+        0.208573,
+        0.108339,
+        0.030284,
+        0.150565,
+        0.052037,
+        0.094476,
+        0.172958
+      ],
+      "weights": [
+        0.5645,
+        0,
+        0.719,
+        0.836,
+        0.5925,
+        0,
+        0.5275,
+        0.766
+      ],
+      "outputDist": [
+        0.215879,
+        0,
+        0.16299,
+        0.052974,
+        0.186664,
+        0,
+        0.104278,
+        0.277215
+      ],
+      "inputDigest": "e9bbfe9c4a3cd46717a4303aed7bbafead7d73a6b749c47458dfcc957b85fc4c",
+      "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+      "outputDigest": "73b9f721787a186bce7bec4fde3735b531098c9080919954d84ca958af417ec7",
+      "entropy": 2.433773,
+      "vocab": [
+        "allow",
+        "deny",
+        "escalate",
+        "report",
+        "summarize",
+        "redact",
+        "file",
+        "ABSTAIN"
+      ]
+    }
+  },
+  {
+    "vendor": "llama",
+    "label": "Meta Llama (Groq)",
+    "mode": "MOCK",
+    "model": "llama-3.3-70b-versatile",
+    "receipt": {
+      "receiptUUID": "rcpt-80beadf1622e3d549b58",
+      "boundIdentity": "igl://identity/allco/compliance-001",
+      "constraintMatrixDigest": "8d32f93e3f469643b27c3aa870d36c1b205e2179f5f1bf47d4fc17166d0d6cab",
+      "cognitiveTraceRef": "trc-40cf4416625b2004",
+      "timeOfIssuance": "2026-08-13T06:55:59.560Z",
+      "programHash": "7ec916ac6a5e1f32aa36d9c7ee5906cca6ebce2643a57b01b63e5e38897dd4e1",
+      "identityGraphVersion": "graph-v1",
+      "sessionId": "sess-d11b1e38f61d39c4",
+      "turnSequenceNo": 2,
+      "outcome": "COMPLIANT",
+      "publicKey": "MCowBQYDK2VwAyEA+ZIwVkbnR+ZXcmyisRSI+oHIPLcbaf2LH5PJ1cuwYmc=",
+      "algorithm": "Ed25519",
+      "signature": "5oP1/nSXBeFBiN67ZN6n3L9qeFTPqhFk0Vjc9r/A6TIT9/nN44kJKKbVKVLy+RVv7PiIEpnrCK+grvKBzoGeDw=="
+    },
+    "publicKey": "MCowBQYDK2VwAyEA+ZIwVkbnR+ZXcmyisRSI+oHIPLcbaf2LH5PJ1cuwYmc=",
+    "fuseRecord": {
+      "inputDist": [
+        0.167262,
+        0.329164,
+        0.050751,
+        0.093638,
+        0.14975,
+        0.036812,
+        0.101858,
+        0.070765
+      ],
+      "weights": [
+        0.5645,
+        0,
+        0.719,
+        0.836,
+        0.5925,
+        0,
+        0.5275,
+        0.766
+      ],
+      "outputDist": [
+        0.232644,
+        0,
+        0.089909,
+        0.192881,
+        0.218618,
+        0,
+        0.132388,
+        0.13356
+      ],
+      "inputDigest": "1298fe91a373c655071f3808d8f307ef945e539ddf59b2382f7dce10e4c0782c",
+      "matrixDigest": "ca24e04b01c9f454b831747d2247189433b40e5a3951acdf9f60d93c8663a052",
+      "outputDigest": "106bbf9e7fd9f7b77aa7722bbeaf88849a9ae08b6259c13cfd49a5985d9b35a1",
+      "entropy": 2.513503,
+      "vocab": [
+        "allow",
+        "deny",
+        "escalate",
+        "report",
+        "summarize",
+        "redact",
+        "file",
+        "ABSTAIN"
+      ]
+    }
+  }
+]

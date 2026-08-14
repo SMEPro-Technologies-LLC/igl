@@ -1,0 +1,24 @@
+name: IGL v1.0 reference CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  conformance-and-adversarial:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Schedule C conformance
+        run: node test/samples.mjs
+      - name: Adversarial and tamper suite
+        run: node test/suite.mjs
+      - name: Model adapter seam
+        run: node test/adapters.mjs
+      - name: WellSite governed session
+        run: node run-wellsite.mjs
+      - name: Independent verification from the artifact
+        run: node verify-receipt.mjs
