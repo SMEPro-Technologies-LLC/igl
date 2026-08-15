@@ -1,0 +1,34 @@
+name: UDM live binding and drift
+# Continuous proof that the runtime governs against the live service, not a fixture.
+# Runs daily and on demand on GitHub's runners, which have network to udm.igl.dev.
+# This is what turns "the live digest was proven once" into "it is proven every day":
+# a real wire fetch, a fresh receipt bound to the service digest, and a verify, plus
+# a drift assertion against the pinned fixtures. The Cloudflare account is not needed
+# for this job; only for deploying the Worker surface itself.
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+jobs:
+  live-binding:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: igl-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Assert live matrix digests still equal the pinned fixtures
+        run: node scripts/check-matrix-drift.mjs
+      - name: Produce a fresh live-digest receipt from the wire
+        run: node run-govern.mjs US-TX RRC
+      - name: Verify the fresh live receipt from the artifact alone
+        run: node verify-governed.mjs
+      - name: Publish the live receipt as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: receipt-live-${{ github.run_id }}
+          path: igl-v1/artifacts/receipt.live.json
+          if-no-files-found: error

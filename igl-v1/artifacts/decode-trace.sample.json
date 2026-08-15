@@ -1,0 +1,573 @@
+{
+  "note": "Sample governed decode. FUSE applied inside the token-by-token loop; blocked tokens carry zero mass at every step. Recomputable via verifyDecode.",
+  "vocab": [
+    "allow",
+    "deny",
+    "escalate",
+    "report",
+    "summarize",
+    "redact",
+    "file",
+    "ABSTAIN"
+  ],
+  "weights": [
+    1,
+    0,
+    1,
+    1,
+    1,
+    0,
+    1,
+    1
+  ],
+  "blocked": [
+    "deny",
+    "redact"
+  ],
+  "emittedTokens": [
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow",
+    "allow"
+  ],
+  "outcome": "COMPLIANT",
+  "sealed": {
+    "kind": "governed_decode",
+    "vocabDigest": "43e533c439ddfa58fc7a1283a47b83343951c84675f2df886784ec3a1e31ef5e",
+    "weightsDigest": "81d8ab17d816a235f56f4369e9a50ee89e242a939dc2a9b36d2d22f77e51090e",
+    "steps": 12,
+    "outcome": "COMPLIANT",
+    "stepDigests": [
+      "0da9a42c7adaf63fe15c999122bd31c96aca6501afc229a6a1c94e27d97cdad3",
+      "0da9a42c7adaf63fe15c999122bd31c96aca6501afc229a6a1c94e27d97cdad3",
+      "0c2f172310c9bf98832cbd52203e40f67f0f80aa4f9b5c742f60e8f0dc4d2142",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5",
+      "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    ],
+    "decodeDigest": "68691845d119ec74013d0f8e0fd43f7859d624fe8ef748984db5ad344c86f2f1"
+  },
+  "trace": [
+    {
+      "step": 0,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.904225
+        },
+        {
+          "token": "redact",
+          "p": 0.095775
+        },
+        {
+          "token": "allow",
+          "p": 0
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.88937
+        },
+        {
+          "token": "report",
+          "p": 0.045543
+        },
+        {
+          "token": "escalate",
+          "p": 0.033133
+        }
+      ],
+      "entropyRaw": 0.45546,
+      "entropyGoverned": 0.718388,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "ef2cd5dc8cf3580335af09b8b86b477683706600231b5c3173d32dbb1b7cccff",
+      "governedDigest": "0da9a42c7adaf63fe15c999122bd31c96aca6501afc229a6a1c94e27d97cdad3"
+    },
+    {
+      "step": 1,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.904225
+        },
+        {
+          "token": "redact",
+          "p": 0.095775
+        },
+        {
+          "token": "allow",
+          "p": 0
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.88937
+        },
+        {
+          "token": "report",
+          "p": 0.045543
+        },
+        {
+          "token": "escalate",
+          "p": 0.033133
+        }
+      ],
+      "entropyRaw": 0.45546,
+      "entropyGoverned": 0.718388,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "ef2cd5dc8cf3580335af09b8b86b477683706600231b5c3173d32dbb1b7cccff",
+      "governedDigest": "0da9a42c7adaf63fe15c999122bd31c96aca6501afc229a6a1c94e27d97cdad3"
+    },
+    {
+      "step": 2,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.988903
+        },
+        {
+          "token": "redact",
+          "p": 0.011094
+        },
+        {
+          "token": "allow",
+          "p": 0.000003
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.995434
+        },
+        {
+          "token": "report",
+          "p": 0.00261
+        },
+        {
+          "token": "escalate",
+          "p": 0.001382
+        }
+      ],
+      "entropyRaw": 0.088018,
+      "entropyGoverned": 0.048758,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "ac5a22b20014c895816fe439781b972aee3f686eb39fff8782030b24eeeeb4bd",
+      "governedDigest": "0c2f172310c9bf98832cbd52203e40f67f0f80aa4f9b5c742f60e8f0dc4d2142"
+    },
+    {
+      "step": 3,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 4,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 5,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 6,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 7,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 8,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 9,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 10,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    },
+    {
+      "step": 11,
+      "outcome": "COMPLIANT",
+      "rawTop": [
+        {
+          "token": "deny",
+          "p": 0.998716
+        },
+        {
+          "token": "redact",
+          "p": 0.001187
+        },
+        {
+          "token": "allow",
+          "p": 0.000097
+        }
+      ],
+      "governedTop": [
+        {
+          "token": "allow",
+          "p": 0.999803
+        },
+        {
+          "token": "report",
+          "p": 0.000134
+        },
+        {
+          "token": "escalate",
+          "p": 0.000052
+        }
+      ],
+      "entropyRaw": 0.014685,
+      "entropyGoverned": 0.002914,
+      "zeroed": [
+        "deny",
+        "redact"
+      ],
+      "violations": [],
+      "rawDigest": "26bb7b098293f725dc451fd971a5166bda47e39ada61b898a1c3711b5613e788",
+      "governedDigest": "1987407b3fd18224dbf4219f0f4ad7280d67d4b0a82fefaac950299d3a0781a5"
+    }
+  ],
+  "receipt": {
+    "receiptUUID": "dec-68691845d119ec74013d",
+    "kind": "governed_decode",
+    "subject": null,
+    "vocabDigest": "43e533c439ddfa58fc7a1283a47b83343951c84675f2df886784ec3a1e31ef5e",
+    "weightsDigest": "81d8ab17d816a235f56f4369e9a50ee89e242a939dc2a9b36d2d22f77e51090e",
+    "decodeDigest": "68691845d119ec74013d0f8e0fd43f7859d624fe8ef748984db5ad344c86f2f1",
+    "steps": 12,
+    "outcome": "COMPLIANT",
+    "created_at": 1786633497.824,
+    "publicKey": "MCowBQYDK2VwAyEAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/E=",
+    "algorithm": "Ed25519",
+    "signature": "3jIEZOBx0y24yuZ7iR9bRYjnl7YvdrlQcjB6e6iKlvq42BAAOYC2SbSqkEswZ9VogvZeW5M7xka/3EDj4CS+AA=="
+  },
+  "publicKey": "MCowBQYDK2VwAyEAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/E="
+}
