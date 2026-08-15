@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Prove the D1 adapter against the real udmcore schema, using a mock binding
    whose columns match the live DDL: categorical boundary allow, obligations with
    citations, identity nodes, and persistence of a Governance Receipt into the

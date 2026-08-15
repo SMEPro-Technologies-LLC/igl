@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* End-to-end: AI.Extract through the bridge, from inside the language. */
 import { test } from "node:test";
 import assert from "node:assert/strict";

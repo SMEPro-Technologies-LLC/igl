@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Governed decoding: FUSE inside the active decode loop, per token.
 
    The rest of the runtime governs a distribution that arrives through a seam. This

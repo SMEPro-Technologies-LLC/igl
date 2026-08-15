@@ -9,5 +9,5 @@
     "wellsite": "node run-wellsite.mjs",
     "verify": "node verify-receipt.mjs"
   },
-  "license": "UNLICENSED"
+  "license": "Apache-2.0"
 }

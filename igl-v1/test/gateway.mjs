@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Governed-decode gateway, end to end and hermetic: real Request/Response objects
    through the Worker entry, live-fixture matrix on the wire seam, reference
    connector as the model. Proves the OpenAI shape, the governed receipt, the

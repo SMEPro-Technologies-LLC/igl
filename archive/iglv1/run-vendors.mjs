@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Run the same WellSite governed session across every top AI vendor and show the
    governance is identical no matter which model proposed the action.
 

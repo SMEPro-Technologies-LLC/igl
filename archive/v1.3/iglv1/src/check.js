@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL v1.0 reference runtime - static checker
    Enforces the structural rules that Article IV, Section 5.07, and Section 4.03
    place before execution. Compile-time failure yields no trace and no receipt

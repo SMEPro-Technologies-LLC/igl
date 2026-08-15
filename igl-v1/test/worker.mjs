@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Prove the deployable surface end to end, locally, with no network and no
    Cloudflare account. We import the exact deploy entry (workers/igl-api/index.js),
    stub the wire with the pinned live fixture, and drive real Request/Response

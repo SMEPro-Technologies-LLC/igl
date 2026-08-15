@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Real-model drop-in: govern a live decoder with transformers.js.
 
    This is the seam in concrete form. It is NOT run in CI (it needs the npm package

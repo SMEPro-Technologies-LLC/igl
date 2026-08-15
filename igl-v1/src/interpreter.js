@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL v1.0 reference runtime - interpreter (Articles V, VII, X, XI).
    Executes a checked Program under IOS+. Implements the eight operators, the
    boundary enforcement of Section 7.03, cognitive-trace sealing (7.04), turn-

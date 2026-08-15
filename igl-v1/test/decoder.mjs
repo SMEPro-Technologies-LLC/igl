@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Governed decoding, proven inside the loop. We stand up a small but real
    reference logits model (a fixed-weight forward pass: token embeddings dotted with
    a context vector, plus a bias that deliberately makes the PROHIBITED tokens the

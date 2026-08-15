@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Governed-decode gateway: the OpenAI-compatible surface.
 
    One endpoint that any existing client can point at without changing its code:

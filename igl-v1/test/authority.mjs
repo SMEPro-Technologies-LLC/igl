@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Authority policy (ADR 0001, item 3), the decision encoded and tested.
    INHERITS_FROM raises to the max along the chain. DELEGATE TO runs at the
    target's DECLARED authority, clamped so a delegation edge can never borrow the

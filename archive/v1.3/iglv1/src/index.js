@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL v1.0 reference runtime - entry point.
    run(source[, opts]) executes a Program and returns the session result,
    including a signed Governance Receipt. verify(receipt[, publicKey]) checks a

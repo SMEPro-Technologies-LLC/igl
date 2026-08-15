@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL static checker — v0.2
    Everything that can be rejected before a model call is rejected here.
    Evaluation order is fixed (CRITIQUE D5): identity → boundary → intent →

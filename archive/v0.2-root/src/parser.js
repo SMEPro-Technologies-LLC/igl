@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL parser — v0.2
    Builds the AST described in SPEC.md §6. Every node carries source position so
    that a governed error can point at the clause that caused it. */

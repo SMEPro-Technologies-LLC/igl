@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL determination engine - the governance core as IOS+ actually defines it.
 
    From IG_Schema and IOS_Guarantees: determination is computed, not generated,

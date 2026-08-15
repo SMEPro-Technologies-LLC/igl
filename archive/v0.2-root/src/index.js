@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export { lex, IGLError, KEYWORDS } from "./lexer.js";
 export { parse } from "./parser.js";
 export { check } from "./check.js";

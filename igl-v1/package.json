@@ -12,5 +12,5 @@
     "verify:governed": "node verify-governed.mjs",
     "decode": "node run-decode.mjs"
   },
-  "license": "UNLICENSED"
+  "license": "Apache-2.0"
 }

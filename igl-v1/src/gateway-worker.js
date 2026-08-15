@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Cloudflare Worker entry for the governed-decode gateway.
    Same deploy pattern as igl-api: nodejs_compat, IGL_SIGNING_SEED as a secret,
    UDM_SERVICE as a var. Any OpenAI-compatible client points its base URL here. */

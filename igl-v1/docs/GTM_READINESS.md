@@ -110,8 +110,8 @@ fails that job loudly, outside the PR-blocking suite.
    Governance Receipt is treated as evidence, along with data handling and
    retention.
 10. SLAs, a runbook, monitoring, alerting, and backups for the deployed surface.
-11. Licensing and ownership cleanup. The tree is still `UNLICENSED`, and the owner
-    is named inconsistently across materials.
+11. Licensing and ownership cleanup. The tree now uses Apache-2.0 and names
+    the owner consistently across materials.
 12. A bounded production pilot with a real filing and a real user, then GA.
 13. Reconcile the public materials (whitepaper, site) to the deployed model, so the
     marketing describes the matrix-and-FUSE system that is actually live.

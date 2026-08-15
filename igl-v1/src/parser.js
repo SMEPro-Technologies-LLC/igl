@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL v1.0 reference runtime - parser
    Recursive-descent parser for Schedule A. Where Schedule A and the Schedule C
    sample programs disagree (the samples are normative under Section 2.03), the

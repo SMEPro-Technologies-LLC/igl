@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Model adapter seam for the IGL v1.0 reference runtime.
 
    FUSE needs a probability distribution over the runtime's vocabulary. Where

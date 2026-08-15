@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Produce the digest-match artifact, self-describing via provenance.
    Default: LIVE run against udm.igl.dev (needs network; refreshes the committed
    artifacts/receipt.live.json). A live run only writes on success, so a failed

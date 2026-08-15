@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL v1.0 reference runtime - Governance Receipt signing and verification.
    Section 3.05: the receipt binds identity, constraint digest, trace reference,
    program hash, graph version, and outcome, with a signature over all preceding

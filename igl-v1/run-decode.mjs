@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Produce a committed sample of a real governed decode: run the token-by-token
    loop with a reference forward-pass model, seal the per-token cognitive trace, and
    write it to artifacts/decode-trace.sample.json so the per-token record is a

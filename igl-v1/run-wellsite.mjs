@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Execute the WellSite v1.0 program end to end and print the governed ledger,
    then verify the receipt and recompute a FUSE step the way a third party would. */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";

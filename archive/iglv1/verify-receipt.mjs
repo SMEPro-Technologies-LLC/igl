@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Third-party verification from the artifact alone.
    Reads out/receipt.json (produced by run-wellsite.mjs) and checks, using only
    the receipt, the published public key, and the stored FUSE record:

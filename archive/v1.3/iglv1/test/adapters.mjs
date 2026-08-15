@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Prove the model seam: run a governed program with a distribution supplied by
    an adapter rather than the built-in stand-in, and confirm the receipt verifies
    and the FUSE step recomputes. This is where a real model attaches. */

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Bind to the DEPLOYED governance service. Fixtures below are the real matrices
    fetched live from udm.igl.dev (US-TX/RRC and EU/EDPB), captured verbatim,
    including the service-computed digests. The test drives the client and the

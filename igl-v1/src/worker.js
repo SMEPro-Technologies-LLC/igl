@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Cloudflare Worker entry for the live governed turn.
    Requires compatibility_flags = ["nodejs_compat"] (node:crypto in sign.js).
    The signing seed comes from a secret (IGL_SIGNING_SEED, 64 hex chars), never a

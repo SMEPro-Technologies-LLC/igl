@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL v1.0 reference runtime - lexer
    Tokenises the block-structured grammar of Schedule A.
    Comments run from "--" to end of line. Strings are double-quoted. */

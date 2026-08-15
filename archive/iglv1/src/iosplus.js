@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL v1.0 reference runtime - IOS+ orchestrator (Article X).
    Provides the six service interfaces of Section 10.04: identity resolution,
    constraint matrix provision, receipt signing, trace logging, identity-graph

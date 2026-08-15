@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Cloudflare D1 backing store for the IGL v1.0 runtime, bound to the real
    udmcore schema.
 

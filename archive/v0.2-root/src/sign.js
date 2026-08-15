@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Ed25519 receipts — tamper-evident → load-refusing → ATTRIBUTABLE,
    where attributable means pinned to a key the identity graph vouched for
    at the time of signing, not "signed by someone".

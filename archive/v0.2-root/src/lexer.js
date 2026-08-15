@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL lexer — v0.2
    Token classes are deliberately narrow: the value types the language can
    express are the value types UDM can govern. See docs/CRITIQUE.md §A2. */

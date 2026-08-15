@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Verify a governed-turn artifact from the file alone, and report its provenance
    loudly so a fixture-sourced receipt is never mistaken for a live one.
    Usage: node verify-governed.mjs [artifacts/receipt.live.json] */

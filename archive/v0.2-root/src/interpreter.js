@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* IGL interpreter — v0.2
 
    Execution order is fixed and enforced (CRITIQUE D5):

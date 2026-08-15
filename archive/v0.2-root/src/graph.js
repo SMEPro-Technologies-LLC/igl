@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Identity graph as a fold over the trace stream — IGL v0.2
 
    Boundary and footprint are not registry lookups. They are materialised

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Determination engine tests: the four-outcome resolution contract, byte-for-byte
    re-verifiable receipts, FORECAST deltas, and the AI-downstream perimeter. */
 

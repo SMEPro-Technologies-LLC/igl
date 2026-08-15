@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Persistence — the event substrate, hash-chained.
 
    GraphRuntime folds over events; IOSRuntime accumulates traces. Both were

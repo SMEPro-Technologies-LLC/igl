@@ -1,4 +1,6 @@
-﻿# IGL: Identity Governed Logic
+# IGL: Identity Governed Logic
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
 Canonical repository for the IGL language.
 
@@ -11,3 +13,8 @@ Canonical repository for the IGL language.
 
 CI runs the `igl-v1` suite on every push. The live governed surface is the
 `igl-api` Worker under `igl-v1/workers/igl-api`.
+
+## License
+
+This repository is licensed under the Apache License 2.0.
+See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Drift detection: fetch the live matrices and assert their digests still equal
    the pinned fixtures. Runs on a schedule and on demand, NOT in the PR-blocking
    suite, so a moved live digest fails loudly here without holding PRs hostage to

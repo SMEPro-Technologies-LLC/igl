@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { run, verify, recomputeFuse } from "../src/index.js";
 
 const C1 = `

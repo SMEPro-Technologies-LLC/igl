@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Declared signatures for the governed subsystem surface.
    A governed language cannot have an open function namespace: if the checker
    cannot see a call's shape, it cannot reject a malformed one before the model

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* UDM ↔ AI translation bridge — IGL v0.2 (rev 2, post-review)
 
        γ : UDM_set     → model_constraint      "decode down"

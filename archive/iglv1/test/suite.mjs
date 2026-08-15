@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Battle-testing suite for the IGL v1.0 reference runtime.
    Positive conformance plus the negative and adversarial cases that a governed
    language has to survive: tamper detection, fail-closed behaviour, support

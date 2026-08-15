@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /* Multi-vendor model adapters for the IGL v1.0 runtime.
 
    The point of this file: prove IGL governs AI, not one model. Each adapter asks
