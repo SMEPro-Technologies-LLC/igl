@@ -1,0 +1,11 @@
+name = "igl-gateway"
+main = "index.js"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+UDM_SERVICE = "https://udm.igl.dev"
+
+# Secret, set out of band, never in source:
+#   wrangler secret put IGL_SIGNING_SEED
+# Use a DIFFERENT seed from igl-api so the two surfaces have distinct keys.

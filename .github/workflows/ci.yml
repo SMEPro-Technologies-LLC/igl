@@ -31,6 +31,8 @@ jobs:
         run: node test/worker.mjs
       - name: Governed decoding (FUSE inside the decode loop, per-token trace)
         run: node test/decoder.mjs
+      - name: Governed-decode gateway (OpenAI-compatible surface)
+        run: node test/gateway.mjs
       - name: Sample governed decode artifact
         run: node run-decode.mjs
       - name: WellSite governed session

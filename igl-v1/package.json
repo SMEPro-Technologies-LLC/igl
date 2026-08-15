@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "test": "node test/samples.mjs && node test/suite.mjs && node test/adapters.mjs && node test/d1.mjs && node test/determination.mjs && node test/udm.mjs && node test/govern.mjs && node test/authority.mjs && node test/worker.mjs && node test/decoder.mjs",
+    "test": "node test/samples.mjs && node test/suite.mjs && node test/adapters.mjs && node test/d1.mjs && node test/determination.mjs && node test/udm.mjs && node test/govern.mjs && node test/authority.mjs && node test/worker.mjs && node test/decoder.mjs && node test/gateway.mjs",
     "wellsite": "node run-wellsite.mjs",
     "verify": "node verify-receipt.mjs",
     "govern": "node run-govern.mjs",
