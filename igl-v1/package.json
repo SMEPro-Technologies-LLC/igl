@@ -1,16 +1,38 @@
 {
   "name": "igl-v1-reference",
   "version": "1.0.0-ref.8",
-  "description": "IGL v1.0 reference runtime with WellSite rebuilt on it, adversarially tested",
+  "description": "Reference runtime for Identity-Governed Language (IGL) with governed execution, verification, and signed receipts",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "lint": "node --check src/*.js && node --check test/*.mjs && node --check *.mjs && node --check scripts/*.mjs && node --check workers/igl-api/*.js && node --check workers/igl-gateway/*.js",
     "test": "node test/samples.mjs && node test/suite.mjs && node test/adapters.mjs && node test/d1.mjs && node test/determination.mjs && node test/udm.mjs && node test/govern.mjs && node test/authority.mjs && node test/worker.mjs && node test/decoder.mjs && node test/gateway.mjs",
+    "build": "npm pack --dry-run",
     "wellsite": "node run-wellsite.mjs",
     "verify": "node verify-receipt.mjs",
     "govern": "node run-govern.mjs",
     "verify:governed": "node verify-governed.mjs",
     "decode": "node run-decode.mjs"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SMEPro-Technologies-LLC/igl.git",
+    "directory": "igl-v1"
+  },
+  "homepage": "https://igl.dev",
+  "bugs": {
+    "url": "https://github.com/SMEPro-Technologies-LLC/igl/issues"
+  },
+  "keywords": [
+    "igl",
+    "identity-governed-language",
+    "ai-governance",
+    "governed-execution",
+    "receipts"
+  ],
+  "author": "SMEPro Technologies LLC",
+  "engines": {
+    "node": ">=20"
+  }
 }

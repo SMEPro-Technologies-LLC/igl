@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/SMEPro-Technologies-LLC/igl/tree/main/docs
+    about: Start with the project documentation and architecture notes.
+  - name: Discussions
+    url: https://github.com/SMEPro-Technologies-LLC/igl/discussions
+    about: Use Discussions for open-ended questions once the feature is enabled.
