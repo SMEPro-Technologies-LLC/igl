@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Identity-Governed Logic (IGL) One-Pager</title>
+<style>
+  :root{
+    --ink:#12171f;
+    --muted:#586173;
+    --line:#e3e7ee;
+    --paper:#ffffff;
+    --gov:#0e7a5f;
+    --gov-soft:#e6f4ee;
+    --gov-line:#bfe2d3;
+    --today:#8a92a1;
+    --today-soft:#f1f2f5;
+    --warn:#b4534b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:#dfe4ec;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.4;
+  }
+  .page{
+    width:8.5in;
+    min-height:11in;
+    margin:24px auto;
+    display:flow-root;
+    background:var(--paper);
+    padding:0.42in 0.58in 0.34in;
+    box-shadow:0 8px 40px rgba(20,30,50,.16);
+  }
+
+  /* Masthead */
+  .masthead{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:2.5px solid var(--ink);padding-bottom:11px;}
+  .brandwrap{display:flex;align-items:center;gap:13px;}
+  .glyph{
+    width:44px;height:44px;border-radius:10px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--gov),#0b5f4a);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:800;font-size:19px;letter-spacing:.5px;
+  }
+  h1{font-size:22px;margin:0;letter-spacing:-.3px;font-weight:800;}
+  .sub{font-size:12.5px;color:var(--muted);margin-top:2px;font-weight:500;}
+  .tagchip{text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;line-height:1.85;}
+  .tagchip b{color:var(--gov);}
+
+  /* Definition */
+  .definition{margin:11px 0 2px;font-size:13.5px;line-height:1.5;}
+  .definition .lead{font-weight:700;}
+  .definition strong.g{color:var(--gov);}
+
+  .sectlabel{
+    font-size:10.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--gov);margin:11px 0 6px;display:flex;align-items:center;gap:9px;
+  }
+  .sectlabel::after{content:"";flex:1;height:1px;background:var(--line);}
+
+  /* Illustration */
+  .figure{border:1px solid var(--line);border-radius:11px;padding:9px 14px 7px;background:#fbfcfd;}
+  .figure svg{display:block;width:100%;height:auto;}
+  .figcap{font-size:10px;color:var(--muted);text-align:center;margin-top:4px;line-height:1.35;}
+
+  /* Compare */
+  .compare{border:1px solid var(--line);border-radius:11px;overflow:hidden;}
+  .crow{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);}
+  .crow:first-child{border-top:none;}
+  .chead{background:var(--ink);color:#fff;font-weight:700;font-size:11.5px;padding:8px 14px;display:flex;align-items:center;gap:8px;}
+  .chead.gov{background:var(--gov);}
+  .cell{padding:6px 14px;font-size:11.7px;line-height:1.38;display:flex;gap:9px;align-items:flex-start;}
+  .cell.today{background:var(--today-soft);color:#4a505c;border-right:1px solid var(--line);}
+  .cell.gov{background:var(--gov-soft);border-right:1px solid var(--gov-line);}
+  .cell .k{font-weight:700;font-size:11px;display:block;margin-bottom:1px;}
+  .cell.today .k{color:var(--warn);}
+  .cell.gov .k{color:var(--gov);}
+  .badge{flex:0 0 auto;width:16px;height:16px;border-radius:50%;margin-top:1px;}
+
+  /* Audiences */
+  .aud{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:2px;}
+  .card{border:1px solid var(--line);border-radius:11px;padding:11px 13px 11px;background:var(--paper);}
+  .card h3{margin:0 0 2px;font-size:13px;font-weight:800;}
+  .card .who{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:700;margin-bottom:7px;}
+  .card ul{margin:0;padding:0;list-style:none;}
+  .card li{position:relative;padding:0 0 6px 18px;font-size:11.4px;line-height:1.38;}
+  .card li:last-child{padding-bottom:0;}
+  .card li::before{content:"";position:absolute;left:0;top:4px;width:10px;height:10px;border-radius:3px;background:var(--gov-soft);border:1.5px solid var(--gov);}
+  .card li b{color:var(--ink);}
+  .card .payoff{margin-top:8px;padding-top:7px;border-top:1px dashed var(--line);font-size:11px;color:var(--muted);}
+  .card .payoff b{color:var(--gov);}
+
+  /* Bottom */
+  .bottomline{margin-top:12px;background:var(--ink);color:#fff;border-radius:12px;padding:12px 20px;font-size:12.5px;line-height:1.48;}
+  .bottomline b{color:#8ff0cf;}
+
+  footer{margin-top:9px;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:var(--muted);}
+  footer .conf{text-transform:uppercase;letter-spacing:1.3px;font-weight:700;color:#8a93a3;}
+
+  @media print{
+    body{background:#fff;}
+    .page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0.38in 0.5in;}
+    @page{size:letter;margin:0;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <div class="brandwrap">
+      <div class="glyph">IGL</div>
+      <div>
+        <h1>Identity-Governed Logic</h1>
+        <div class="sub">A way to build artificial intelligence that has to answer for what it does.</div>
+      </div>
+    </div>
+    <div class="tagchip">
+      Who is acting is <b>known</b><br>
+      The limits are <b>enforced</b><br>
+      What happened is <b>proven</b>
+    </div>
+  </div>
+
+  <p class="definition">
+    <span class="lead">IGL is a programming language for building AI that stays accountable.</span>
+    When an AI is built with IGL, everything it does is tied to a real, named person or system that is
+    allowed to do it, kept inside limits set in advance, and written down in a form anyone can check
+    afterward. Ordinary AI does none of this: it answers whoever asks and leaves nothing you can verify.
+    IGL is the piece that makes an AI
+    <strong class="g">show who it works for, stay inside the lines, and prove what it did.</strong>
+  </p>
+
+  <div class="sectlabel">How it works, at a glance</div>
+  <div class="figure">
+    <svg viewBox="0 0 760 208" role="img" aria-label="Diagram comparing ordinary AI to AI built on IGL.">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#9aa3b2"/>
+        </marker>
+        <marker id="arg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#0e7a5f"/>
+        </marker>
+      </defs>
+
+      <!-- ORDINARY AI LANE -->
+      <text x="8" y="20" font-size="11" font-weight="700" fill="#8a92a1" font-family="sans-serif">ORDINARY AI</text>
+      <!-- request -->
+      <rect x="8" y="30" width="96" height="40" rx="9" fill="#f1f2f5" stroke="#d7dbe3"/>
+      <text x="56" y="54" font-size="11" fill="#4a505c" text-anchor="middle" font-family="sans-serif">A request</text>
+      <line x1="104" y1="50" x2="150" y2="50" stroke="#9aa3b2" stroke-width="2" marker-end="url(#ar)"/>
+      <!-- black box -->
+      <rect x="152" y="26" width="250" height="48" rx="9" fill="#3a4150"/>
+      <text x="277" y="47" font-size="12" fill="#fff" text-anchor="middle" font-family="sans-serif" font-weight="700">Hidden processing</text>
+      <text x="277" y="63" font-size="10" fill="#c3c9d3" text-anchor="middle" font-family="sans-serif">no record of what rules applied</text>
+      <line x1="402" y1="50" x2="448" y2="50" stroke="#9aa3b2" stroke-width="2" marker-end="url(#ar)"/>
+      <!-- answer -->
+      <rect x="450" y="30" width="150" height="40" rx="9" fill="#f1f2f5" stroke="#d7dbe3"/>
+      <text x="525" y="54" font-size="11" fill="#4a505c" text-anchor="middle" font-family="sans-serif">An answer</text>
+      <!-- can't verify tag -->
+      <circle cx="640" cy="50" r="18" fill="#fbeeec" stroke="#b4534b" stroke-width="1.5"/>
+      <text x="640" y="55" font-size="17" fill="#b4534b" text-anchor="middle" font-family="sans-serif" font-weight="800">?</text>
+      <text x="700" y="46" font-size="10.5" fill="#b4534b" font-family="sans-serif" font-weight="700">You have to</text>
+      <text x="700" y="59" font-size="10.5" fill="#b4534b" font-family="sans-serif" font-weight="700">trust it.</text>
+
+      <!-- divider -->
+      <line x1="8" y1="104" x2="752" y2="104" stroke="#e3e7ee" stroke-width="1"/>
+
+      <!-- IGL LANE -->
+      <text x="8" y="128" font-size="11" font-weight="700" fill="#0e7a5f" font-family="sans-serif">AI BUILT ON IGL</text>
+      <!-- request -->
+      <rect x="8" y="138" width="96" height="46" rx="9" fill="#f1f2f5" stroke="#d7dbe3"/>
+      <text x="56" y="165" font-size="11" fill="#4a505c" text-anchor="middle" font-family="sans-serif">A request</text>
+      <line x1="104" y1="161" x2="140" y2="161" stroke="#0e7a5f" stroke-width="2" marker-end="url(#arg)"/>
+
+      <!-- checkpoint 1: identity -->
+      <rect x="142" y="136" width="132" height="50" rx="9" fill="#e6f4ee" stroke="#bfe2d3"/>
+      <circle cx="166" cy="156" r="7" fill="none" stroke="#0e7a5f" stroke-width="1.8"/>
+      <path d="M156 172 a10 8 0 0 1 20 0" fill="none" stroke="#0e7a5f" stroke-width="1.8"/>
+      <text x="188" y="156" font-size="10.5" fill="#0b5f4a" font-family="sans-serif" font-weight="700">Who is</text>
+      <text x="188" y="169" font-size="10.5" fill="#0b5f4a" font-family="sans-serif" font-weight="700">acting?</text>
+      <line x1="274" y1="161" x2="292" y2="161" stroke="#0e7a5f" stroke-width="2" marker-end="url(#arg)"/>
+
+      <!-- checkpoint 2: limits -->
+      <rect x="294" y="136" width="132" height="50" rx="9" fill="#e6f4ee" stroke="#bfe2d3"/>
+      <path d="M318 143 l14 5 v9 c0 8 -7 13 -14 16 c-7 -3 -14 -8 -14 -16 v-9 z" fill="none" stroke="#0e7a5f" stroke-width="1.8"/>
+      <text x="340" y="156" font-size="10.5" fill="#0b5f4a" font-family="sans-serif" font-weight="700">Inside the</text>
+      <text x="340" y="169" font-size="10.5" fill="#0b5f4a" font-family="sans-serif" font-weight="700">limits?</text>
+      <line x1="426" y1="161" x2="444" y2="161" stroke="#0e7a5f" stroke-width="2" marker-end="url(#arg)"/>
+
+      <!-- checkpoint 3: record -->
+      <rect x="446" y="136" width="132" height="50" rx="9" fill="#e6f4ee" stroke="#bfe2d3"/>
+      <rect x="464" y="145" width="20" height="24" rx="2" fill="none" stroke="#0e7a5f" stroke-width="1.8"/>
+      <line x1="468" y1="152" x2="480" y2="152" stroke="#0e7a5f" stroke-width="1.4"/>
+      <line x1="468" y1="157" x2="480" y2="157" stroke="#0e7a5f" stroke-width="1.4"/>
+      <line x1="468" y1="162" x2="476" y2="162" stroke="#0e7a5f" stroke-width="1.4"/>
+      <text x="492" y="156" font-size="10.5" fill="#0b5f4a" font-family="sans-serif" font-weight="700">Signed</text>
+      <text x="492" y="169" font-size="10.5" fill="#0b5f4a" font-family="sans-serif" font-weight="700">record</text>
+      <line x1="578" y1="161" x2="596" y2="161" stroke="#0e7a5f" stroke-width="2" marker-end="url(#arg)"/>
+
+      <!-- result -->
+      <rect x="598" y="138" width="154" height="46" rx="9" fill="#0e7a5f"/>
+      <circle cx="620" cy="161" r="10" fill="#fff"/>
+      <path d="M615 161 l4 4 l7 -8" fill="none" stroke="#0e7a5f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="638" y="158" font-size="10.5" fill="#fff" font-family="sans-serif" font-weight="700">A result you</text>
+      <text x="638" y="171" font-size="10.5" fill="#fff" font-family="sans-serif" font-weight="700">can check.</text>
+    </svg>
+    <div class="figcap">Ordinary AI takes a request and hands back an answer with nothing behind it. IGL routes the same request through three plain questions before it lets anything out, so the result comes with proof.</div>
+  </div>
+
+  <div class="sectlabel">The difference, side by side</div>
+  <div class="compare">
+    <div class="crow">
+      <div class="chead">AI the way it works today</div>
+      <div class="chead gov">AI built on IGL</div>
+    </div>
+    <div class="crow">
+      <div class="cell today"><span class="badge" data-x></span><span><span class="k">It answers anyone.</span>No real sense of who is asking or what they may do.</span></div>
+      <div class="cell gov"><span class="badge" data-c></span><span><span class="k">It knows who it works for.</span>Every action is tied to a named person or system with set permissions.</span></div>
+    </div>
+    <div class="crow">
+      <div class="cell today"><span class="badge" data-x></span><span><span class="k">Safety is bolted on.</span>Filters run before or after, so off-limits results get made, then discarded.</span></div>
+      <div class="cell gov"><span class="badge" data-c></span><span><span class="k">The limits are part of the job.</span>What is off-limits is never produced at all, not caught afterward.</span></div>
+    </div>
+    <div class="crow">
+      <div class="cell today"><span class="badge" data-x></span><span><span class="k">You get an answer, not proof.</span>No way to show a regulator, a court, or yourself which rules applied.</span></div>
+      <div class="cell gov"><span class="badge" data-c></span><span><span class="k">You get a record you can check.</span>Each decision leaves a signed receipt, and tampering with it shows.</span></div>
+    </div>
+    <div class="crow">
+      <div class="cell today"><span class="badge" data-x></span><span><span class="k">A good guess becomes fact.</span>A confident guess is treated as true, so mistakes get reused and pile up.</span></div>
+      <div class="cell gov"><span class="badge" data-c></span><span><span class="k">A guess stays a guess.</span>The AI can suggest, but a person or fixed rule confirms it before it counts.</span></div>
+    </div>
+    <div class="crow">
+      <div class="cell today"><span class="badge" data-x></span><span><span class="k">You take the vendor's word.</span>It is a closed box, and safety is a policy line you cannot test.</span></div>
+      <div class="cell gov"><span class="badge" data-c></span><span><span class="k">It stops clean when it must.</span>At a hard limit it halts, saves the evidence, and issues no receipt.</span></div>
+    </div>
+  </div>
+
+  <div class="sectlabel">What it changes for you</div>
+  <div class="aud">
+    <div class="card">
+      <h3>If you run a business</h3>
+      <div class="who">Company, regulated industry, operator</div>
+      <ul>
+        <li><b>Use AI where you could not before.</b> In banking, energy, healthcare, and law, "we think it is safe" does not pass. IGL gives proof, so AI can take on work compliance would block.</li>
+        <li><b>Every decision brings its own paper trail.</b> You see which rules were followed and who signed off, with no scramble after something breaks.</li>
+        <li><b>Mistakes stay small.</b> Permissions never grow on their own, and one wrong call does not spread through the system.</li>
+        <li><b>You can prove it to outsiders.</b> Auditors, regulators, insurers, and partners can check the AI for themselves.</li>
+      </ul>
+      <div class="payoff"><b>In short:</b> AI you can safely put to work on serious jobs.</div>
+    </div>
+
+    <div class="card">
+      <h3>If you are one person</h3>
+      <div class="who">Professional, customer, citizen</div>
+      <ul>
+        <li><b>The AI answers to you.</b> When it decides something about you, a named authority stands behind it and leaves a record you can see.</li>
+        <li><b>It cannot make things up about you.</b> It can point to real information, but not invent a fact and pass it off as true.</li>
+        <li><b>Your permissions stay put.</b> They change only when someone approves it on purpose, not because a system picked up a habit.</li>
+        <li><b>You have somewhere to turn when it is wrong.</b> The record shows exactly what happened and why.</li>
+      </ul>
+      <div class="payoff"><b>In short:</b> AI that owes you an explanation, and can give one.</div>
+    </div>
+  </div>
+
+  <div class="bottomline">
+    Ordinary AI asks you to <b>trust that it behaved</b>. AI built on IGL lets you <b>prove that it did</b>.
+    Every action is tied to who allowed it, held inside limits it cannot cross, and saved in a record anyone
+    can check. That is the whole idea.
+  </div>
+
+  <footer>
+    <span>IGL, Identity-Governed Logic. Native governance for artificial intelligence.</span>
+    <span class="conf">SMEPro Confidential</span>
+  </footer>
+
+</div>
+
+<script>
+  // draw check / cross badges without relying on typographic symbols
+  document.querySelectorAll('.badge[data-c]').forEach(function(b){
+    b.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#0e7a5f"/><path d="M4.5 8.2 l2.2 2.2 l4.8 -5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  });
+  document.querySelectorAll('.badge[data-x]').forEach(function(b){
+    b.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#c4b6b4"/><path d="M5.3 5.3 l5.4 5.4 M10.7 5.3 l-5.4 5.4" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  });
+</script>
+</body>
+</html>

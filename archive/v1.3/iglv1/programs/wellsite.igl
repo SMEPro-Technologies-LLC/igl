@@ -1,0 +1,81 @@
+-- WellSite production filing, expressed as an IGL v1.0 program.
+-- Domain: Texas Railroad Commission (TX-RRC) oil production reporting for
+-- operator Allco, period 2026-Q3. The governed logic of the live WellSite app
+-- (drafting the PR-202 compliance packet, then filing the production report)
+-- is rebuilt here as a single governed session that produces one signed receipt.
+
+IGL v1.0 PROGRAM "wellsite_production_filing" ;
+
+IDENTITY {
+  -- The field operator can prepare a packet but not file it (authority 0.4).
+  -- Filing requires higher authority, reached by delegating to compliance.
+  DECLARE IDENTITY field_operator AS IDENTITY_OPERAND {
+    id          : "igl://identity/allco/operator-014",
+    authority   : 0.4,
+    boundary    : tx_rrc_boundary,
+    propagation : DELEGATE TO "igl://identity/allco/compliance-001"
+  } ;
+  DECLARE IDENTITY compliance_officer AS IDENTITY_OPERAND {
+    id          : "igl://identity/allco/compliance-001",
+    authority   : 0.85,
+    boundary    : tx_rrc_filing_boundary,
+    exceptions  : [ "igl://exception/tx-rrc-late-filing-window" ],
+    propagation : INHERIT
+  } ;
+}
+
+CONSTRAINTS {
+  DECLARE BOUNDARY tx_rrc_boundary AS BOUNDARY_TENSOR {
+    dimensions  : 3,
+    shape       : [512, 256, 128],
+    jurisdiction: "udm://jurisdiction/us/tx-rrc",
+    temporal    : [ "2026-07-01T00:00:00Z", "2026-09-30T23:59:59Z" ],
+    strictness  : HARD
+  } ;
+  DECLARE BOUNDARY tx_rrc_filing_boundary AS BOUNDARY_TENSOR {
+    dimensions  : 3,
+    shape       : [512, 256, 128],
+    jurisdiction: "udm://jurisdiction/us/tx-rrc/filing",
+    temporal    : [ "2026-07-01T00:00:00Z", "2026-09-30T23:59:59Z" ],
+    strictness  : HARD
+  } ;
+  DECLARE CONSTRAINT tx_rrc_production_rules AS CONSTRAINT_MATRIX {
+    source  : "udm://module/tx-rrc-production-v3",
+    version : "3.2.0",
+    digest  : "computed-by-ios+"
+  } ;
+  DECLARE CONSTRAINT tx_rrc_filing_rules AS CONSTRAINT_MATRIX {
+    source  : "udm://module/tx-rrc-filing-v2",
+    version : "2.0.0",
+    digest  : "computed-by-ios+"
+  } ;
+}
+
+BEGIN
+  -- Step 1: prepare the PR-202 compliance packet under production rules.
+  INJECT ( tx_rrc_production_rules, packet_ctx ) ;
+  LET draft        = AI_INFER("Resolve missing PR-202 fields for Allco oil production, TX-RRC, period 2026-Q3", packet_ctx) ;
+  LET packet       = FUSE ( draft, tx_rrc_production_rules ) ;
+  LET packet_trace = CAPTURE_TRACE ( packet ) INTO ct_packet ;
+  LET packet_turn  = BIND ( field_operator, ct_packet ) AS turn_packet ;
+
+  -- Step 2: self-audit the packet turn with an interim receipt (Section 5.07).
+  LET interim   = CAPTURE ( turn_packet ) AS interim_receipt ;
+  LET packet_ok = VERIFY ( interim_receipt, field_operator ) ;
+
+  -- Step 3: file the production report. The operator lacks filing authority, so
+  -- the filing FUSE runs UNDER compliance, reached by the declared delegation.
+  IF_AUTHORITY ( field_operator, LT, 0.8 ) THEN {
+    INJECT ( tx_rrc_filing_rules, filing_ctx ) ;
+    LET filed       = FUSE ( packet, tx_rrc_filing_rules ) UNDER compliance_officer ;
+    LET filed_trace = CAPTURE_TRACE ( filed ) INTO ct_filed ;
+    LET final_turn  = BIND ( compliance_officer, ct_filed ) AS turn_final ;
+  } ELSE {
+    INJECT ( tx_rrc_filing_rules, filing_ctx2 ) ;
+    LET filed2       = FUSE ( packet, tx_rrc_filing_rules ) ;
+    LET filed_trace2 = CAPTURE_TRACE ( filed2 ) INTO ct_filed2 ;
+    LET final_turn   = BIND ( field_operator, ct_filed2 ) AS turn_final ;
+  }
+END
+
+RECEIPT { CAPTURE ( turn_final ) AS filing_receipt WITH_OUTCOME COMPLIANT ; }

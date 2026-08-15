@@ -1,0 +1,12 @@
+﻿node_modules/
+out/
+_bundle/
+.wrangler/
+dist/
+*.log
+*.tmp
+~$*
+# never commit secrets
+.dev.vars
+*.pem
+.env

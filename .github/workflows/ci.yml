@@ -1,0 +1,43 @@
+name: IGL v1.0 reference CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: igl-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Schedule C conformance
+        run: node test/samples.mjs
+      - name: Adversarial and tamper suite
+        run: node test/suite.mjs
+      - name: Model adapter seam
+        run: node test/adapters.mjs
+      - name: Cloudflare D1 backing-store adapter
+        run: node test/d1.mjs
+      - name: Determination engine (entailment + resolution contract)
+        run: node test/determination.mjs
+      - name: Live UDM service binding (matrix + boundary check)
+        run: node test/udm.mjs
+      - name: Governed turn + digest-bound receipt (hermetic)
+        run: node test/govern.mjs
+      - name: Authority law (MIN-intersection composition, clamped delegation)
+        run: node test/authority.mjs
+      - name: igl-api deploy surface (govern + verify end to end)
+        run: node test/worker.mjs
+      - name: Governed decoding (FUSE inside the decode loop, per-token trace)
+        run: node test/decoder.mjs
+      - name: Governed-decode gateway (OpenAI-compatible surface)
+        run: node test/gateway.mjs
+      - name: WellSite filing pipeline (first real gateway caller)
+        run: node test/filing.mjs
+      - name: Sample governed decode artifact
+        run: node run-decode.mjs
+      - name: WellSite governed session
+        run: node run-wellsite.mjs
+      - name: Independent verification from the artifact
+        run: node verify-receipt.mjs

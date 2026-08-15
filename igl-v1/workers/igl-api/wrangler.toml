@@ -1,0 +1,22 @@
+name = "igl-api"
+main = "index.js"
+compatibility_date = "2026-08-01"
+# node:crypto (Ed25519 in sign.js) and Buffer need the Node compat layer.
+compatibility_flags = ["nodejs_compat"]
+
+# The surface is an HTTPS client to the deployed d1-igl governance service. It
+# fetches the live constraint matrix and its digest, so it needs no D1 binding of
+# its own. Override the upstream here only if you move the service.
+[vars]
+UDM_SERVICE = "https://udm.igl.dev"
+
+# Route: uncomment and set your hostname to serve on a custom domain. Left
+# commented so `wrangler deploy` publishes to your <name>.workers.dev subdomain
+# first, which is the safe way to smoke test before pointing DNS at it.
+# routes = [{ pattern = "igl-api.yourdomain.com", custom_domain = true }]
+
+# SECRET, not set here. The Ed25519 signing seed (64 hex chars) is provided out of
+# band so it never lands in source control:
+#   wrangler secret put IGL_SIGNING_SEED
+# Without it the Worker generates an ephemeral key per cold start, which is fine
+# for a smoke test but must not be used for receipts anyone relies on.

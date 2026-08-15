@@ -1,0 +1,143 @@
+{
+  "note": "Sample WellSite filing record: two chained governed turns through the gateway, auditor-verifiable from this file alone. Matrix from the pinned fixture.",
+  "provenance": "fixture",
+  "kind": "wellsite_filing_record",
+  "jurisdiction": "US-TX",
+  "agency": "RRC",
+  "facts": {
+    "operator": "Allco",
+    "wellId": "42-255-31234",
+    "period": "2026-Q3",
+    "district": "01",
+    "volumes": {
+      "oilBbl": 1804,
+      "gasMcf": 9312
+    }
+  },
+  "identities": {
+    "preparer": "igl://identity/allco/operator-014",
+    "filer": "igl://identity/allco/compliance-001"
+  },
+  "constraintMatrixDigest": "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160",
+  "draftReceipt": {
+    "receiptUUID": "gw-7ebd62765fbffed5a33b",
+    "kind": "governed_completion",
+    "subject": "igl://identity/allco/operator-014",
+    "jurisdiction": "US-TX",
+    "agency": "RRC",
+    "model": "reference",
+    "constraintMatrixDigest": "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160",
+    "matrixVersion": "1.0.0",
+    "source": "udm://module/us-tx-rrc-v1",
+    "matrixId": "udm-ustx-rrc-001",
+    "outcome": "COMPLIANT",
+    "refused": false,
+    "query_hash": "db55c9b290d8c7c420fc1ebb7449c8ebb0f37fefceb002e8fd297e212f3763f5",
+    "answer_hash": "a653dc7c13c700e31e5278a316da02cbd7a7ca01c069efa78fe282f82628c961",
+    "prev_receipt_hash": null,
+    "chain_hash": "7ebd62765fbffed5a33bb764209699e3248b8c5ceda675f85c8c551abb549150",
+    "provenance": {
+      "digestSource": "live",
+      "service": "https://udm.igl.dev"
+    },
+    "payload": {
+      "answer": {
+        "jurisdiction": "US-TX",
+        "agency": "RRC",
+        "outcome": "COMPLIANT",
+        "paths": [
+          "path-financial-detail",
+          "path-pii-disclosure",
+          "path-production-report",
+          "path-well-identity"
+        ],
+        "governed": [
+          0.020408,
+          0,
+          0.489796,
+          0.489796
+        ],
+        "violations": [],
+        "missingMandatory": [],
+        "contentDigest": "f9caa9bfc92713c343cbcb64bca37926ce55686b6bad824b5cd16b6d8945e80c"
+      },
+      "distByPath": {
+        "path-financial-detail": 0.02,
+        "path-pii-disclosure": 0.02,
+        "path-production-report": 0.48,
+        "path-well-identity": 0.48
+      }
+    },
+    "created_at": 1786776589.239,
+    "publicKey": "MCowBQYDK2VwAyEAkaKKC3Q4FZOk2UaVeSCJJq/IrYLIg5t2RDWbnrqaSzo=",
+    "algorithm": "Ed25519",
+    "signature": "pEfExwcRPa4gqRNS1/DZyiFC9huwgTHKmh2zhMEE9q/NBtpwn0P2d3a9UFOm+3orOIwk/5jmg3IWNhT4oT8LCQ=="
+  },
+  "filingReceipt": {
+    "receiptUUID": "gw-2dcbd04d209e5bae270c",
+    "kind": "governed_completion",
+    "subject": "igl://identity/allco/compliance-001",
+    "jurisdiction": "US-TX",
+    "agency": "RRC",
+    "model": "reference",
+    "constraintMatrixDigest": "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160",
+    "matrixVersion": "1.0.0",
+    "source": "udm://module/us-tx-rrc-v1",
+    "matrixId": "udm-ustx-rrc-001",
+    "outcome": "COMPLIANT",
+    "refused": false,
+    "query_hash": "28950bbfa13443551c09c462eda598f62e2e80e7e9b51d32e37da798bebb3f6d",
+    "answer_hash": "11bc9a4a396766722eacb8fc70bbcc6ba637e5b93c757e73556a2f7b1c7ec19b",
+    "prev_receipt_hash": "7ebd62765fbffed5a33bb764209699e3248b8c5ceda675f85c8c551abb549150",
+    "chain_hash": "2dcbd04d209e5bae270ca534c401516d34411a86ccdbf617fd7673d6fd512c25",
+    "provenance": {
+      "digestSource": "live",
+      "service": "https://udm.igl.dev"
+    },
+    "payload": {
+      "answer": {
+        "jurisdiction": "US-TX",
+        "agency": "RRC",
+        "outcome": "COMPLIANT",
+        "paths": [
+          "path-financial-detail",
+          "path-pii-disclosure",
+          "path-production-report",
+          "path-well-identity"
+        ],
+        "governed": [
+          0.020408,
+          0,
+          0.489796,
+          0.489796
+        ],
+        "violations": [],
+        "missingMandatory": [],
+        "contentDigest": "974dfc2697cbc6340c4010127e2e6a9026e169c445bc0066859468243b75e415"
+      },
+      "distByPath": {
+        "path-financial-detail": 0.02,
+        "path-pii-disclosure": 0.02,
+        "path-production-report": 0.48,
+        "path-well-identity": 0.48
+      }
+    },
+    "created_at": 1786776589.24,
+    "publicKey": "MCowBQYDK2VwAyEAkaKKC3Q4FZOk2UaVeSCJJq/IrYLIg5t2RDWbnrqaSzo=",
+    "algorithm": "Ed25519",
+    "signature": "E0H6RA68eLHhInhfXajD4epcSjydjxWXML6/7gcq/EDCpM+XQpiWjuAZPJgr7wI8g0GmXbG4DHG9O1AN3hZfAA=="
+  },
+  "publicKey": "MCowBQYDK2VwAyEAkaKKC3Q4FZOk2UaVeSCJJq/IrYLIg5t2RDWbnrqaSzo=",
+  "chainLink": {
+    "draftChainHash": "7ebd62765fbffed5a33bb764209699e3248b8c5ceda675f85c8c551abb549150",
+    "filingPrev": "7ebd62765fbffed5a33bb764209699e3248b8c5ceda675f85c8c551abb549150",
+    "linked": true
+  },
+  "recordDigest": "1735215f1b5f0723117cd7a6904b74924321a27dd3d764292c02984336f15d58",
+  "audit": {
+    "ok": true,
+    "digest": "1252a4e59fd9540f9649a8fa6ec6bb2d508ddf3663cf23f3da1482bfb4ba8160",
+    "wellId": "42-255-31234",
+    "period": "2026-Q3"
+  }
+}
