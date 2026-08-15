@@ -1,0 +1,58 @@
+name: Bug report
+description: Report a reproducible defect in IGL
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+      placeholder: A clear and concise description of the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include commands, inputs, or sample programs.
+      placeholder: |
+        1. Go to ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - igl-v1 runtime
+        - Worker surface
+        - Documentation
+        - Examples
+        - CI / automation
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: e.g. 20.19.0 or 22.17.1
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Paste stack traces, receipts, or terminal output if available.
+      render: shell

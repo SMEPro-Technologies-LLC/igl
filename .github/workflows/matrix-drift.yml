@@ -9,6 +9,8 @@ on:
   schedule:
     - cron: "0 7 * * *"
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   live-binding:
     runs-on: ubuntu-latest
@@ -20,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install
+        run: npm install --ignore-scripts
       - name: Assert live matrix digests still equal the pinned fixtures
         run: node scripts/check-matrix-drift.mjs
       - name: Produce a fresh live-digest receipt from the wire

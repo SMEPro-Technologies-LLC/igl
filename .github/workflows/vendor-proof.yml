@@ -3,6 +3,8 @@ name: IGL cross-vendor governed proof
 # Put vendor keys in the repo's encrypted Actions secrets. Missing keys run MOCK.
 on:
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   cross-vendor:
     runs-on: ubuntu-latest
@@ -14,6 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install
+        run: npm install --ignore-scripts
       - name: Run WellSite through every vendor with a key
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

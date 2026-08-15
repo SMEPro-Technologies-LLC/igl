@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an improvement for IGL
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Language design
+        - Runtime behavior
+        - Worker/API surface
+        - Documentation
+        - Tooling / CI
+    validations:
+      required: true
