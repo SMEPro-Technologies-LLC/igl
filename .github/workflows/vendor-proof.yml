@@ -32,7 +32,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: node run-vendors.mjs
       - name: Upload signed cross-vendor receipts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vendor-receipts
           path: igl-v1/out/vendor-receipts.json

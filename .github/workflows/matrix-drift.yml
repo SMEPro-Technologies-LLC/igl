@@ -31,7 +31,7 @@ jobs:
       - name: Verify the fresh live receipt from the artifact alone
         run: node verify-governed.mjs
       - name: Publish the live receipt as a build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: receipt-live-${{ github.run_id }}
           path: igl-v1/artifacts/receipt.live.json
