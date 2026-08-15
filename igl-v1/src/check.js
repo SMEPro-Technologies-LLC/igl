@@ -8,6 +8,11 @@ import { IGLError } from "./lexer.js";
 export function check(program) {
   const errors = [];
   const add = (msg, code) => errors.push(new IGLError(msg, { phase: "check", code }));
+  const allowedOutcomeAssertions = new Set(["COMPLIANT", "VIOLATION", "EXCEPTION_APPLIED", "HARD_VIOLATION", "SOFT_VIOLATION"]);
+  const checkOutcomeAssertion = (where, outcome) => {
+    if (outcome && !allowedOutcomeAssertions.has(outcome))
+      add(`${where} WITH_OUTCOME ${outcome} is not a valid assertion`, "BAD_OUTCOME_ASSERTION");
+  };
 
   // Section 4.01: exactly one of each block, in order. The parser already
   // enforces order and presence; here we confirm non-emptiness and names.
@@ -68,7 +73,7 @@ export function check(program) {
         checkExpr(e.a); checkExpr(e.b); break;
       case "CaptureTrace": checkExpr(e.arg); noteBind(e.into); break;
       case "Bind": noteBind(e.as); break;
-      case "Capture": noteBind(e.as); break;
+      case "Capture": checkOutcomeAssertion(`CAPTURE ${e.as}`, e.outcome); noteBind(e.as); break;
       default: break;
     }
   }
@@ -96,6 +101,7 @@ export function check(program) {
   // Receipt block must be exactly one terminal CAPTURE (parser guarantees one).
   if (!program.receipt || program.receipt.kind !== "Capture")
     add("RECEIPT block must contain exactly one terminal CAPTURE", "NO_TERMINAL_CAPTURE");
+  checkOutcomeAssertion("RECEIPT CAPTURE", program.receipt?.outcome);
 
   return errors;
 }

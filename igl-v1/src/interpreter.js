@@ -13,6 +13,7 @@ import { check } from "./check.js";
 import { IGLError } from "./lexer.js";
 import { IOSPlus, VOCAB, valueOf } from "./iosplus.js";
 import { sha256, canonical } from "./sign.js";
+import { evaluateCeilingViolations } from "./udm.js";
 
 const round = (x, n = 6) => Number(x.toFixed(n));
 const roundArr = a => a.map(x => round(x));
@@ -193,8 +194,11 @@ export class Interpreter {
             break;
           }
           case "WhenBoundary": {
-            // WITHIN if the last governed output cleared its boundary, else OUTSIDE
-            const within = !state.lastGoverned || state.lastGoverned.outcome !== "VIOLATION";
+            const last = state.lastGoverned;
+            const matchesBoundary = !!last && last.boundaryName === s.boundary;
+            const matchesConstraint = !!last && last.constraintName === s.constraint;
+            const isViolation = !!last && last.outcome !== "COMPLIANT";
+            const within = !last || !(matchesBoundary && matchesConstraint && isViolation);
             runStmts(within ? s.withinB : (s.outsideB || []));
             break;
           }
@@ -232,8 +236,9 @@ export class Interpreter {
     if (!dist) throw new IGLError("FUSE first operand is not a distribution", { phase: "exec", code: "FUSION_TYPE_ERROR" });
     // resolve the constraint matrix operand
     let matrix = null;
+    let constraintName = null;
     const mVal = evalExpr(e.m);
-    if (mVal.type === "matrixRef") matrix = ios.getConstraintMatrix(decls.matrices[mVal.name]);
+    if (mVal.type === "matrixRef") { constraintName = mVal.name; matrix = ios.getConstraintMatrix(decls.matrices[mVal.name]); }
     else if (mVal.type === "context") matrix = ctx.contexts.get(mVal.name)?.matrix;
     else if (state.activeMatrix) matrix = state.activeMatrix;
     if (!matrix) throw new IGLError("FUSE has no constraint matrix in scope", { phase: "exec", code: "CONSTRAINT_INJECTION_ERROR" });
@@ -251,14 +256,15 @@ export class Interpreter {
       actor = u;
     }
 
-    const gov = this.fuseDist(dist, matrix, state, ios, actor);
+    const boundaryTensor = actor && actor.boundary && decls.boundaries[actor.boundary] ? decls.boundaries[actor.boundary] : null;
+    const gov = this.fuseDist(dist, matrix, state, ios, actor, { boundaryTensor, boundaryName: actor?.boundary || null, constraintName });
     return gov;
   }
 
   /* The core operation, Schedule B E-FUSE-COMPUTE: normalize(v (x) project(M)),
      followed by the graded boundary check the live matrix carries (apply, THEN
      check — the step FUSE alone does not provide; see src/udm.js and ADR 0001). */
-  fuseDist(dist, matrix, state, ios, actor) {
+  fuseDist(dist, matrix, state, ios, actor, { boundaryTensor = null, boundaryName = null, constraintName = null } = {}) {
     // Compute from the rounded operands that the record will store, so an external
     // recomputation over those same stored values reproduces the output exactly.
     const rInput = roundArr(dist);
@@ -270,19 +276,46 @@ export class Interpreter {
     // support restriction check (w=0 -> g=0)
     rWeights.forEach((w, i) => { if (w === 0 && out[i] !== 0) throw new IGLError("support restriction violated", { phase: "exec", code: "FUSION_TYPE_ERROR" }); });
 
-    let outcome = "COMPLIANT";
+    const strictness = (boundaryTensor?.fields?.strictness?.value) || matrix.strictness || "HARD";
+    const violationClass = strictness === "HARD" ? "HARD_VIOLATION" : "SOFT_VIOLATION";
+    const boundaryLog = [];
     const violations = [], missingMandatory = [];
+    const allViolations = [];
+
+    if (boundaryTensor) {
+      const ceilings = roundArr(ios.ceilingsFor(boundaryTensor, { tight: this.boundaryMode === "tight" }));
+      const byToken = Object.fromEntries(VOCAB.map((tok, i) => [tok, ceilings[i]]));
+      const v = evaluateCeilingViolations(VOCAB, out, byToken).map(x => ({ token: x.path, mass: x.mass, ceiling: x.ceiling }));
+      allViolations.push(...v.map(x => ({ ...x, source: "boundary" })));
+    }
+
     if (matrix.ceilings) {
       const rCeil = roundArr(matrix.ceilings);
-      rCeil.forEach((c, i) => { if (out[i] > c + 1e-9) violations.push({ token: VOCAB[i], mass: out[i], ceiling: c }); });
+      const byToken = Object.fromEntries(VOCAB.map((tok, i) => [tok, rCeil[i]]));
+      violations.push(...evaluateCeilingViolations(VOCAB, out, byToken).map(x => ({ token: x.path, mass: x.mass, ceiling: x.ceiling })));
       for (const g of matrix.mandatoryGroups || []) {
         const mass = g.tokens.reduce((acc, t) => acc + out[VOCAB.indexOf(t)], 0);
         if (mass === 0) missingMandatory.push(g.path);
       }
-      if (violations.length || missingMandatory.length) {
-        outcome = (matrix.strictness || "HARD") === "HARD" ? "HARD_VIOLATION" : "SOFT_VIOLATION";
-      }
+      allViolations.push(...violations.map(x => ({ ...x, source: "constraint" })));
     }
+
+    for (const v of allViolations) {
+      const i = VOCAB.indexOf(v.token);
+      boundaryLog.push({
+        dimension: v.token,
+        index: i,
+        ceiling: v.ceiling,
+        observedMass: v.mass,
+        class: violationClass,
+        source: v.source,
+      });
+    }
+    for (const path of missingMandatory) {
+      boundaryLog.push({ dimension: path, class: violationClass, reason: "MANDATORY_PATH_ZERO_MASS", source: "constraint" });
+    }
+
+    const outcome = (allViolations.length || missingMandatory.length) ? violationClass : "COMPLIANT";
 
     const fuseRecord = {
       inputDist: rInput, weights: rWeights, outputDist: out,
@@ -290,6 +323,7 @@ export class Interpreter {
       matrixDigest: matrix.digest,
       outputDigest: sha256(canonical(out)),
       entropy: shannon(out), vocab: VOCAB,
+      ...(boundaryTensor ? { boundaryCeilings: roundArr(ios.ceilingsFor(boundaryTensor, { tight: this.boundaryMode === "tight" })) } : {}),
       ...(matrix.ceilings ? { ceilings: roundArr(matrix.ceilings), violations, missingMandatory } : {}),
       ...(matrix.provenance ? { provenance: matrix.provenance } : {}),
       ...(matrix.crosswalkDigest ? { crosswalkDigest: matrix.crosswalkDigest } : {}),
@@ -306,7 +340,7 @@ export class Interpreter {
         { phase: "exec", code: "BOUNDARY_VIOLATION" });
     }
 
-    const gov = { type: "governed", dist: out, entropy: fuseRecord.entropy, fuseRecord, outcome, matrixDigest: matrix.digest, provenance: matrix.provenance || null };
+    const gov = { type: "governed", dist: out, entropy: fuseRecord.entropy, fuseRecord, outcome, matrixDigest: matrix.digest, provenance: matrix.provenance || null, boundaryLog, boundaryName, constraintName };
     state.lastGoverned = gov;
     return gov;
   }
@@ -353,7 +387,10 @@ function composeTurnTrace(identity, trace, state, ios, parentSeq = null) {
 }
 function issueReceipt(turn, outcomeOverride, { ios, programHash, sessionId, graphVersion }) {
   const provenance = turn.constraintProvenance || (typeof turn.constraintDigest === "string" && turn.constraintDigest.startsWith("standin-") ? "standin" : null);
-  const outcome = outcomeOverride || turn.outcome || "COMPLIANT";
+  const computedOutcome = turn.outcome || "COMPLIANT";
+  if (outcomeOverride && !outcomeAssertionMatches(outcomeOverride, computedOutcome))
+    throw new IGLError(`WITH_OUTCOME ${outcomeOverride} does not match computed outcome ${computedOutcome}`, { phase: "trace", code: "OUTCOME_ASSERTION_MISMATCH" });
+  const outcome = computedOutcome;
   /* Receipt-integrity invariant (ADR 0001 §5, hardened): a COMPLIANT receipt may
      never carry a stand-in constraint outside the explicit offline mode, and even
      in offline mode the receipt says so — the provenance field is SIGNED. */
@@ -373,6 +410,11 @@ function issueReceipt(turn, outcomeOverride, { ios, programHash, sessionId, grap
     outcome,
   };
   return ios.signReceipt(fields);
+}
+function outcomeAssertionMatches(asserted, computed) {
+  if (asserted === computed) return true;
+  if (asserted === "VIOLATION") return computed === "VIOLATION" || computed === "HARD_VIOLATION" || computed === "SOFT_VIOLATION";
+  return false;
 }
 function verifyReceipt(receipt, identityVal, ios) {
   if (!receipt) return { ok: false, reason: "no receipt" };

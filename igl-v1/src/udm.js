@@ -40,6 +40,16 @@ export function deriveConstraint(matrix) {
   return { paths, weights, ceilings, access, mandatory, digest: matrix.digest, version: matrix.version, source: matrix.source, matrixId: matrix.matrix_id };
 }
 
+export function evaluateCeilingViolations(paths, governed, ceilingsByPath) {
+  const violations = [];
+  paths.forEach((p, i) => {
+    const ceil = ceilingsByPath[p];
+    if (ceil === undefined) return;
+    if (governed[i] > ceil + 1e-9) violations.push({ path: p, mass: governed[i], ceiling: ceil });
+  });
+  return violations;
+}
+
 /* Apply, then check.
    Apply: g = normalize(v (x) w), support restriction so any blocked path is zero.
    Check: g_i <= ceiling_i, the graded ceiling the matrix carries. HARD fails,
@@ -54,11 +64,7 @@ export function fuseAndCheck(distByPath, constraint, { strictness = "HARD" } = {
   const g = prod.map(x => Number((x / s).toFixed(6)));
   w.forEach((wi, i) => { if (wi === 0 && g[i] !== 0) throw new Error("support restriction violated"); });
 
-  const violations = [];
-  paths.forEach((p, i) => {
-    const ceil = constraint.ceilings[p];
-    if (g[i] > ceil + 1e-9) violations.push({ path: p, mass: g[i], ceiling: ceil });
-  });
+  const violations = evaluateCeilingViolations(paths, g, constraint.ceilings);
   const missingMandatory = paths.filter((p, i) => constraint.mandatory[p] && g[i] === 0);
   const outcome = (violations.length || missingMandatory.length)
     ? (strictness === "HARD" ? "HARD_VIOLATION" : "SOFT_VIOLATION")

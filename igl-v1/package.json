@@ -14,7 +14,7 @@
     "docs/"
   ],
   "scripts": {
-    "test": "node test/samples.mjs && node test/suite.mjs && node test/resolve.mjs && node test/adapters.mjs && node test/d1.mjs && node test/determination.mjs && node test/udm.mjs && node test/govern.mjs",
+    "test": "node test/samples.mjs && node test/suite.mjs && node test/resolve.mjs && node test/adapters.mjs && node test/d1.mjs && node test/determination.mjs && node test/udm.mjs && node test/govern.mjs && node test/boundary.mjs",
     "wellsite": "node run-wellsite.mjs",
     "verify": "node verify-receipt.mjs",
     "govern": "node run-govern.mjs"

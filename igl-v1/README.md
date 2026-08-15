@@ -148,7 +148,7 @@ still have to close before the larger claims are earned.
 Real, and not simulated: identity resolution and authority resolution
 (Section 8.02, graphless so the declared authority governs), the INJECT and
 Governed Context immutability rule (5.06), boundary enforcement after FUSE
-(7.03), cognitive-trace sealing (7.04), turn-trace sequencing with parent links
+with IOS+-provided per-token ceilings (7.03), cognitive-trace sealing (7.04), turn-trace sequencing with parent links
 (3.06), the delegation path that lets a filing run under a higher authority
 (5.01), Ed25519 Governance Receipts over the ordered fields of Section 3.05, and
 independent verification.

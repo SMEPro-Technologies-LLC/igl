@@ -28,6 +28,8 @@ jobs:
         run: node test/udm.mjs
       - name: Governed turn + digest-bound receipt (hermetic)
         run: node test/govern.mjs
+      - name: Boundary enforcement + outcome assertion mismatch checks
+        run: node test/boundary.mjs
       - name: WellSite governed session (pinned service digest 1252a4e5…)
         run: node run-wellsite.mjs
       - name: Independent verification from the artifact
