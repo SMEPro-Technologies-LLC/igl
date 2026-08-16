@@ -10,5 +10,5 @@ attacks, publishing others' private information, and sustained disruption of
 discussion. Reports are reviewed by the maintainers, who will protect the
 privacy of reporters.
 
-Report conduct issues to supprt@smeprotech.com. For security vulnerabilities, use
+Report conduct issues to support@smeprotech.com. For security vulnerabilities, use
 SECURITY.md instead, not the conduct address.
