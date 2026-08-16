@@ -1,73 +1,67 @@
-# IGL — Identity-Governed Language
+# IGL v1.0 — `docs/` index
 
-Reference implementation of IGL v0.2: lexer, parser, static checker, and an
-interpreter with pluggable UDM / AI / IOS runtimes.
+This directory holds the architecture and conceptual documents for IGL v1.0.
+For the quickstart and runtime overview, see the root
+[`README.md`](../README.md). For the reference runtime, see
+[`igl-v1/README.md`](../igl-v1/README.md).
 
 > Every computation is bound to an identity, governed by a declared boundary,
 > assisted by pinned models, and preserved as a replayable trace — so that
 > intelligence accumulates where it is anchored and decays where it is not.
 
+## Documents in this directory
+
 ```
-src/lexer.js         tokens: Identifier, Code, Number, String
-src/parser.js        AST
-src/check.js         static semantics — nothing runs if anything fails here
-src/builtins.js      declared signatures for UDM.* / AI.* / IOS.*, intent registry
-src/runtime.js       UDMRuntime, AIRuntime, IOSRuntime (TurnTrace store), static IdentityRuntime
-src/graph.js         GraphRuntime — boundary/footprint as a fold over the trace stream
-src/bridge.js        Bridge — the UDM↔AI translation: γ, α, and the numbers rule
-src/store.js         MemoryJournal / FileJournal / D1Journal — hash-chained event substrate
-src/sign.js          Signer — Ed25519 trace and chain-head receipts; keyed attestation
-src/interpreter.js   fixed evaluation order, two-phase commit, OnFail
-
-docs/SPEC.md         the specification
-docs/CRITIQUE.md     what was wrong with v0.1 and how v0.2 answers it
-docs/GRAPH.md        the recursive identity graph: layers, promotion, decay, reconstruction
-docs/BRIDGE.md       discrete ↔ continuous: soundness, projection, span references
-
-examples/vdrpros-ussh.igl    the USSH discovery pipeline as IGL
-examples/run-vdrpros.js      executes it and prints the trace ledger
-test/igl.test.js             30 tests — language and interpreter
-test/graph.test.js           15 tests — identity graph, containment, promotion
-test/bridge.test.js          26 tests — γ/α, automaton (incl. BPE edge), projection, soundness + span-fidelity fuzz
-test/extract.test.js          9 tests — AI.Extract end to end, anchor gating
-test/store.test.js            9 tests — chain verification, load-refusal on tamper, restart persistence, head-CAS
-test/sign.test.js            15 tests — envelope signing, registry pinning, rotation, domain separation, class gating
+SPEC.md                  the IGL v1.0 language specification
+CRITIQUE.md              what was wrong in earlier designs and how v1.0 answers it
+GRAPH.md                 the recursive identity graph: layers, promotion, decay,
+                         reconstruction
+BRIDGE.md                discrete ↔ continuous: soundness, projection, span
+                         references
+RELEASE_CHECKLIST.md     pre-public-flip and pre-production milestones
+SCOPE.md                 project scope and stated limits
+architecture.md          runtime architecture notes
 ```
 
-## Run
+## v1.0 runtime file map
+
+The canonical runtime lives under `igl-v1/src/`. Earlier generations are in
+`archive/` and are not part of the v1.0 product line.
+
+```
+igl-v1/src/lexer.js         tokens for the block grammar of Schedule A
+igl-v1/src/parser.js        recursive-descent parser to an AST
+igl-v1/src/check.js         static checks: block structure, INJECT before
+                             inference, RECURSE depth, one terminal CAPTURE
+igl-v1/src/iosplus.js       IOS+ orchestrator: identity resolution, authority
+                             resolution, constraint matrix provision, receipt
+                             signing, trace logging, sequence numbers
+igl-v1/src/interpreter.js   the eight operators (INJECT, FUSE, RECURSE, CAPTURE,
+                             GOVERN, PROJECT, DELEGATE, OBSERVE), boundary
+                             enforcement, cognitive trace sealing, receipt
+                             issuance
+igl-v1/src/sign.js          Ed25519 Governance Receipts, canonical JSON,
+                             standalone verify
+igl-v1/src/udm.js           live UDM client: constraint matrix fetch and apply
+igl-v1/src/govern.js        governance-layer plumbing
+igl-v1/src/decoder.js       governed token-by-token decode with a sealed trace
+igl-v1/src/gateway.js       OpenAI-compatible governed gateway
+igl-v1/src/adapters.js      model seam: logprobs, logits, and uniform adapters
+igl-v1/src/vendors.js       cross-vendor proof harness
+igl-v1/src/d1.js            Cloudflare D1 storage adapter
+igl-v1/src/index.js         public exports
+```
+
+Decision records are in `igl-v1/docs/adr/`. ADR 0002 is the authority law.
+
+## Run the suite
+
+From `igl-v1/`:
 
 ```bash
-node --test test/*.test.js       # 105 passing
-node examples/run-vdrpros.js     # execution ledger for the USSH matter
+cd igl-v1
+npm test
 ```
-
-## Use
-
-```js
-import { Interpreter, IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime } from "./src/index.js";
-
-const interp = new Interpreter({
-  identity: new IdentityRuntime({ actors: { Allco: { roles: ["Operator"], defaultRole: "Operator" } } }),
-  udm: new UDMRuntime({ boundaries: { Jurisdiction: { values: ["TX-RRC"] }, Period: { values: ["2026-Q3"] } },
-                        forms: { "TX-RRC": { forms: ["PR-202"] } } }),
-  ai:  new AIRuntime({ models: { "claude-sonnet-5": { version: "2026-05-01" } },
-                       invoke: async call => ({ text: "…", confidence: 0.9 }) }),
-  ios: new IOSRuntime({ decay: 0.75, floor: 0.4, maxDepth: 3 }),
-});
-
-const { results, traces } = await interp.run(`
-  ID[Allco:Operator | Jurisdiction:TX-RRC, Period:2026-Q3]
-    :: Intent[Generate_Compliance_Packet, Mode=Full]
-    => Compute[UDM.Resolve(AgencyCode=TX-RRC, RequiredForms=[PR-202]),
-               AI.Infer(Task=Missing_Fields, Model=claude-sonnet-5, Seed=7),
-               IOS.Trace(Channels=[Reasoning, Tools, Context])]
-    -> Output[Compliance_Packet, TurnTrace_ID];
-`);
-```
-
-The four runtimes are seams. Point `IdentityRuntime` at the identity graph,
-`UDMRuntime` at `udmcore`, `AIRuntime.invoke` at a model gateway, and
-`IOSRuntime`'s store at D1 or R2, and the same programs run against production.
 
 ## The two properties that make it IGL
 
@@ -113,9 +107,10 @@ apply the same asymmetry to different substrates:
 > Observation does not confer authority. Location does not confer determinism.
 
 In the graph, no volume of observed activity widens what an actor may do — only
-a signed grant does (`graph.js` §2.1). In the bridge, no confidence of *having
-found* a value makes the value an anchor unless the location itself cleared the
-admissible band (`bridge.js` R2). Both are the same rule: the probabilistic
+a signed grant does (`igl-v1/src/iosplus.js`, authority resolution). In the
+bridge, no confidence of *having found* a value makes the value an anchor unless
+the location itself cleared the admissible band (`docs/BRIDGE.md` R2). Both are
+the same rule: the probabilistic
 channel may propose, accumulate, and inform, but the step that upgrades its
 output into governing fact is always deterministic or human. Everything else in
 the codebase is machinery for holding that line.
