@@ -1,0 +1,16 @@
+node_modules
+artifacts
+programs/provisioned
+*.docx
+*.pdf
+*.png
+*.zip
+igl-public-repo
+iglv1
+v1.3
+prod
+site
+docs
+examples
+test
+.git

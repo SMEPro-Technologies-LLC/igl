@@ -1,0 +1,96 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Identity Graph Provisioning (IGL Runtime)",
+    "description": "Provisions Identity Graphs for companies (BOUNDARY) and individuals (FOOTPRINT). The service deterministically resolves attributes from a natural-language description, folds the identity graph into a hash-chained journal, generates an executable IGL (Identity Governed Logic) program, and runs it with the AI model decoding inside the compiled governance mask. Returns the generated program, per-statement execution results, journal chain status, footprint digest, and receipt verification.",
+    "version": "0.2.0"
+  },
+  "servers": [
+    { "url": "https://REPLACE-WITH-YOUR-TUNNEL-URL" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer" }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "checkHealth",
+        "summary": "Check that the provisioning service and AI model are warm",
+        "security": [],
+        "responses": {
+          "200": { "description": "Service healthy" }
+        }
+      }
+    },
+    "/api/provision": {
+      "post": {
+        "operationId": "provisionIdentity",
+        "summary": "Provision an Identity Graph from a natural-language description of a company or individual",
+        "description": "Deterministically resolves attributes, folds the identity graph into a hash-chained journal (one-time boot; repeat calls replay the existing chain idempotently), generates the executable IGL program, and executes it with the model inside the compiled decode mask. For an individual, the second statement deliberately asserts an observed-but-never-granted action and is refused with IGL_FOOTPRINT_DENIED — that refusal is the governance proof, not an error.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "Natural-language description, e.g. 'Example Energy, LLC is a Texas oil and gas operator' or 'Jordan Avery is a DFIR coordinator in Houston, Texas'"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["BOUNDARY", "FOOTPRINT"],
+                    "description": "Optional override: BOUNDARY for a company, FOOTPRINT for an individual. Omit to let the resolver decide."
+                  },
+                  "auto": {
+                    "type": "boolean",
+                    "description": "When true, provisions a synthetic entity (description not required)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provisioned (boot=seed) or replayed (boot=replay) Identity Graph with generated IGL program source, execution results, journal chain head, footprint digest, and receipt verification"
+          },
+          "400": { "description": "Missing description" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/graphs": {
+      "get": {
+        "operationId": "listGraphs",
+        "summary": "List every provisioned Identity Graph, newest first",
+        "responses": {
+          "200": { "description": "Array of provisioned graph runtime artifacts" }
+        }
+      }
+    },
+    "/api/graphs/{slug}": {
+      "get": {
+        "operationId": "getGraph",
+        "summary": "Get one provisioned Identity Graph by slug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Kebab-case slug of the graph, e.g. example-energy-llc"
+          }
+        ],
+        "responses": {
+          "200": { "description": "The graph's runtime artifact" },
+          "404": { "description": "Not provisioned" }
+        }
+      }
+    }
+  }
+}

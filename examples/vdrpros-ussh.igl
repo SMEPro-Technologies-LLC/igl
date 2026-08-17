@@ -1,0 +1,94 @@
+%igl 0.2
+
+# =====================================================================
+# USSH / USSP discovery production — Hobson & Bradley
+# 89 volumes, ~20,200 documents, 62,616 files, Bates USSH000001–095565
+#
+# Every stage is identity-bound and boundary-scoped to the matter, and
+# every stage leaves a trace. The two stages that leave the building —
+# the privilege log and the findings memo — carry a signer, so they
+# will not compile without IOS.Attest.
+# =====================================================================
+
+
+# ---------------------------------------------------------------------
+# 1. Classify the corpus.
+# Deterministic first: the load files (.dat/.opt) declare Bates ranges,
+# custodians and vendor MD5s, so classification starts from governed
+# structure rather than from inference.
+# ---------------------------------------------------------------------
+ID[Hobson:Counsel | Matter:2026-CV-04417]
+  :: Intent[Classify_Discovery_Corpus, Scheme=Hybrid]
+  => Context[Traces=Recent(20), MaxDepth=3],
+     Compute[
+       UDM.Align(Source=Concordance_Load_Files, Ontology=Evidentiary_Index),
+       UDM.Resolve(AgencyCode=US-TX, RequiredForms=[]),
+       AI.Infer(Task=Classify_By_Conceptual_Content, Model=claude-sonnet-5,
+                Temperature=0, Seed=11, MinConfidence=0.62),
+       IOS.Trace(Channels=[Reasoning, Tools, Code, Search, Context])
+     ]
+  -> Output[Evidentiary_Index, TurnTrace_ID]
+  OnFail[Remediate(Notify=case_medical_lead), Halt];
+
+
+# ---------------------------------------------------------------------
+# 2. Integrity audit against the produced structure.
+# The Bates gaps between volumes (4625→4717, 32063→36852, 55265→55350)
+# and the misfiled load files (USSH042.opt inside USSH052, UHSSP004.dat)
+# are deterministic findings — they are computed, never inferred.
+# ---------------------------------------------------------------------
+ID[Hobson:Paralegal | Matter:2026-CV-04417]
+  :: Intent[Assess_Production_Integrity]
+  => Context[Traces=Boundary_Exact, MaxDepth=2],
+     Compute[
+       UDM.Validate(Target=@Evidentiary_Index, Ruleset=production_integrity),
+       UDM.CrossCheck(Left=Vendor_MD5_Manifest, Right=Recomputed_SHA256, Tolerance=0),
+       UDM.Enforce(Constraint=Bates_Continuity, Target=@Evidentiary_Index),
+       IOS.Trace(Channels=[Reasoning, Tools, Code, Context])
+     ]
+  -> Output[Integrity_Report, TurnTrace_ID]
+  OnFail[Remediate(Notify=discovery_counsel), Halt];
+
+
+# ---------------------------------------------------------------------
+# 3. Privilege screen and log.
+# Attested: a privilege call is a legal judgement, so the log does not
+# leave the room without a signer. Context is restricted to attested
+# traces — prior AI privilege calls are not precedent for new ones.
+# ---------------------------------------------------------------------
+ID[Hobson:Counsel | Matter:2026-CV-04417]
+  :: Intent[Produce_Privilege_Log]
+  => Context[Traces=Attested, MaxDepth=1],
+     Compute[
+       AI.Infer(Task=Detect_Privilege_Indicia, Model=claude-sonnet-5,
+                Temperature=0, Seed=23, MinConfidence=0.75),
+       UDM.Enforce(Constraint=Fail_Closed_On_Ambiguity, Target=@Evidentiary_Index),
+       IOS.Attest(Signer=tbradley, Role=Counsel,
+                  Note="Privilege calls reviewed document by document"),
+       IOS.Trace(Channels=[Reasoning, Tools, Context])
+     ]
+  -> Output[Privilege_Log, TurnTrace_ID]
+  OnFail[Halt];
+
+
+# ---------------------------------------------------------------------
+# 4. Findings memo.
+# The analytical output. Attested, because a recommendation carries a
+# name. MaxDepth=1 is deliberate: findings must derive from documents
+# or from human-attested prior findings, never from a chain of model
+# inferences reasoning over its own earlier conclusions.
+# ---------------------------------------------------------------------
+ID[Hobson:Counsel | Matter:2026-CV-04417]
+  :: Intent[Compile_Findings]
+  => Context[Traces=Attested, MaxDepth=1],
+     Compute[
+       UDM.CrossCheck(Left=@Integrity_Report, Right=@Privilege_Log, Tolerance=0),
+       AI.Infer(Task=Synthesize_Findings, Model=claude-sonnet-5,
+                Inputs=[@Evidentiary_Index, @Integrity_Report],
+                Temperature=0, Seed=31, MinConfidence=0.8),
+       IOS.Attest(Signer=tbradley, Role=Counsel,
+                  Note="Findings and recommendations adopted; citations verified"),
+       IOS.Trace(Channels=[Reasoning, Tools, Code, Search, Context])
+     ]
+  -> Output[Findings_Memo, TurnTrace_ID]
+  OnFail[Halt];

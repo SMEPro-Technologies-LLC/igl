@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+# ═══════════════════════════════════════════════════════════════════════════
+# IGL Runtime — Identity Graph provisioning service (provision/server.mjs).
+#
+# The numerical computation capability behind the IOS+ MCP gateway.
+# Build context is the igl repo root:
+#   docker build -f Dockerfile.provision -t ioscos/ios-plus/igl-provision:v1.1.0 .
+#
+# Two mounts matter in production (Helm wires both from one PVC):
+#   IGL_DATA_DIR=/data          hash-chained journals + generated .igl programs
+#   TRANSFORMERS_CACHE=/data/models   ONNX model weights (~350 MB, pulled once)
+#
+# PROVISION_API_KEY (optional) enables the bearer gate; the IOS+ gateway
+# passes it as IGL_PROVISION_API_KEY from the same vault secret.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Stage 1: production dependencies ───────────────────────────────────────
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# ── Stage 2: runtime ───────────────────────────────────────────────────────
+FROM node:22-alpine AS runtime
+ENV NODE_ENV=production \
+    PROVISION_PORT=8787 \
+    IGL_DATA_DIR=/data \
+    TRANSFORMERS_CACHE=/data/models
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY src ./src
+COPY igl-v1/src ./igl-v1/src
+COPY provision ./provision
+
+RUN mkdir -p /data/models && chown -R node:node /data
+USER node
+VOLUME ["/data"]
+EXPOSE 8787
+
+# Model loads at boot and stays warm; /api/health answers only after warmup.
+CMD ["node", "provision/server.mjs"]

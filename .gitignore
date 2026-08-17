@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Runtime state — journals, provisioned graphs, model cache
+artifacts/
+data/
+*.jsonl
+!.gitkeep
+
+# Local credentials — NEVER commit real caller identities or keys
+provision/identities.mjs
+.env
+.env.*
+!.env.example
+
+# Platform / tooling state
+.wrangler/
+.DS_Store
+Thumbs.db
+
+# Editor scratch
+~$*
+*.tmp
