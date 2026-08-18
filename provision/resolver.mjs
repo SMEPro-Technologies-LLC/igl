@@ -212,9 +212,9 @@ function toTitle(s) {
 }
 
 function resolveState(text) {
-  for (const [name, code] of Object.entries(STATE_NAMES)) {
-    if (new RegExp(`\\b${name}\\b`, "i").test(text)) return code;
-  }
+  const normalized = ` ${String(text).toLowerCase().replace(/[^a-z]+/g, " ")} `;
+  for (const [name, code] of Object.entries(STATE_NAMES))
+    if (normalized.includes(` ${name} `)) return code;
   const code = text.match(/\b([A-Z]{2})\b/);
   if (code && STATE_CODES.has(code[1])) return code[1];
   return DEFAULT_JURISDICTION;
