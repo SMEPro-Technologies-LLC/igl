@@ -13,15 +13,15 @@
    Model: Xenova/distilgpt2, real forward pass per step (network download on
    first run). Sampler: argmax (deterministic — the trace is recomputable).
    Each step's mask comes from Bridge.maskNext over the bridge automaton; the
-   mask is applied as FUSE support restriction (w ∈ {0,1}) using the igl-v1
+   mask is applied as FUSE support restriction (w ∈ {0,1}) using the src/decode.js
    governedStep math. Every run seals a hash-chained trace and an Ed25519-signed
    receipt, then re-verifies the receipt from the artifact alone. */
 
 import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@xenova/transformers";
 import { Bridge, ABSTAIN } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
-import { governedStep } from "../igl-v1/src/decoder.js";
-import { Signer, sha256, canonical } from "../igl-v1/src/sign.js";
+import { governedStep } from "../src/decode.js";
+import { Signer, sha256, canonical } from "../src/sign.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,7 +42,7 @@ const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
 const VOCAB = tokenizer.model.vocab; // id -> string
 console.log(`[live] model ready — vocab ${VOCAB.length}`);
 
-const signer = Signer.fromSeed("igl-live-demo", Buffer.alloc(32, 7)); // demo-stable key; production seeds come from KMS
+const signer = Signer.generate("igl-live-demo"); // demo key, generated per run; production keys come from KMS
 
 /* Forward pass → raw next-token probability distribution. */
 async function rawNextDist(ids) {
@@ -72,7 +72,7 @@ async function governedGenerate({ prompt, automaton, label }) {
     const weights = new Uint8Array(VOCAB.length);
     for (const id of mask.allowed) weights[id] = 1;
 
-    // FUSE support restriction + trace record (igl-v1 governedStep math).
+    // FUSE support restriction + trace record (src/decode.js governedStep math).
     const rec = governedStep(VOCAB, raw, Array.from(weights), null, step, "HARD");
     if (rec.zeroPartition) { outcome = "HARD_VIOLATION"; trace.push({ step, outcome, zeroPartition: true }); break; }
 
@@ -116,8 +116,12 @@ function sealReceipt({ kind, actor, role, footprint, boundary, envelope, gen, ex
     steps: gen.trace.length,
     ...extra,
     created_at: Date.now() / 1000,
+    at: new Date().toISOString(),
   };
-  return signer.signReceipt(fields);
+  /* Signed with the current receipt API: the full field set is the trace
+     body, the signed envelope covers it, and verification is
+     Signer.verifyTraceReceipt on the returned object. */
+  return { ...fields, receipt: signer.receiptForTrace(fields) };
 }
 
 /* ================================================================
@@ -172,7 +176,7 @@ async function runHilcorp() {
     actor: ACTOR, role: "operator", footprint, boundary: okBoundary, envelope, gen,
     extra: { lifted, refusedBoundary: { boundary: badBoundary, violations: authzBad.violations } },
   });
-  const verification = Signer.verifyReceipt(receipt);
+  const verification = Signer.verifyTraceReceipt(receipt);
 
   return {
     run: "Identity Graph — Company (Boundary)",
@@ -245,7 +249,7 @@ async function runAvery() {
       ],
     },
   });
-  const verification = Signer.verifyReceipt(receipt);
+  const verification = Signer.verifyTraceReceipt(receipt);
 
   return {
     run: "Identity Graph — Individual (Footprint)",

@@ -4,6 +4,39 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.2.0] — 2026-08-18
+
+Clean-clone audit release. Every command in the README quick start now runs
+from a fresh clone with no paths outside the repository.
+
+### Added
+
+- **`src/decode.js`** — the per-token governed decode primitive promoted into
+  the language core: `governedStep`, `governedDecode`,
+  `governanceLogitsProcessor`, `sealDecodeTrace`, `verifyDecode`, `softmax`,
+  `entropy`. FUSE is applied inside the decode loop at every step; prohibited
+  tokens carry zero mass and can never be emitted. Sealed per-token traces
+  recompute independently of the runtime that produced them
+- `sha256` / `canonical` are now exported from `src/sign.js`
+- `test/decode.test.js` — 7 tests covering the decode primitive (support
+  restriction, zero partition, graded ceilings, end-to-end governed decode,
+  tampered-trace rejection)
+
+### Fixed
+
+- Examples and the provisioning service imported `governedStep` and hash
+  helpers from a legacy `igl-v1/` path that was never shipped — every example
+  and `npm run provision` broke on a clean clone. All imports now resolve
+  inside the repository
+- `live-identity-decode.mjs` adapted to the current `Signer` receipt API
+  (`receiptForTrace` / `verifyTraceReceipt`)
+- Example program reference corrected to `jordan-avery-dfir-footprint.igl`
+
+### Verified from a clean clone
+
+- 131/131 tests; all four examples run; the provision service boots and
+  answers the MCP handshake
+
 ## [1.1.0] — 2026-08-18
 
 Audit strengthening, informed by a comparative review of MCP security

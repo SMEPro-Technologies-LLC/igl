@@ -24,8 +24,8 @@ import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
 import { FileJournal } from "../src/store.js";
 import { Signer as TraceSigner } from "../src/sign.js";
 import { INTENTS } from "../src/builtins.js";
-import { governedStep } from "../igl-v1/src/decoder.js";
-import { sha256, canonical } from "../igl-v1/src/sign.js";
+import { governedStep } from "../src/decode.js";
+import { sha256, canonical } from "../src/sign.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -261,7 +261,7 @@ const fpDigests = { hilcorp: sha256(canonical(stableFootprint(hilFp))), avery: s
 console.log(`[${MODE}] footprint digests — hilcorp ${fpDigests.hilcorp.slice(0, 16)}… avery ${fpDigests.avery.slice(0, 16)}…`);
 
 const hilSrc = fs.readFileSync(path.join(PROGRAMS, "hilcorp-energy-boundary.igl"), "utf8");
-const mkSrc = fs.readFileSync(path.join(PROGRAMS, "avery-dfir-footprint.igl"), "utf8");
+const mkSrc = fs.readFileSync(path.join(PROGRAMS, "jordan-avery-dfir-footprint.igl"), "utf8");
 
 const hilRun = await hil.interp.run(hilSrc);
 const mkRun = await mk.interp.run(mkSrc);

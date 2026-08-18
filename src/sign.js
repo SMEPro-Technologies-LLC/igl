@@ -19,8 +19,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const sha256 = s => createHash("sha256").update(s).digest("hex");
-function canonical(x) {
+export const sha256 = s => createHash("sha256").update(s).digest("hex");
+export function canonical(x) {
   if (Array.isArray(x)) return "[" + x.map(canonical).join(",") + "]";
   if (x && typeof x === "object")
     return "{" + Object.keys(x).sort().map(k => JSON.stringify(k) + ":" + canonical(x[k])).join(",") + "}";

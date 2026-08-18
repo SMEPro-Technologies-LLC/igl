@@ -15,7 +15,7 @@
 import { AutoTokenizer, AutoModelForCausalLM } from "@xenova/transformers";
 import { FileJournal } from "../src/store.js";
 import { Signer as TraceSigner } from "../src/sign.js";
-import { sha256, canonical } from "../igl-v1/src/sign.js";
+import { sha256, canonical } from "../src/sign.js";
 import { makeGovernedGenerate } from "./governed-ai.mjs";
 import { buildBoundaryGraph, buildFootprintGraph } from "./graph-builder.mjs";
 import { resolveDescription, slugify } from "./resolver.mjs";

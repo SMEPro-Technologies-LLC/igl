@@ -13,8 +13,8 @@ import { Bridge } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
 import { Signer as TraceSigner } from "../src/sign.js";
 import { INTENTS } from "../src/builtins.js";
-import { governedStep } from "../igl-v1/src/decoder.js";
-import { sha256, canonical } from "../igl-v1/src/sign.js";
+import { governedStep } from "../src/decode.js";
+import { sha256, canonical } from "../src/sign.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -213,7 +213,7 @@ async function runAveryProgram() {
     },
   };
   const interp = new Interpreter({ identity: graph, udm, ai, ios: new IOSRuntime(), intents });
-  const source = fs.readFileSync(path.join(PROGRAMS, "avery-dfir-footprint.igl"), "utf8");
+  const source = fs.readFileSync(path.join(PROGRAMS, "jordan-avery-dfir-footprint.igl"), "utf8");
   const result = await interp.run(source);
   return { program: source, graph: graph.footprint("Jordan_Avery"), promotions: graph.promotions("Jordan_Avery"), result };
 }

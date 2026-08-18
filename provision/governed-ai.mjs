@@ -13,8 +13,8 @@
 import { Tensor } from "@xenova/transformers";
 import { AIRuntime } from "../src/interpreter.js";
 import { Bridge } from "../src/bridge.js";
-import { governedStep } from "../igl-v1/src/decoder.js";
-import { sha256, canonical } from "../igl-v1/src/sign.js";
+import { governedStep } from "../src/decode.js";
+import { sha256, canonical } from "../src/sign.js";
 
 export function makeRawNextDist(model) {
   return async function rawNextDist(ids) {

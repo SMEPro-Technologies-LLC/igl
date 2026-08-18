@@ -17,10 +17,10 @@ This holds for work routed through an IGL runtime: the runtime sits between the 
 
 | Path | Contents |
 |---|---|
-| `src/` | Language core — lexer, parser, static checker, interpreter, identity-graph runtime, hash-chained journal (`store.js`), signed receipts (`sign.js`), governed decode bridge (`bridge.js`) |
+| `src/` | Language core — lexer, parser, static checker, interpreter, identity-graph runtime, hash-chained journal (`store.js`), signed receipts (`sign.js`), governed decode bridge (`bridge.js`), per-token governed decode (`decode.js`) |
 | `provision/` | Provisioning service — HTTP + MCP endpoint, natural-language attribute resolver, caller recognition (`whoami`), governed AI decode, OpenAPI spec, CLI, Dockerfile |
 | `programs/` | Reference IGL programs — a company BOUNDARY graph and an individual FOOTPRINT graph |
-| `test/` | 124-test suite: bridge, extract, graph, igl, sign, store |
+| `test/` | 131-test suite: bridge, decode, extract, graph, igl, sign, store |
 | `docs/` | Language specification and architecture notes |
 | `examples/` | Runnable end-to-end flows, including journal persistence and replay |
 
@@ -30,7 +30,7 @@ This holds for work routed through an IGL runtime: the runtime sits between the 
 git clone https://github.com/SMEPro-Technologies-LLC/igl.git
 cd igl
 npm ci
-npm test            # 124 tests — bridge, extract, graph, igl, sign, store
+npm test            # 131 tests — bridge, decode, extract, graph, igl, sign, store
 ```
 
 Run a governed program end to end (model decode inside the compiled footprint mask):
