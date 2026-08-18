@@ -215,8 +215,9 @@ function resolveState(text) {
   const normalized = ` ${String(text).toLowerCase().replace(/[^a-z]+/g, " ")} `;
   for (const [name, code] of Object.entries(STATE_NAMES))
     if (normalized.includes(` ${name} `)) return code;
-  const code = text.match(/\b([A-Z]{2})\b/);
-  if (code && STATE_CODES.has(code[1])) return code[1];
+  const code = String(text).match(/\b([A-Z]{2})\b/i);
+  const abbr = code?.[1]?.toUpperCase();
+  if (abbr && STATE_CODES.has(abbr)) return abbr;
   return DEFAULT_JURISDICTION;
 }
 
