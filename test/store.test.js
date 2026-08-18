@@ -144,3 +144,73 @@ test("the schema enforces append-only at the engine, not by convention", async (
   assert.match(D1_SCHEMA, /BEFORE UPDATE ON igl_journal[\s\S]*RAISE\(ABORT/);
   assert.match(D1_SCHEMA, /BEFORE DELETE ON igl_journal[\s\S]*RAISE\(ABORT/);
 });
+
+/* ---------------- Merkle inclusion proofs ---------------- */
+
+test("the Merkle root is deterministic over the entry digests", () => {
+  const a = new MemoryJournal();
+  const b = new MemoryJournal();
+  for (const j of [a, b]) {
+    j.append("graph", { kind: "grant", actor: "Allco" });
+    j.append("trace", { id: "TRC-000001" });
+  }
+  assert.equal(a.merkleRoot(), b.merkleRoot());
+  assert.match(a.merkleRoot(), /^[0-9a-f]{64}$/);
+});
+
+test("a single entry verifies against the root without the chain", () => {
+  const j = new MemoryJournal();
+  j.append("graph", { kind: "grant", actor: "Allco", Action: ["file-report"] });
+  j.append("graph", { kind: "observe", actor: "Allco", Action: ["skip-report"] });
+  j.append("trace", { id: "TRC-000001", status: "committed" });
+  const root = j.merkleRoot();
+  const v = MemoryJournal.verifyInclusion(j.inclusionProof(1));
+  assert.equal(v.ok, true);
+  assert.equal(v.root, root);
+  assert.equal(v.seq, 1);
+});
+
+test("inclusion proofs hold for every entry, including odd-length chains", () => {
+  const j = new MemoryJournal();
+  for (let i = 0; i < 7; i++) j.append("trace", { id: `TRC-${String(i).padStart(6, "0")}` });
+  const root = j.merkleRoot();
+  for (let seq = 0; seq < 7; seq++) {
+    const v = MemoryJournal.verifyInclusion(j.inclusionProof(seq));
+    assert.equal(v.ok, true, `seq ${seq}`);
+    assert.equal(v.root, root);
+  }
+});
+
+test("a proof does not verify against a different root", () => {
+  const j1 = new MemoryJournal();
+  const j2 = new MemoryJournal();
+  j1.append("trace", { id: "A" });
+  j2.append("trace", { id: "B" });
+  const v = MemoryJournal.verifyInclusion({ ...j1.inclusionProof(0), root: j2.merkleRoot() });
+  assert.equal(v.ok, false);
+});
+
+test("a tampered leaf fails inclusion even with an intact proof path", () => {
+  const j = new MemoryJournal();
+  j.append("graph", { kind: "grant", actor: "Allco" });
+  j.append("trace", { id: "TRC-000001" });
+  const forged = { ...j.inclusionProof(0), leaf: "f".repeat(64) };
+  assert.equal(MemoryJournal.verifyInclusion(forged).ok, false);
+});
+
+test("FileJournal inclusion proofs survive a round trip to disk", () => {
+  const path = tmp();
+  const j = new FileJournal(path);
+  j.append("graph", { kind: "grant", actor: "Allco" });
+  j.append("trace", { id: "TRC-000001" });
+  const root = j.merkleRoot();
+  const loaded = new FileJournal(path);
+  assert.equal(loaded.merkleRoot(), root);
+  assert.equal(MemoryJournal.verifyInclusion(loaded.inclusionProof(1)).ok, true);
+});
+
+test("an empty journal has the genesis root and no provable entries", () => {
+  const j = new MemoryJournal();
+  assert.equal(j.merkleRoot(), "0".repeat(64));
+  assert.throws(() => j.inclusionProof(0), /no journal entry at seq 0/);
+});

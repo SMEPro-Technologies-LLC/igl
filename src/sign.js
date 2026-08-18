@@ -15,6 +15,9 @@
          never override the verified chain head. */
 
 import { generateKeyPairSync, createPublicKey, sign as edSign, verify as edVerify, createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const sha256 = s => createHash("sha256").update(s).digest("hex");
 function canonical(x) {
@@ -22,6 +25,26 @@ function canonical(x) {
   if (x && typeof x === "object")
     return "{" + Object.keys(x).sort().map(k => JSON.stringify(k) + ":" + canonical(x[k])).join(",") + "}";
   return JSON.stringify(x);
+}
+
+/* ---- runtime attestation ----
+   Every receipt names the runtime that produced it: a SHA-256 over the
+   runtime's own source files (sorted manifest of per-file digests), computed
+   once per process. Not a trust score and not a self-report — the digest is
+   INSIDE the signed envelope, so "which governed runtime produced this
+   receipt" is settled by re-computation against a known build, not by
+   confidence. A receipt signed by a modified runtime carries a different
+   digest; a receipt whose digest field is swapped fails the signature. */
+let RUNTIME_DIGEST = null;
+export function runtimeDigest() {
+  if (RUNTIME_DIGEST) return RUNTIME_DIGEST;
+  const here = dirname(fileURLToPath(import.meta.url));
+  const manifest = readdirSync(here)
+    .filter(f => f.endsWith(".js"))
+    .sort()
+    .map(f => ({ file: f, digest: sha256(readFileSync(join(here, f), "utf8")) }));
+  RUNTIME_DIGEST = sha256(canonical(manifest));
+  return RUNTIME_DIGEST;
 }
 
 export const DOMAIN_TRACE = "IGL-TRACE-v0.2:";
@@ -63,6 +86,7 @@ export class Signer {
     const envelope = {
       traceDigest: sha256(canonical(body)),
       signer: this.id, alg: "Ed25519", at: new Date().toISOString(),
+      runtime: runtimeDigest(),
     };
     return { ...envelope, publicKey: this.pub(), signature: this._sign(DOMAIN_TRACE, envelope) };
   }
@@ -74,6 +98,7 @@ export class Signer {
     const envelope = {
       head: v.head, length: v.length,
       signer: this.id, alg: "Ed25519", at: new Date().toISOString(),
+      runtime: runtimeDigest(),
       meta,
     };
     return { ...envelope, publicKey: this.pub(), signature: this._sign(DOMAIN_HEAD, envelope) };
@@ -91,8 +116,13 @@ export class Signer {
     const body = { ...trace }; delete body.receipt;
     const digest = sha256(canonical(body));
     if (digest !== r.traceDigest) return { ok: false, reason: "trace does not reproduce the signed digest" };
-    const envelope = { traceDigest: r.traceDigest, signer: r.signer, alg: r.alg, at: r.at };
-    if (!this._verify(DOMAIN_TRACE, envelope, r.publicKey, r.signature))
+    /* Every field on the receipt except the key material is authenticated —
+       including the runtime attestation digest when present. Reconstructing
+       the envelope field-by-field would silently excuse any field added at
+       signing time but not listed here; stripping the two verification
+       artifacts keeps the signature coverage total. */
+    const { publicKey, signature, ...envelope } = r;
+    if (!this._verify(DOMAIN_TRACE, envelope, publicKey, signature))
       return { ok: false, reason: "signature does not verify over the envelope" };
     if (graph) {
       /* no fallback to r.at: the signing time must come from the trace body

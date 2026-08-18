@@ -20,7 +20,7 @@ This holds for work routed through an IGL runtime: the runtime sits between the 
 | `src/` | Language core — lexer, parser, static checker, interpreter, identity-graph runtime, hash-chained journal (`store.js`), signed receipts (`sign.js`), governed decode bridge (`bridge.js`) |
 | `provision/` | Provisioning service — HTTP + MCP endpoint, natural-language attribute resolver, caller recognition (`whoami`), governed AI decode, OpenAPI spec, CLI, Dockerfile |
 | `programs/` | Reference IGL programs — a company BOUNDARY graph and an individual FOOTPRINT graph |
-| `test/` | 112-test suite: bridge, extract, graph, igl, sign, store |
+| `test/` | 124-test suite: bridge, extract, graph, igl, sign, store |
 | `docs/` | Language specification and architecture notes |
 | `examples/` | Runnable end-to-end flows, including journal persistence and replay |
 
@@ -30,7 +30,7 @@ This holds for work routed through an IGL runtime: the runtime sits between the 
 git clone https://github.com/SMEPro-Technologies-LLC/igl.git
 cd igl
 npm ci
-npm test            # 112 tests — bridge, extract, graph, igl, sign, store
+npm test            # 124 tests — bridge, extract, graph, igl, sign, store
 ```
 
 Run a governed program end to end (model decode inside the compiled footprint mask):
@@ -72,7 +72,7 @@ The same file contains a second statement asserting `Action:restore-production-s
 1. **No identity, no execution.** The runtime refuses unidentified work.
 2. **Out-of-boundary actions don't run.** Boundary violations are errors at check time and at run time, not warnings.
 3. **Intent is part of the record.** Every trace carries the declared purpose it was executing.
-4. **The trace is tamper-evident.** Journal entries are SHA-256 hash-chained; a chain that was altered after capture fails verification and refuses to load. The chain proves integrity and ordering of what was captured — completeness of capture is a property of the capture layer, which is why grants and observations enter only through attested routes (see below).
+4. **The trace is tamper-evident — and selectively disclosable.** Journal entries are SHA-256 hash-chained; a chain that was altered after capture fails verification and refuses to load. The chain proves integrity and ordering of what was captured — completeness of capture is a property of the capture layer, which is why grants and observations enter only through attested routes (see below). On top of the chain, Merkle inclusion proofs let an auditor verify a single disclosed entry against a published root **without seeing the rest of the journal**, and every signed receipt carries the digest of the runtime build that produced it — which runtime signed a receipt is settled by re-computation, not confidence.
 
 ## Governance model
 

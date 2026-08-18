@@ -1,6 +1,6 @@
 {
   "name": "igl",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Identity Governed Logic — a language and runtime where identity, boundaries, intent, and trace are bound into the computation itself",
   "type": "module",
   "main": "src/index.js",

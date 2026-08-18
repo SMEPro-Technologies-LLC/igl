@@ -4,7 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { Signer, DOMAIN_TRACE, DOMAIN_HEAD, FileJournal, MemoryJournal, GraphRuntime, IOSRuntime, Interpreter, UDMRuntime, AIRuntime, DEFAULT_DIMENSIONS } from "../src/index.js";
+import { Signer, DOMAIN_TRACE, DOMAIN_HEAD, runtimeDigest, FileJournal, MemoryJournal, GraphRuntime, IOSRuntime, Interpreter, UDMRuntime, AIRuntime, DEFAULT_DIMENSIONS } from "../src/index.js";
 
 const tmp = () => join(mkdtempSync(join(tmpdir(), "igl-")), "journal.jsonl");
 const iso = d => new Date(d).toISOString();
@@ -83,8 +83,10 @@ test("R2: a key-swap forgery FAILS registry-backed verification — attribution 
   const forged = { ...trace };
   forged.receipt = forger.receiptForTrace(forged);
   forged.receipt = { ...forged.receipt, signer: "tbradley" };
-  /* name is inside the envelope, so this alone already fails; forge it properly: */
-  const envelope = { traceDigest: forged.receipt.traceDigest, signer: "tbradley", alg: "Ed25519", at: forged.receipt.at };
+  /* name is inside the envelope, so this alone already fails; forge it properly —
+     the forger signs the COMPLETE envelope (runtime attestation included) under
+     their own key while claiming tbradley's name: */
+  const envelope = { traceDigest: forged.receipt.traceDigest, signer: "tbradley", alg: "Ed25519", at: forged.receipt.at, runtime: forged.receipt.runtime };
   forged.receipt.signature = forger._sign(DOMAIN_TRACE, envelope);
   assert.equal(Signer.verifyTraceReceipt(forged).ok, true, "cryptographically valid under mallory's key…");
   const v = Signer.verifyTraceReceipt(forged, { graph });
@@ -262,4 +264,55 @@ test("an unkeyed-attested trace folds into the graph as ai-class — it cannot a
   const fp = it.identity.footprint("Allco");
   assert.equal(fp.observed.governing.Jurisdiction, undefined, "no governing-layer observation from an unkeyed attestation");
   assert.ok(fp.observed.proposed.Jurisdiction?.length, "it lands in proposed, where unanchored things live");
+});
+
+/* ---------------- runtime attestation ---------------- */
+
+const canonical = x => Array.isArray(x) ? "[" + x.map(canonical).join(",") + "]"
+  : x && typeof x === "object" ? "{" + Object.keys(x).sort().map(k => JSON.stringify(k) + ":" + canonical(x[k])).join(",") + "}"
+  : JSON.stringify(x);
+const sha = s => createHash("sha256").update(s).digest("hex");
+
+test("every trace receipt carries the runtime digest inside the signed envelope", () => {
+  const s = Signer.generate("tbradley");
+  const trace = dated({ intent: "Compile_Findings" });
+  trace.receipt = s.receiptForTrace(trace);
+  assert.equal(trace.receipt.runtime, runtimeDigest());
+  assert.match(trace.receipt.runtime, /^[0-9a-f]{64}$/);
+  assert.equal(Signer.verifyTraceReceipt(trace).ok, true);
+});
+
+test("a swapped runtime digest fails signature verification", () => {
+  const s = Signer.generate("tbradley");
+  const trace = dated({ intent: "Compile_Findings" });
+  trace.receipt = s.receiptForTrace(trace);
+  trace.receipt.runtime = "0".repeat(64);   /* claim a different build */
+  const v = Signer.verifyTraceReceipt(trace);
+  assert.equal(v.ok, false);
+  assert.match(v.reason, /signature does not verify/);
+});
+
+test("head receipts carry the runtime digest too", () => {
+  const s = Signer.generate("tbradley");
+  const j = new MemoryJournal();
+  j.append("graph", { kind: "grant", actor: "Allco" });
+  const r = s.headReceipt(j);
+  assert.equal(r.runtime, runtimeDigest());
+  const v = Signer.verifyHeadReceipt(r, { journal: j });
+  assert.equal(v.ok, true);
+  assert.equal(v.head, j.head());
+});
+
+test("pre-attestation receipts (envelope without runtime) still verify", () => {
+  const s = Signer.generate("tbradley");
+  const trace = dated({ intent: "Compile_Findings" });
+  const body = { ...trace };
+  const envelope = { traceDigest: sha(canonical(body)), signer: s.id, alg: "Ed25519", at: iso(Date.now()) };
+  trace.receipt = { ...envelope, publicKey: s.pub(), signature: s._sign(DOMAIN_TRACE, envelope) };
+  assert.equal(Signer.verifyTraceReceipt(trace).ok, true);
+});
+
+test("the runtime digest is stable within a process and bound to the sources on disk", () => {
+  assert.equal(runtimeDigest(), runtimeDigest());
+  assert.match(runtimeDigest(), /^[0-9a-f]{64}$/);
 });

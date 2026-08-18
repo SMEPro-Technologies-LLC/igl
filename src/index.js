@@ -4,7 +4,7 @@ export { check } from "./check.js";
 export { BUILTINS, INTENTS, SLOTS, TRACE_CHANNELS } from "./builtins.js";
 export { Bridge, ABSTAIN } from "./bridge.js";
 export { MemoryJournal, FileJournal, D1Journal, D1_SCHEMA, D1_SCHEMA_STATEMENTS } from "./store.js";
-export { Signer, DOMAIN_TRACE, DOMAIN_HEAD } from "./sign.js";
+export { Signer, DOMAIN_TRACE, DOMAIN_HEAD, runtimeDigest } from "./sign.js";
 export { IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime } from "./runtime.js";
 export { GraphRuntime, DEFAULT_DIMENSIONS } from "./graph.js";
 export { Interpreter } from "./interpreter.js";

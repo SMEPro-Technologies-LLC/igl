@@ -54,6 +54,54 @@ export class MemoryJournal {
     }
     return { ok: true, length: this.list.length, head: prev };
   }
+
+  /* ---- Merkle inclusion proofs — privacy-preserving audit ----
+     The linear chain proves integrity, but verifying ONE entry requires the
+     WHOLE chain. A Merkle root over the entry digests lets an auditor hold
+     only a published root and verify a single disclosed entry against it —
+     every other entry stays undisclosed. Odd nodes promote unpaired, so the
+     root computation and the proof walk agree by construction. */
+  static _merkleRoot(leaves) {
+    if (!leaves.length) return GENESIS;
+    let level = leaves;
+    while (level.length > 1) {
+      const next = [];
+      for (let i = 0; i < level.length; i += 2)
+        next.push(i + 1 < level.length ? sha256(level[i] + level[i + 1]) : level[i]);
+      level = next;
+    }
+    return level[0];
+  }
+  merkleRoot() { return MemoryJournal._merkleRoot(this.list.map(e => e.digest)); }
+  inclusionProof(seq) {
+    const idx = this.list.findIndex(e => e.seq === seq);
+    if (idx === -1) throw new Error(`no journal entry at seq ${seq}`);
+    let level = this.list.map(e => e.digest);
+    const leaf = level[idx];
+    const proof = [];
+    let i = idx;
+    while (level.length > 1) {
+      const sib = i % 2 === 0 ? i + 1 : i - 1;
+      if (sib < level.length)
+        proof.push({ position: i % 2 === 0 ? "right" : "left", digest: level[sib] });
+      const next = [];
+      for (let j = 0; j < level.length; j += 2)
+        next.push(j + 1 < level.length ? sha256(level[j] + level[j + 1]) : level[j]);
+      i = Math.floor(i / 2);
+      level = next;
+    }
+    return { seq, leaf, proof, root: this.merkleRoot() };
+  }
+  /* The auditor's side: entry digest + proof + published root → ok.
+     No journal access, no other entries, no trusted party. */
+  static verifyInclusion({ leaf, proof, root, seq = null }) {
+    let acc = leaf;
+    for (const step of proof)
+      acc = step.position === "left" ? sha256(step.digest + acc) : sha256(acc + step.digest);
+    return acc === root
+      ? { ok: true, seq, root }
+      : { ok: false, seq, reason: "inclusion proof does not reproduce the Merkle root" };
+  }
 }
 
 export class FileJournal extends MemoryJournal {
