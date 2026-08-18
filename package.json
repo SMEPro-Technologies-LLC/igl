@@ -34,6 +34,8 @@
     "@huggingface/transformers": "^4.2.0"
   },
   "overrides": {
+    "onnxruntime-web": "^1.23.0",
+    "protobufjs": "^7.6.2",
     "sharp": "^0.35.3",
     "adm-zip": "^0.6.0"
   }

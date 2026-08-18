@@ -45,6 +45,8 @@ Start the provisioning service (HTTP on :8787, MCP at `POST /mcp`):
 npm run provision
 ```
 
+When exposing the provisioning service to a browser client, set `PROVISION_ALLOWED_ORIGINS` (comma-separated) to explicitly allow trusted Origins for CORS responses.
+
 Provision an identity graph from a plain-language description:
 
 ```bash

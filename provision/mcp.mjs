@@ -17,6 +17,18 @@ import { provisionIdentity, listProvisioned } from "./service.mjs";
 
 const SERVER_INFO = { name: "igl-identity-graph-provisioning", version: "0.2.0" };
 const PROTOCOL_VERSION = "2025-03-26";
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:8787",
+];
+const ALLOWED_ORIGINS = new Set(
+  (process.env.PROVISION_ALLOWED_ORIGINS
+    ? process.env.PROVISION_ALLOWED_ORIGINS.split(",")
+    : DEFAULT_ALLOWED_ORIGINS).map((o) => o.trim()).filter(Boolean),
+);
 
 const TOOLS = [
   {
@@ -141,61 +153,72 @@ function rpcError(id, code, message) {
   return { jsonrpc: "2.0", id, error: { code, message } };
 }
 
+function corsHeaders(req, { exposeSession = false } = {}) {
+  const origin = req.headers.origin;
+  const headers = {
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization,mcp-session-id",
+  };
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    headers["access-control-allow-origin"] = origin;
+    headers["vary"] = "Origin";
+  }
+  if (exposeSession) headers["access-control-expose-headers"] = "mcp-session-id";
+  return headers;
+}
+
 export async function handleMcp(req, res, body, caller = null) {
   const msg = body;
   if (!msg || msg.jsonrpc !== "2.0") {
-    res.writeHead(400, { "content-type": "application/json", "access-control-allow-origin": "*" });
+    res.writeHead(400, { "content-type": "application/json", ...corsHeaders(req) });
     return res.end(JSON.stringify(rpcError(msg?.id ?? null, -32600, "invalid JSON-RPC 2.0 request")));
   }
 
   // Notifications (no id) → accepted, nothing returned.
   if (msg.id === undefined || msg.id === null) {
-    res.writeHead(202, { "access-control-allow-origin": "*" });
+    res.writeHead(202, corsHeaders(req));
     return res.end();
   }
 
   try {
     switch (msg.method) {
       case "initialize":
-        return sendJson(res, rpcResult(msg.id, {
+        return sendJson(req, res, rpcResult(msg.id, {
           protocolVersion: PROTOCOL_VERSION,
           capabilities: { tools: {} },
           serverInfo: SERVER_INFO,
         }));
       case "ping":
-        return sendJson(res, rpcResult(msg.id, {}));
+        return sendJson(req, res, rpcResult(msg.id, {}));
       case "tools/list":
-        return sendJson(res, rpcResult(msg.id, { tools: TOOLS }));
+        return sendJson(req, res, rpcResult(msg.id, { tools: TOOLS }));
       case "tools/call": {
         const { name, arguments: args } = msg.params ?? {};
         try {
           const out = await callTool(name, args ?? {}, caller);
-          return sendJson(res, rpcResult(msg.id, {
+          return sendJson(req, res, rpcResult(msg.id, {
             content: [{ type: "text", text: JSON.stringify(out, null, 2) }],
             isError: false,
           }));
         } catch (err) {
-          return sendJson(res, rpcResult(msg.id, {
+          return sendJson(req, res, rpcResult(msg.id, {
             content: [{ type: "text", text: String(err?.message ?? err) }],
             isError: true,
           }));
         }
       }
       default:
-        return sendJson(res, rpcError(msg.id, -32601, `method not found: ${msg.method}`));
+        return sendJson(req, res, rpcError(msg.id, -32601, `method not found: ${msg.method}`));
     }
   } catch (err) {
-    return sendJson(res, rpcError(msg.id, -32603, String(err?.message ?? err)));
+    return sendJson(req, res, rpcError(msg.id, -32603, String(err?.message ?? err)));
   }
 }
 
-function sendJson(res, payload) {
+function sendJson(req, res, payload) {
   res.writeHead(200, {
     "content-type": "application/json",
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,authorization,mcp-session-id",
-    "access-control-expose-headers": "mcp-session-id",
+    ...corsHeaders(req, { exposeSession: true }),
   });
   res.end(JSON.stringify(payload));
 }
