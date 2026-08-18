@@ -159,7 +159,10 @@ function corsHeaders(req, { exposeSession = false } = {}) {
     "access-control-allow-methods": "GET,POST,OPTIONS",
     "access-control-allow-headers": "content-type,authorization,mcp-session-id",
   };
-  if (origin && ALLOWED_ORIGINS.has(origin)) headers["access-control-allow-origin"] = origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    headers["access-control-allow-origin"] = origin;
+    headers["vary"] = "Origin";
+  }
   if (exposeSession) headers["access-control-expose-headers"] = "mcp-session-id";
   return headers;
 }

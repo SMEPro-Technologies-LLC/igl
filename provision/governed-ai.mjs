@@ -10,7 +10,7 @@
    fact; it is the same arithmetic the model is bound by natively, evaluated
    at the same step, over the same vocabulary. */
 
-import { Tensor } from "@xenova/transformers";
+import { Tensor } from "@huggingface/transformers";
 import { AIRuntime } from "../src/interpreter.js";
 import { Bridge } from "../src/bridge.js";
 import { governedStep } from "../src/decode.js";
@@ -19,7 +19,9 @@ import { sha256, canonical } from "../src/sign.js";
 export function makeRawNextDist(model) {
   return async function rawNextDist(ids) {
     const input_ids = new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]);
-    const out = await model({ input_ids });
+    const attention_mask = new Tensor("int64", new BigInt64Array(ids.length).fill(1n), [1, ids.length]);
+  const position_ids = new Tensor("int64", BigInt64Array.from({ length: ids.length }, (_, i) => BigInt(i)), [1, ids.length]);
+  const out = await model({ input_ids, attention_mask, position_ids });
     const [, seq, v] = out.logits.dims;
     const row = Array.from(out.logits.data.slice((seq - 1) * v, seq * v));
     const mx = Math.max(...row);
@@ -31,7 +33,8 @@ export function makeRawNextDist(model) {
 
 export function makeGovernedGenerate({ tokenizer, model, maxSteps = 24 }) {
   const rawNextDist = makeRawNextDist(model);
-  const VOCAB = tokenizer.model.vocab;
+  const VOCAB = []; // id -> string
+  for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
   return async function governedGenerate({ prompt, automaton }) {
     const promptIds = tokenizer.encode(prompt);
     const generated = [];

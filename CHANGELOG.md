@@ -4,6 +4,29 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.2.1] — 2026-08-18
+
+Dependency security release. No behavioral change.
+
+### Security
+
+- Migrated the model runtime dependency from the unmaintained
+  `@xenova/transformers` to `@huggingface/transformers` (v3 line), resolving
+  the Dependabot-flagged critical/high transitive vulnerabilities
+  (protobufjs, onnxruntime-web)
+- Added npm `overrides` pinning `sharp@^0.35.3` (libvips CVEs) and
+  `adm-zip@^0.6.0` (zip-bomb DoS) past the vulnerable ranges still permitted
+  by upstream. `npm audit` on a clean install reports **0 vulnerabilities**
+
+### Changed
+
+- Tokenizer vocabulary is now derived via `tokenizer.get_vocab()` (inverted
+  to an id→string array) and model forward passes carry explicit
+  `attention_mask` / `position_ids` — both required by the v3 runtime API.
+  Verified after migration: 131/131 tests, the live governed decode example
+  (Hilcorp boundary commits + `IGL_FOOTPRINT_DENIED` refusal), and the
+  provisioning service boot
+
 ## [1.2.0] — 2026-08-18
 
 Clean-clone audit release. Every command in the README quick start now runs

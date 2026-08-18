@@ -1,6 +1,6 @@
 {
   "name": "igl",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Identity Governed Logic — a language and runtime where identity, boundaries, intent, and trace are bound into the computation itself",
   "type": "module",
   "main": "src/index.js",
@@ -31,11 +31,12 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@xenova/transformers": "^2.17.2"
+    "@huggingface/transformers": "^4.2.0"
   },
   "overrides": {
     "onnxruntime-web": "^1.23.0",
     "protobufjs": "^7.6.2",
-    "sharp": "^0.35.0"
+    "sharp": "^0.35.3",
+    "adm-zip": "^0.6.0"
   }
 }

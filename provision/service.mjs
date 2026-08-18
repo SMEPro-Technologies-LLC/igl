@@ -12,7 +12,7 @@
 
    The service keeps the tokenizer/model warm across requests. */
 
-import { AutoTokenizer, AutoModelForCausalLM } from "@xenova/transformers";
+import { AutoTokenizer, AutoModelForCausalLM } from "@huggingface/transformers";
 import { FileJournal } from "../src/store.js";
 import { Signer as TraceSigner } from "../src/sign.js";
 import { sha256, canonical } from "../src/sign.js";
@@ -45,7 +45,7 @@ export async function warmRuntime(log = console.log) {
   const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
   const tok = { encode: (s) => tokenizer.encode(s) };
   const governedGenerate = makeGovernedGenerate({ tokenizer, model });
-  runtime = { tokenizer, model, tok, governedGenerate, vocabSize: tokenizer.model.vocab.length };
+  runtime = { tokenizer, model, tok, governedGenerate, vocabSize: tokenizer.get_vocab().size };
   log(`[provision] model ready — vocab ${runtime.vocabSize}`);
   return runtime;
 }
