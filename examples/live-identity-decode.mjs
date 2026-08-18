@@ -17,7 +17,7 @@
    governedStep math. Every run seals a hash-chained trace and an Ed25519-signed
    receipt, then re-verifies the receipt from the artifact alone. */
 
-import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@xenova/transformers";
+import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@huggingface/transformers";
 import { Bridge, ABSTAIN } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
 import { governedStep } from "../src/decode.js";
@@ -39,7 +39,8 @@ const entropy = (dist) => { let h = 0; for (const p of dist) if (p > 0) h -= p *
 console.log(`[live] loading ${MODEL_ID} (downloads on first run)…`);
 const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
 const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
-const VOCAB = tokenizer.model.vocab; // id -> string
+const VOCAB = []; // id -> string
+for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
 console.log(`[live] model ready — vocab ${VOCAB.length}`);
 
 const signer = Signer.generate("igl-live-demo"); // demo key, generated per run; production keys come from KMS
@@ -47,7 +48,9 @@ const signer = Signer.generate("igl-live-demo"); // demo key, generated per run;
 /* Forward pass → raw next-token probability distribution. */
 async function rawNextDist(ids) {
   const input_ids = new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]);
-  const out = await model({ input_ids });
+  const attention_mask = new Tensor("int64", new BigInt64Array(ids.length).fill(1n), [1, ids.length]);
+  const position_ids = new Tensor("int64", BigInt64Array.from({ length: ids.length }, (_, i) => BigInt(i)), [1, ids.length]);
+  const out = await model({ input_ids, attention_mask, position_ids });
   const [_, seq, v] = out.logits.dims;
   const row = Array.from(out.logits.data.slice((seq - 1) * v, seq * v));
   const mx = Math.max(...row);

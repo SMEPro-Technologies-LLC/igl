@@ -7,7 +7,7 @@
 
    Artifacts: artifacts/igl-hilcorp-program-run.json, igl-jordan-avery-program-run.json */
 
-import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@xenova/transformers";
+import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@huggingface/transformers";
 import { Interpreter, UDMRuntime, AIRuntime, IOSRuntime } from "../src/interpreter.js";
 import { Bridge } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
@@ -30,12 +30,15 @@ const MAX_STEPS = 24;
 console.log(`[igl-live] loading ${MODEL_ID}…`);
 const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
 const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
-const VOCAB = tokenizer.model.vocab;
+const VOCAB = []; // id -> string
+for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
 console.log(`[igl-live] model ready — vocab ${VOCAB.length}`);
 
 async function rawNextDist(ids) {
   const input_ids = new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]);
-  const out = await model({ input_ids });
+  const attention_mask = new Tensor("int64", new BigInt64Array(ids.length).fill(1n), [1, ids.length]);
+  const position_ids = new Tensor("int64", BigInt64Array.from({ length: ids.length }, (_, i) => BigInt(i)), [1, ids.length]);
+  const out = await model({ input_ids, attention_mask, position_ids });
   const [, seq, v] = out.logits.dims;
   const row = Array.from(out.logits.data.slice((seq - 1) * v, seq * v));
   const mx = Math.max(...row);
