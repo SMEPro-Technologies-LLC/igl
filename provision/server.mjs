@@ -10,6 +10,7 @@
    governed execution against the actor's hash-chained journal. */
 
 import http from "node:http";
+import { readFile } from "node:fs/promises";
 import { warmRuntime, provisionIdentity, listProvisioned, whoAmI } from "./service.mjs";
 import { handleMcp } from "./mcp.mjs";
 /* Real caller registry is gitignored (identities.mjs); the example ships in
@@ -80,6 +81,7 @@ function callerKey(req, url) {
 }
 function authorized(req, url) {
   if (url.pathname === "/api/health") return true;
+  if (url.pathname === "/" || url.pathname === "/studio") return true;   // UI shell only; every API call it makes is still gated
   const key = callerKey(req, url);
   if (!API_KEY) return true;                    // local dev: no gate
   if (key === API_KEY) return true;             // service key
@@ -102,6 +104,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/mcp") {
       if (req.method !== "POST") return send(req, res, 405, { error: "MCP is POST-only on this endpoint" });
       return handleMcp(req, res, await readBody(req), caller);
+    }
+
+    if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/studio")) {
+      const html = await readFile(new URL("./studio.html", import.meta.url), "utf8");
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      return res.end(html);
     }
 
     if (req.method === "GET" && url.pathname === "/api/health") {
