@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRAPH: Provision your Identity Graph</title>
+<meta name="description" content="GRAPH is the studio console for Identity Graph provisioning. Company graphs are boundaries, individual graphs are footprints, computed in the universal decoding matrix and enforced through Identity Governed Logic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f7f8; --card:#ffffff; --ink:#1a1a1e; --muted:#5f6368; --line:#e6e6ea;
+    --violet:#7c5cff; --indigo:#5b7cfa; --pill:#f1f1f4; --btn:#aab8f0; --btn-ink:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* nav */
+  nav{position:sticky;top:0;background:rgba(247,247,248,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);z-index:10}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;background:var(--pill);border-radius:12px;padding:8px 14px;font-weight:600;letter-spacing:.02em}
+  .nav-links{display:flex;align-items:center;gap:22px;font-size:14px;color:var(--muted)}
+  .nav-links a:hover{color:var(--ink)}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:500;cursor:pointer;border:1px solid var(--line);background:var(--card);transition:all .15s}
+  .btn:hover{border-color:#c9c9d2;box-shadow:0 1px 6px rgba(20,20,40,.06)}
+  .btn.primary{background:var(--btn);border-color:var(--btn);color:var(--btn-ink)}
+  .btn.primary:hover{background:#98a8ea}
+
+  /* hero */
+  .hero{padding:88px 0 36px;text-align:center}
+  h1{font-size:clamp(34px,5.4vw,52px);font-weight:600;letter-spacing:-.02em;display:inline-flex;align-items:center;gap:14px}
+  .hero p.sub{max-width:760px;margin:22px auto 0;font-size:16.5px;line-height:1.65;color:var(--muted)}
+  .hero p.sub b{color:var(--ink);font-weight:600}
+
+  /* gradient prompt box */
+  .prompt{max-width:820px;margin:40px auto 0;border-radius:28px;padding:2px;
+    background:linear-gradient(120deg,#f28b82,#fbbc04,#34a853,#4285f4,#a142f4,#f28b82);
+    background-size:300% 300%;animation:ring 9s ease infinite}
+  @keyframes ring{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  .prompt-in{background:var(--card);border-radius:26px;padding:26px 26px 18px;text-align:left}
+  .prompt-in .ph{color:#8a8a92;font-size:15.5px;line-height:1.55;min-height:48px}
+  .prompt-row{display:flex;align-items:center;justify-content:space-between;margin-top:18px}
+  .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);margin-right:8px}
+
+  /* chips */
+  .chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:28px auto 0;max-width:920px}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:13.5px;color:var(--ink)}
+  .chip svg{color:var(--muted)}
+
+  /* sections */
+  section{padding:64px 0}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:28px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px}
+  .card h3{font-size:16px;font-weight:600;margin:14px 0 8px}
+  .card p{font-size:14px;line-height:1.6;color:var(--muted)}
+  .kicker{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  h2{font-size:28px;font-weight:600;letter-spacing:-.01em;margin-top:8px}
+  .glyph{width:38px;height:38px;border-radius:10px;background:var(--pill);display:flex;align-items:center;justify-content:center}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:28px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px}
+  .step .num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--violet);font-weight:500}
+  .step h4{font-size:15px;font-weight:600;margin:8px 0 6px}
+  .step p{font-size:13.5px;line-height:1.55;color:var(--muted)}
+
+  /* receipt */
+  .receipt{background:#141419;color:#d7d7e0;border-radius:20px;padding:26px;margin-top:28px;overflow-x:auto}
+  .receipt pre{font-family:'JetBrains Mono',monospace;font-size:12.8px;line-height:1.7}
+  .receipt .k{color:#8ab4f8}.receipt .v{color:#81c995}.receipt .d{color:#fdd663}
+
+  /* gallery cta */
+  .cta-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 30px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+  .cta-card h3{font-size:19px;font-weight:600}
+
+  footer{border-top:1px solid var(--line);padding:34px 0;color:var(--muted);font-size:13px}
+  .foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap nav-in">
+  <a class="brand" href="#top">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/>
+      <circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/>
+      <path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/>
+    </svg>
+    GRAPH
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a><a href="#receipts">Receipts</a><a href="https://igl.dev">IGL</a>
+    <a href="https://github.com/SMEPro-Technologies-LLC/igl">GitHub</a>
+    <a class="btn primary" href="#studio">Open Studio Console</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap" id="top">
+  <h1>Provision your Identity Graph
+    <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/>
+      <circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/>
+      <path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/>
+    </svg>
+  </h1>
+  <p class="sub">The studio console where companies and individuals provision their Identity Graph. The company graph is the <b>boundary</b>, the individual graph is the <b>footprint</b>: numerically computed within the universal decoding matrix, translated by the intelligence orchestration system into Identity Governed Logic, and enforced across any AI model engine reached through IGL.</p>
+
+  <div class="prompt" id="studio"><div class="prompt-in">
+    <div class="ph">Describe your company or yourself. GRAPH establishes your Identity Graph as a numerical boundary or footprint within the universal decoding matrix.</div>
+    <div class="prompt-row">
+      <div>
+        <span class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg></span>
+        <span class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <a class="btn primary" href="#">Provision</a>
+        <a class="btn" href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg>Auto-provision</a>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="chips">
+    <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Company Graph &middot; Boundary</span>
+    <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Individual Graph &middot; Footprint</span>
+    <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>UCDM Matrix Mapping</span>
+    <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 4l-5 8 5 8M16 4l5 8-5 8"/></svg>Engine-Native Logic Export</span>
+    <span class="chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h14"/></svg>Governed Logic Language</span>
+  </div>
+</header>
+
+<section class="wrap">
+  <span class="kicker">What a graph is</span>
+  <h2>Identity as a served, digested artifact</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="glyph"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c5cff" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></div>
+      <h3>Company graphs are boundaries</h3>
+      <p>The actors of an organization, the authority each directly holds, the delegations between them, and the keys bound to each. Published as one canonical document with a unique id and a content digest, versioned on every edit.</p>
+    </div>
+    <div class="card">
+      <div class="glyph"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f06292" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+      <h3>Individual graphs are footprints</h3>
+      <p>One identity's scope, grants, and limits. Authority resolves under the MIN law: structure can only narrow it, and only an explicit delegation can reach a higher scope, clamped and audited.</p>
+    </div>
+    <div class="card">
+      <div class="glyph"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div>
+      <h3>Receipts are double-bound</h3>
+      <p>Every governed turn seals a signed receipt carrying two digests: the constraint matrix that governed the content and the identity graph that governed the actor. A third party proves both from the artifact alone.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="how">
+  <span class="kicker">How it works</span>
+  <h2>The claim that survives an audit</h2>
+  <p style="max-width:760px;margin-top:14px;color:var(--muted);font-size:15px;line-height:1.65">A model does not understand a graph id, and GRAPH does not pretend it does. What happens is stronger, because it is provable: the runtime resolves the graph before the model computes, fails closed if the document does not reproduce its digest, refuses before a single model call if the actor does not exist in the graph, and fuses the resulting constraint into the model's own arithmetic.</p>
+  <div class="steps">
+    <div class="step"><div class="num">01 PROVISION</div><h4>Describe or build</h4><p>Provision the graph in the studio: actors, authority, delegations, bound keys. Every publish is a new version.</p></div>
+    <div class="step"><div class="num">02 DIGEST</div><h4>Seal the version</h4><p>The document gets a content digest. Raise an authority by one decimal and the digest no longer reproduces.</p></div>
+    <div class="step"><div class="num">03 RESOLVE</div><h4>Govern the turn</h4><p>Any IGL surface resolves the graph by id, verifies it, and resolves the acting identity under the MIN law before the model runs.</p></div>
+    <div class="step"><div class="num">04 RECEIPT</div><h4>Prove it later</h4><p>The signed receipt binds the graph digest and the matrix digest. Anyone holding it can verify which versions governed the turn.</p></div>
+  </div>
+</section>
+
+<section class="wrap" id="receipts">
+  <span class="kicker">From the running suite</span>
+  <h2>A double-bound receipt, verbatim shape</h2>
+  <div class="receipt"><pre>{
+  <span class="k">"kind"</span>: <span class="v">"governed_completion"</span>,
+  <span class="k">"subject"</span>: <span class="v">"igl://identity/allco/compliance-001"</span>,
+  <span class="k">"constraintMatrixDigest"</span>: <span class="d">"1252a4e59fd9540f9649a8fa6ec6bb2d508ddf36..."</span>,
+  <span class="k">"identityGraphId"</span>: <span class="v">"grf-allco-0001"</span>,
+  <span class="k">"identityGraphVersion"</span>: <span class="v">"1.0.0"</span>,
+  <span class="k">"identityGraphDigest"</span>: <span class="d">"computed from the canonical graph, verified on resolve"</span>,
+  <span class="k">"subjectAuthority"</span>: <span class="v">0.6</span>,
+  <span class="k">"outcome"</span>: <span class="v">"COMPLIANT"</span>,
+  <span class="k">"signature"</span>: <span class="v">"Ed25519, verifiable with the published key"</span>
+}</pre></div>
+  <p style="margin-top:14px;color:var(--muted);font-size:14px">The 0.6 is the MIN law at work: an officer declared at 0.85 under a restricted parent at 0.6 acts at 0.6. Structure narrows, never raises.</p>
+</section>
+
+<section class="wrap">
+  <div class="cta-card">
+    <h3>Discover Identity Graph patterns</h3>
+    <a class="btn" href="#">Browse the graph gallery <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  </div>
+</section>
+
+<footer><div class="wrap foot">
+  <span>GRAPH is part of the IGL stack by SMEPro Technologies LLC.</span>
+  <span><a href="https://github.com/SMEPro-Technologies-LLC/igl">Reference implementation</a> &middot; Apache-2.0 &middot; The IGL name is tied to the conformance suite.</span>
+</div></footer>
+
+</body>
+</html>
