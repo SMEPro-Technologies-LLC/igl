@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRAPH Studio: Identity Graph Provisioning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f7f7f8;--card:#fff;--ink:#1a1a1e;--muted:#5f6368;--line:#e6e6ea;--violet:#7c5cff;--pill:#f1f1f4;--btn:#aab8f0;--ok:#188038;--bad:#c5221f;--warn:#b06000}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;min-height:100vh}
+  a{color:inherit;text-decoration:none} button{font-family:inherit;cursor:pointer}
+  .mono{font-family:'JetBrains Mono',monospace}
+  aside{width:250px;min-width:250px;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:4px}
+  .brand{display:flex;align-items:center;gap:10px;background:var(--pill);border-radius:12px;padding:8px 14px;font-weight:600;margin-bottom:14px;width:fit-content}
+  .sect{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted);margin:14px 10px 6px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13.5px;color:#3c4043;border:0;background:none;width:100%;text-align:left}
+  .nav-item:hover{background:#ececf0}
+  .nav-item.active{background:#e4e9ff;color:#2a3aa0;font-weight:500}
+  main{flex:1;padding:34px 40px;max-width:1080px}
+  h1{font-size:30px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:12px}
+  .sub{color:var(--muted);font-size:14.5px;margin-top:8px;line-height:1.6;max-width:740px}
+  .view{display:none}.view.on{display:block}
+  .prompt{margin-top:26px;border-radius:24px;padding:2px;background:linear-gradient(120deg,#f28b82,#fbbc04,#34a853,#4285f4,#a142f4,#f28b82);background-size:300% 300%;animation:ring 9s ease infinite}
+  @keyframes ring{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  .prompt-in{background:var(--card);border-radius:22px;padding:20px}
+  textarea{width:100%;border:0;outline:0;resize:vertical;min-height:64px;font-family:inherit;font-size:15px;line-height:1.55;color:var(--ink)}
+  textarea::placeholder{color:#8a8a92}
+  .prompt-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:9px 18px;font-size:13.5px;font-weight:500;border:1px solid var(--line);background:var(--card);transition:.15s}
+  .btn:hover{border-color:#c9c9d2;box-shadow:0 1px 6px rgba(20,20,40,.06)}
+  .btn.primary{background:var(--btn);border-color:var(--btn);color:#fff}
+  .btn.primary:hover{background:#98a8ea}
+  .btn.small{padding:6px 12px;font-size:12.5px}
+  .btn[disabled]{opacity:.5;cursor:wait}
+  select{font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:18px}
+  .card h3{font-size:15px;font-weight:600;margin-bottom:12px}
+  .tag{display:inline-block;border-radius:999px;padding:3px 12px;font-size:11.5px;font-weight:600}
+  .tag.boundary{background:#e4e9ff;color:#2a3aa0}
+  .tag.footprint{background:#fde7f1;color:#b0245c}
+  .tag.ok{background:#e6f4ea;color:var(--ok)}
+  .tag.bad{background:#fde8e6;color:var(--bad)}
+  .tag.seed{background:#fef7e0;color:var(--warn)}
+  .kv{display:grid;grid-template-columns:170px 1fr;gap:6px 14px;font-size:13px;margin-top:8px}
+  .kv .k{color:var(--muted)}
+  pre.code{background:#141419;color:#d7d7e0;border-radius:14px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.65;overflow:auto;max-height:380px;margin-top:10px}
+  .stmt{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px}
+  .stmt.denied{border-color:#f6c8c5;background:#fef8f8}
+  .stmt .why{font-size:12px;color:var(--muted);margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  th{text-align:left;color:var(--muted);font-weight:500;font-size:11.5px;padding:5px 8px;border-bottom:1px solid var(--line)}
+  td{padding:6px 8px;border-bottom:1px solid #f0f0f3}
+  .flash{font-size:12.5px;margin-top:12px;padding:9px 12px;border-radius:10px;display:none}
+  .flash.ok{display:block;background:#e6f4ea;color:var(--ok)}
+  .flash.bad{display:block;background:#fde8e6;color:var(--bad)}
+  .empty{color:var(--muted);font-size:13.5px;padding:12px 2px}
+  .gitem{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .health{margin-top:auto;padding:10px 12px;font-size:11.5px;color:var(--muted)}
+  input.cfg{font-family:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%;margin-top:6px}
+  @media(max-width:900px){aside{display:none}main{padding:22px}}
+</style>
+</head>
+<body>
+
+<aside>
+  <span class="brand">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/><circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/><path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/></svg>
+    GRAPH
+  </span>
+  <div class="sect">EXPLORE</div>
+  <button class="nav-item active" data-v="console" onclick="show('console',this)">Studio Console</button>
+  <button class="nav-item" data-v="graphs" onclick="show('graphs',this)">My Graphs</button>
+  <div class="sect">MANAGE</div>
+  <button class="nav-item" data-v="settings" onclick="show('settings',this)">Service settings</button>
+  <div class="health" id="health">service: checking...</div>
+</aside>
+
+<main>
+
+<div class="view on" id="view-console">
+  <h1>Provision your Identity Graph
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/><circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/><path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/></svg>
+  </h1>
+  <p class="sub">Describe a company (a <b>boundary</b>) or an individual (a <b>footprint</b>). The service resolves the attributes deterministically, folds the graph into a hash-chained journal, generates the executable IGL program, and runs it with the model decoding inside the compiled governance mask. Every provision returns the program, the per-statement results, the journal head, and receipt verification.</p>
+  <div class="prompt"><div class="prompt-in">
+    <textarea id="desc" placeholder="Example: Ridgeline Energy, LLC is a Texas oil and gas operator. Or: Jordan Avery is a DFIR coordinator in Houston, Texas."></textarea>
+    <div class="prompt-row">
+      <select id="kind">
+        <option value="">Resolver decides</option>
+        <option value="BOUNDARY">Company: BOUNDARY</option>
+        <option value="FOOTPRINT">Individual: FOOTPRINT</option>
+      </select>
+      <div style="display:flex;gap:10px">
+        <button class="btn primary" id="provBtn" onclick="provision(false)">Provision</button>
+        <button class="btn" id="autoBtn" onclick="provision(true)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg>
+          Auto-provision
+        </button>
+      </div>
+    </div>
+  </div></div>
+  <div class="flash" id="flash"></div>
+  <div id="result"></div>
+</div>
+
+<div class="view" id="view-graphs">
+  <h1>My Graphs</h1>
+  <p class="sub">Every provisioned Identity Graph on this service, newest first. Seed means first provision; replay means the existing hash-chained journal answered idempotently.</p>
+  <div class="card"><div id="glist" class="empty">Loading...</div></div>
+</div>
+
+<div class="view" id="view-settings">
+  <h1>Service settings</h1>
+  <p class="sub">Served from the provisioning service itself, the studio talks to its own origin and needs no setup. Point it elsewhere only if the service runs on another host or behind a tunnel. The key is held in memory for this tab only.</p>
+  <div class="card">
+    <h3>Connection</h3>
+    <label style="font-size:12.5px;color:var(--muted)">Service base URL (blank = this origin)</label>
+    <input class="cfg mono" id="cfgBase" placeholder="http://localhost:8787">
+    <label style="font-size:12.5px;color:var(--muted);display:block;margin-top:12px">Bearer key (only if PROVISION_API_KEY is set)</label>
+    <input class="cfg mono" id="cfgKey" type="password" placeholder="optional">
+    <div style="margin-top:12px"><button class="btn small primary" onclick="applyCfg()">Apply and re-check</button></div>
+    <div class="flash" id="cfgFlash"></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const cfg = { base: "", key: "" };   // in-memory only, deliberately
+const api = (p) => (cfg.base || "") + p;
+const hdrs = () => cfg.key ? { "content-type": "application/json", "authorization": "Bearer " + cfg.key } : { "content-type": "application/json" };
+
+function show(v, btn){
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+  document.getElementById("view-"+v).classList.add("on");
+  document.querySelectorAll(".nav-item").forEach(x=>x.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  if (v==="graphs") loadGraphs();
+}
+function flash(id,msg,ok=true){ const f=document.getElementById(id); f.className="flash "+(ok?"ok":"bad"); f.textContent=msg; }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function health(){
+  const el = document.getElementById("health");
+  try {
+    const r = await fetch(api("/api/health"));
+    const j = await r.json();
+    el.innerHTML = j.ok ? "service: <b style='color:var(--ok)'>warm</b> (" + esc(j.model) + ")" : "service: <b style='color:var(--bad)'>unhealthy</b>";
+  } catch { el.innerHTML = "service: <b style='color:var(--bad)'>unreachable</b>. Run: npm run provision"; }
+}
+function applyCfg(){
+  cfg.base = document.getElementById("cfgBase").value.trim().replace(/\/$/,"");
+  cfg.key = document.getElementById("cfgKey").value.trim();
+  flash("cfgFlash","Applied. Checking the service...");
+  health();
+}
+
+async function provision(auto){
+  const desc = document.getElementById("desc").value.trim();
+  const kind = document.getElementById("kind").value || undefined;
+  if (!auto && !desc) return flash("flash","Describe a company or an individual first, or use Auto-provision.",false);
+  const b1=document.getElementById("provBtn"), b2=document.getElementById("autoBtn");
+  b1.disabled=b2.disabled=true; flash("flash", auto ? "Provisioning a synthetic entity..." : "Provisioning. The model runs inside the compiled governance mask; first run can take a moment.");
+  try {
+    const r = await fetch(api("/api/provision"), { method:"POST", headers:hdrs(), body: JSON.stringify(auto ? { auto:true } : { description: desc, kind }) });
+    const j = await r.json();
+    if (!r.ok) return flash("flash", "Service error: " + (j.error || r.status), false);
+    flash("flash", (j.runtime.boot === "seed" ? "Provisioned " : "Replayed ") + j.runtime.slug + " (" + j.runtime.kind + ").");
+    renderResult(j.runtime, j.resolved);
+  } catch(e) { flash("flash","Could not reach the service: " + e.message, false); }
+  finally { b1.disabled=b2.disabled=false; }
+}
+
+function renderResult(rt, resolved){
+  const stmts = (rt.results || []).map((s,i)=>{
+    const denied = s.error && s.error.code === "IGL_FOOTPRINT_DENIED";
+    const proj = (s.projections||[]).map(p=>`<tr><td class="mono">${esc(p.slot)}</td><td class="mono">${esc(p.emitted)}</td><td class="mono">${esc(p.value)}</td><td>${esc(p.how)}</td></tr>`).join("");
+    return `<div class="stmt ${denied?"denied":""}">
+      <b>Statement ${i+1}</b> <span class="tag ${s.status==="ok"?"ok":"bad"}">${esc(s.status)}</span>
+      ${s.intent?`<span class="mono" style="font-size:12px;color:var(--muted)"> ${esc(s.intent)}</span>`:""}
+      ${denied?`<div class="why"><b>${esc(s.error.code)}</b>: ${esc(s.error.message)}. This refusal is the governance proof, not an error: the action was observed but never granted, and observation does not confer authority. No model output was emitted.</div>`
+              : s.error?`<div class="why"><b>${esc(s.error.code)}</b>: ${esc(s.error.message)}</div>`:""}
+      ${proj?`<table><thead><tr><th>Slot</th><th>Emitted</th><th>Lifted value</th><th>How</th></tr></thead><tbody>${proj}</tbody></table>`:""}
+    </div>`;
+  }).join("");
+  const rv = rt.receiptVerification;
+  document.getElementById("result").innerHTML = `
+  <div class="card">
+    <h3><span class="tag ${rt.kind==="BOUNDARY"?"boundary":"footprint"}">${esc(rt.kind)}</span>
+        <span class="tag ${rt.boot==="seed"?"seed":"ok"}">${esc(rt.boot)}</span>
+        <span class="mono" style="font-weight:400;font-size:13px"> ${esc(rt.slug)}</span></h3>
+    <div class="kv">
+      <span class="k">Actor</span><span class="mono">${esc(rt.actor)}</span>
+      <span class="k">Journal chain</span><span>${rt.journal?.ok?'<span class="tag ok">intact</span>':'<span class="tag bad">broken</span>'} length ${esc(rt.journal?.length)} head <span class="mono">${esc(String(rt.journal?.head||"").slice(0,24))}...</span></span>
+      <span class="k">Footprint digest</span><span class="mono">${esc(String(rt.footprintDigest||"").slice(0,48))}...</span>
+      <span class="k">Receipt</span><span>${rv? (rv.ok?'<span class="tag ok">verified</span> signer '+esc(rv.signer||""):'<span class="tag bad">failed: '+esc(rv.reason||"")+'</span>') : '<span class="k">none on this run</span>'}</span>
+    </div>
+    ${stmts}
+    <h3 style="margin-top:16px">Generated IGL program</h3>
+    <pre class="code">${esc(rt.programSource)}</pre>
+  </div>`;
+}
+
+async function loadGraphs(){
+  const el = document.getElementById("glist");
+  try {
+    const r = await fetch(api("/api/graphs"), { headers: hdrs() });
+    const j = await r.json();
+    const gs = j.graphs || [];
+    if (!gs.length){ el.className="empty"; el.textContent="Nothing provisioned yet. Use the console."; return; }
+    window.__gs = gs;
+    el.className=""; el.innerHTML = gs.map((g,i)=>`
+      <div class="gitem"><div>
+        <b class="mono">${esc(g.slug)}</b>
+        <span class="tag ${g.kind==="BOUNDARY"?"boundary":"footprint"}">${esc(g.kind)}</span>
+        <span class="tag ${g.journal?.ok?"ok":"bad"}">chain ${g.journal?.ok?"intact":"broken"}</span>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px" class="mono">digest ${esc(String(g.footprintDigest||"").slice(0,40))}...</div>
+      </div>
+      <button class="btn small" onclick="openGraph(${i})">Open</button></div>`).join("");
+  } catch(e){ el.className="empty"; el.textContent="Could not reach the service: " + e.message; }
+}
+function openGraph(i){
+  renderResult(window.__gs[i]);
+  show("console", document.querySelector("[data-v=console]"));
+}
+
+health();
+</script>
+</body>
+</html>
