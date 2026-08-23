@@ -244,9 +244,13 @@ function renderRows(){
   state.rows.forEach((r,i)=>{
     const eff = actors[r.id] !== undefined ? resolveMin(actors, edges, r.id) : "";
     const narrowed = typeof eff==="number" && eff < r.authority - 1e-9;
-    const opts = sel => state.rows.filter(x=>x.id && x.id!==r.id).map(x=>`<option ${sel===x.id?"selected":""}>${x.id}</option>`).join("");
+    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    const opts = sel => state.rows
+      .filter(x=>x.id && x.id!==r.id)
+      .map(x=>`<option value="${esc(x.id)}" ${sel===x.id?"selected":""}>${esc(x.id)}</option>`)
+      .join("");
     tb.insertAdjacentHTML("beforeend", `<tr>
-      <td><input class="mono" value="${r.id}" onchange="upd(${i},'id',this.value)"></td>
+      <td><input class="mono" value="${esc(r.id)}" onchange="upd(${i},'id',this.value)"></td>
       <td><input type="number" min="0" max="1" step="0.05" value="${r.authority}" onchange="upd(${i},'authority',this.value)"></td>
       <td>${eff===""?"":`<span class="tag ${narrowed?"narrow":"same"}">${eff}${narrowed?" narrowed":""}</span>`}</td>
       <td><select onchange="upd(${i},'inherits',this.value)"><option value=""></option>${opts(r.inherits)}</select></td>
