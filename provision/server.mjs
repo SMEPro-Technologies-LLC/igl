@@ -107,8 +107,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/studio")) {
-      const html = await readFile(new URL("./studio.html", import.meta.url), "utf8");
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      const html = globalThis.__IGL_STUDIO_HTML ??= await readFile(new URL("./studio.html", import.meta.url), "utf8");
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
       return res.end(html);
     }
 
