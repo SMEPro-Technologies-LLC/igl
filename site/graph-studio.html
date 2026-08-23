@@ -269,10 +269,27 @@ async function publish(){
   document.getElementById("graphCount").textContent = state.graphs.length;
   document.getElementById("histCount").textContent = state.history.length;
   flash("builderFlash",`Published ${gid} v${g.version}. Digest sealed.`);
-  document.getElementById("pubResult").innerHTML = `<div class="digest">
-    <span class="k">graph_id</span> <span class="v">${gid}</span>  <span class="k">version</span> <span class="v">${g.version}</span><br>
-    <span class="k">digest</span> <span class="d">${g.digest}</span><br>
-    <span class="k">actors</span> ${ids.length}  <span class="k">edges</span> ${edges.length}. Any IGL surface now verifies this document before governing a turn under it.</div>`;
+  const pubResult = document.getElementById("pubResult");
+  pubResult.textContent = "";
+  const digestDiv = document.createElement("div");
+  digestDiv.className = "digest";
+
+  const kGraphId = document.createElement("span"); kGraphId.className = "k"; kGraphId.textContent = "graph_id";
+  const vGraphId = document.createElement("span"); vGraphId.className = "v"; vGraphId.textContent = gid;
+  const kVersion = document.createElement("span"); kVersion.className = "k"; kVersion.textContent = "version";
+  const vVersion = document.createElement("span"); vVersion.className = "v"; vVersion.textContent = g.version;
+
+  const kDigest = document.createElement("span"); kDigest.className = "k"; kDigest.textContent = "digest";
+  const dDigest = document.createElement("span"); dDigest.className = "d"; dDigest.textContent = g.digest;
+
+  const kActors = document.createElement("span"); kActors.className = "k"; kActors.textContent = "actors";
+  const kEdges = document.createElement("span"); kEdges.className = "k"; kEdges.textContent = "edges";
+
+  digestDiv.append(kGraphId, " ", vGraphId, "  ", kVersion, " ", vVersion, document.createElement("br"));
+  digestDiv.append(kDigest, " ", dDigest, document.createElement("br"));
+  digestDiv.append(kActors, ` ${ids.length}  `, kEdges, ` ${edges.length}. Any IGL surface now verifies this document before governing a turn under it.`);
+
+  pubResult.appendChild(digestDiv);
 }
 
 /* ---------- console provisioning ---------- */
