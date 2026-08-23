@@ -168,7 +168,7 @@
 </main>
 
 <script>
-/* ---------- digest engine: byte-identical to the runtime (src/sign.js) ---------- */
+/* ---------- digest engine: compatible with the runtime’s canonical() + SHA-256 hex (src/sign.js) ---------- */
 function canonical(x){
   if (Array.isArray(x)) return "[" + x.map(canonical).join(",") + "]";
   if (x && typeof x === "object")
