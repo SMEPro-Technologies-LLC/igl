@@ -37,6 +37,6 @@
     "onnxruntime-web": "^1.23.0",
     "protobufjs": "^7.6.2",
     "sharp": "^0.35.3",
-    "adm-zip": "^0.6.0"
+    "adm-zip": "^0.6.1"
   }
 }
