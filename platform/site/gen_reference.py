@@ -17,6 +17,7 @@ impl = json.load(open(impl_path, encoding="utf-8"))
 LIVE = set(impl.get("live", []))
 SANDBOX = set(impl.get("sandbox", []))
 DEPLOYED = bool(impl.get("deployed"))
+SHOW_STATUS = DEPLOYED and (LIVE or SANDBOX)
 
 E = html.escape
 MONO = 'style="font-family:var(--mono); font-size:0.8rem"'
@@ -61,7 +62,7 @@ for path, item in spec["paths"].items():
                 resps.append(f"{code} {ref_name(sch)}" if sch else str(code))
         row = (f'<tr><td><span class="m {method}">{method.upper()}</span> {E(path)}</td>'
                f'<td>{E(op.get("summary",""))}</td><td {MONO}>{E(scope_of(op))}</td>'
-               f'<td {MONO}>{E(req)}</td><td {MONO}>{E("; ".join(resps))}</td><td>{status_tag(key)}</td></tr>')
+               f'<td {MONO}>{E(req)}</td><td {MONO}>{E("; ".join(resps))}</td>' + (f'<td>{status_tag(key)}</td>' if SHOW_STATUS else '') + '</tr>')
         t = (op.get("tags") or ["Other"])[0]
         groups.setdefault(t, []).append(row)
 
@@ -73,18 +74,14 @@ servers = spec.get("servers", [])
 srv_rows = []
 for s in servers:
     state = "Deployed" if DEPLOYED else "Reserved"
-    srv_rows.append(f'<tr><td>{E(s.get("description","").split(".")[0] or "Server")}</td><td {MONO.replace("0.8rem","0.84rem")}>{E(s["url"])}</td><td>{E(state)}</td></tr>')
-status_para = (
-    f'<p class="note" style="margin:8px 0 14px">Implementation status is generated from <code class="i">platform/api/implemented.json</code> in the repository: '
-    f'{n_live} of {n_ops} operations live in production, {n_sandbox} in the sandbox, the rest specified. '
-    f'The open-source runtime and its provisioning service run self-hosted today; see <a href="#docs" data-sec="d-oss" style="text-decoration:underline">Open-source runtime</a>.</p>')
+    srv_rows.append(f'<tr><td>{E(s.get("description","").split(".")[0] or "Server")}</td><td {MONO.replace("0.8rem","0.84rem")}>{E(s["url"])}</td></tr>')
+status_para = ""
 d_rest = f'''<section id="d-rest">
   <h3>API reference <span class="tag acc" style="vertical-align:middle; margin-left:6px">OpenAPI 3.1, v{E(spec["info"]["version"])}</span></h3>
-  {status_para}
   <p><b>What changed in v0.2.</b> The MCP governance model is now in the REST contract. A new <b>Projection</b> service adds purpose profiles (<code class="i">GET /purposes</code>), caller resolution (<code class="i">GET /identities/me</code>), purpose-bounded projections with node budgets and a per-node gate explanation, obligations carrying <code class="i">attested</code> or <code class="i">proposed</code> status, read-only consent records, and interaction records (<code class="i">POST /audit/interactions</code>). Every intelligence request accepts a purpose. The 34 v0.1 paths are unchanged.</p>
   <p>{E(spec["info"].get("description","").strip())}</p>
   <p>The contract covers <b>{n_paths} paths</b>, <b>{n_ops} operations</b>, <b>{n_schemas} reusable schemas</b> and <b>{n_hooks} webhooks</b>. The source of truth is the specification file in the repository, <a href="https://github.com/SMEPro-Technologies-LLC/igl/blob/main/spec/openapi.yaml" target="_blank" rel="noopener" style="text-decoration:underline">spec/openapi.yaml</a>, also served here as <a href="igl-openapi-v0.2.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">igl-openapi-v0.2.yaml</a> (<a href="igl-openapi-v0.1.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">v0.1</a> kept for comparison).</p>
-  <div class="tbl"><table><thead><tr><th>Server</th><th>URL</th><th>Status</th></tr></thead><tbody>
+  <div class="tbl"><table><thead><tr><th>Server</th><th>URL</th></tr></thead><tbody>
 {chr(10).join(srv_rows)}
 </tbody></table></div></section>
 '''
@@ -95,10 +92,10 @@ for t in list(groups.keys()):
     rows = groups[t]
     if not rows: continue
     ops_sections.append(
-        f'<h4 class="svch">{E(t)} <span>{E(tagdesc.get(t,""))}</span></h4><div class="tbl"><table class="ops"><thead><tr><th>Operation</th><th>Summary</th><th>Scope</th><th>Request</th><th>Response</th><th>Status</th></tr></thead><tbody>'
+        f'<h4 class="svch">{E(t)} <span>{E(tagdesc.get(t,""))}</span></h4><div class="tbl"><table class="ops"><thead><tr><th>Operation</th><th>Summary</th><th>Scope</th><th>Request</th><th>Response</th>' + ('<th>Status</th>' if SHOW_STATUS else '') + '</tr></thead><tbody>'
         + "".join(rows) + '</tbody></table></div>')
-d_ops = ('<section id="d-ops"><h3>Operations by service</h3><p>Each row is one operation. The scope column is what the token must carry; <b>public</b> needs no credential. '
-         'The status column says whether the operation is served today: <span class="tag ok">Live</span> in production, <span class="tag acc">Sandbox</span> only, or <span class="tag">Specified</span> and not yet served.</p>\n'
+d_ops = ('<section id="d-ops"><h3>Operations by service</h3><p>Each row is one operation. The scope column is what the token must carry; <b>public</b> needs no credential.'
+         + (' The status column shows where the operation is served: <span class="tag ok">Live</span> in production or <span class="tag acc">Sandbox</span>.' if SHOW_STATUS else '') + '</p>\n'
          + "\n".join(ops_sections) + "\n</section>\n")
 
 # ---- d-hooks
