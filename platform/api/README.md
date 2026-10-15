@@ -21,6 +21,8 @@ The service behind `https://api.id-me.ai/v1` (production) and `https://sandbox.i
 | Webhooks | `outcomeRecorded`, `approvalRequired`, `graphUpdated`, signed with `X-IGL-Signature: t=…,v1=hmac-sha256`, three attempts |
 | Errors | `application/problem+json` with `traceId`, field-level `violations` on 422 |
 
+`POST /v1/mcp` is a Model Context Protocol endpoint (`src/mcp.js`): the seven tools documented at id-me.ai (`whoami`, `list_purposes`, `get_identity_context`, `explain_projection`, `list_obligations`, `search_graph`, `record_interaction`) run through the same handlers as their REST operations, with the same credentials, scopes and receipts.
+
 Surfaces outside the contract are listed at the top of `src/admin.js`: the token endpoint, JWKS, service metadata, sandbox self-serve signup, and administration (tenants, keys, webhooks, consents, obligations), plus `GET /admin/implemented`, which the deploy workflow reads to update the site's API reference.
 
 ## Run it locally
@@ -58,7 +60,7 @@ npx wrangler secret put BOOTSTRAP_TOKEN --env production     # any long random s
 
 First run on production: `POST https://api.id-me.ai/admin/bootstrap` with header `X-IGL-Bootstrap: <BOOTSTRAP_TOKEN>` and body `{"name":"Smeprotech platform"}` returns the platform tenant and the one platform key. Store it. Every customer tenant and key is then issued with `POST /admin/tenants` and `POST /admin/keys` using that key. The sandbox needs no bootstrap: `POST /sandbox/signup` is open and rate limited.
 
-The D1 databases `igl-api-production` and `igl-api-sandbox` already exist on the account with the schema applied; their ids are in `wrangler.toml`. The DNS records for `api`, `sandbox` and `auth` are created by Cloudflare when the Worker routes deploy.
+The D1 databases `igl-api-production` and `igl-api-sandbox` already exist on the account with the schema applied; their ids are in `wrangler.toml`. The hostnames `api`, `sandbox` and `auth` are Cloudflare Custom Domains, so the first deploy creates their DNS records and certificates; nothing is added to DNS by hand.
 
 ## Verify a receipt yourself
 

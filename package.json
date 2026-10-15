@@ -8,6 +8,15 @@
     ".": "./src/index.js",
     "./runtime": "./src/runtime.js"
   },
+  "files": [
+    "src/",
+    "spec/openapi.yaml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE",
+    "SECURITY.md"
+  ],
   "scripts": {
     "test": "node --test test/bridge.test.js test/decode.test.js test/extract.test.js test/graph.test.js test/igl.test.js test/sign.test.js test/store.test.js test/security.test.js test/resolver.test.js",
     "provision": "node provision/server.mjs",

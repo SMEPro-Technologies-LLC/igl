@@ -26,6 +26,21 @@ All notable changes to IGL are documented here. Format follows
 - `platform/site`: the id-me.ai source, generated API reference, Contact Sales
   intake function, interactive User Center running `provision/resolver.mjs`
 - `docs/examples/verify-audit-chain.mjs` and `docs/examples/verify-journals.mjs`
+- `platform/ops`: the operator console at ops.id-me.ai behind Cloudflare
+  Access: site traffic, page views, Contact Sales inquiries, platform tenants
+  and usage, service health, repository activity and public mentions
+- Releases can be cut from Actions (Release, Run workflow): the run tags main
+  with the package.json version, publishes the GitHub release with notes from
+  this file, the npm tarball, the contract and checksums, and publishes to npm
+  when an `NPM_TOKEN` secret exists
+
+### Changed
+
+- api, auth, sandbox and ops hostnames are Cloudflare Custom Domains, so the
+  first deploy creates their DNS records and certificates
+- The npm package now contains only the language and runtime (`src/`, the
+  contract and the top-level documents); the platform, provisioning service
+  and tests ship with the repository, not the package
 
 ## [1.3.1] (2026-10-14)
 

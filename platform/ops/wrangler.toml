@@ -9,8 +9,9 @@ main = "src/index.js"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
+# ops.id-me.ai is a Cloudflare Custom Domain; the first deploy creates its DNS record and certificate.
 routes = [
-  { pattern = "ops.id-me.ai/*", zone_name = "id-me.ai" },
+  { pattern = "ops.id-me.ai", custom_domain = true },
 ]
 
 [observability]
