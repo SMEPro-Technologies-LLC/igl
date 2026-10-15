@@ -229,12 +229,12 @@ const FILING = `ID[Allco:Operator | Jurisdiction:TX-RRC, Commodity:Oil, Period:2
              IOS.Trace(Channels=[Reasoning])]
   -> Output[Filed_Report, TurnTrace_ID];`;
 
-test("KEYED ATTESTATION: the filing trace is human-class, receipted, chained, and third-party verifiable", async () => {
+test("KEYED ATTESTATION: a key the runtime holds yields a service-class trace (F-04), receipted, chained, and third-party verifiable", async () => {
   const jsmith = Signer.generate("jsmith");
   const journal = new FileJournal(tmp());
   const { results } = await mkInterp({ signers: { jsmith }, journal }).run(FILING);
   const t = results[0].trace;
-  assert.equal(t.attestation, "human");
+  assert.equal(t.attestation, "service");
   assert.equal(Signer.verifyTraceReceipt(t).ok, true);
   const replayed = new FileJournal(journal.path).entries("trace")[0].body;
   assert.equal(Signer.verifyTraceReceipt(replayed).ok, true, "verification from the journal alone");

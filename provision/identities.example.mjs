@@ -11,8 +11,14 @@
    Keys are NOT the service gate (PROVISION_API_KEY protects the endpoint);
    these are per-person caller identities resolved AFTER the gate. */
 
+/* Optional per-entry `id` and `tenant` pin the stable principal and tenant
+   ids used for storage and authorization (F-02). Without them the principal
+   is derived from a hash of the key and the tenant equals the principal.
+   Display names are never used as storage keys. */
 export const IDENTITIES = {
   "igm-example-caller-REPLACE_ME": {
+    id: "p_example",                 // optional: stable principal id
+    tenant: "t_example",             // optional: tenant the principal belongs to
     actor: "Example_Caller",
     name: "Example Caller",
     kind: "FOOTPRINT", // FOOTPRINT = individual, BOUNDARY = company

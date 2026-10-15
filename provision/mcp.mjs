@@ -1,193 +1,104 @@
-/* MCP (Model Context Protocol) endpoint for the provisioning service —
-   this is what ChatGPT's "Apps" model connects to. Streamable-HTTP flavour:
-   JSON-RPC 2.0 over POST /mcp, stateless, no SSE session required.
+/* MCP (Model Context Protocol) endpoint for the provisioning service.
+   Streamable-HTTP flavour: JSON-RPC 2.0 over POST /mcp, stateless.
 
    Tools:
-     check_health       read-only — service + model status
-     list_graphs        read-only — every provisioned graph, newest first
-     get_graph          read-only — one graph by slug
-     search / fetch     read-only — the pair read-only ChatGPT connectors expect
-     provision_identity write     — resolve → fold → generate .igl → governed run
+     check_health            read-only — service + model status
+     list_graphs             read-only — the caller's graphs (every tenant's for the service principal)
+     get_graph               read-only — one graph by id, if the caller may read it
+     search / fetch          read-only — the pair read-only connectors expect, scoped the same way
+     identity_graph_whoami   read/write — the caller's OWN graph: seeds on first contact, replays after
+     provision_identity      write     — resolve → fold → generate .igl → governed run, stored under the caller's principal
 
-   Auth: when PROVISION_API_KEY is set, the MCP endpoint accepts it as either
-   an Authorization bearer header or a ?key= query parameter (developer-mode
-   connectors that cannot send custom headers can carry it in the URL). */
+   Auth (F-01/F-02): credentials in headers only (Authorization: Bearer or
+   X-IGL-Caller-Key). Every call runs under an `auth` object from the gate;
+   reads and writes are scoped to auth.tenant / auth.principal unless
+   auth.admin (the service key). There is no query-string credential. */
 
-import { provisionIdentity, listProvisioned } from "./service.mjs";
+import { provisionIdentity, listProvisioned, getProvisioned, searchProvisioned, whoAmI } from "./service.mjs";
+import { allowedOrigins, corsHeaders } from "./auth.mjs";
+const ORIGINS = allowedOrigins();
 
-const SERVER_INFO = { name: "igl-identity-graph-provisioning", version: "0.2.0" };
+const SERVER_INFO = { name: "igl-identity-graph-provisioning", version: "0.3.0" };
 const PROTOCOL_VERSION = "2025-03-26";
-const DEFAULT_ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:8787",
-];
-const ALLOWED_ORIGINS = new Set(
-  (process.env.PROVISION_ALLOWED_ORIGINS
-    ? process.env.PROVISION_ALLOWED_ORIGINS.split(",")
-    : DEFAULT_ALLOWED_ORIGINS).map((o) => o.trim()).filter(Boolean),
-);
 
 const TOOLS = [
-  {
-    name: "check_health",
-    description: "Check that the Identity Graph provisioning service and the AI model are warm.",
-    inputSchema: { type: "object", properties: {} },
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "list_graphs",
-    description: "List every provisioned Identity Graph (companies are BOUNDARY graphs, individuals are FOOTPRINT graphs), newest first, with journal chain status, footprint digest, and per-statement execution results.",
-    inputSchema: { type: "object", properties: {} },
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "get_graph",
-    description: "Get one provisioned Identity Graph by slug (kebab-case, e.g. example-energy-llc). Returns the runtime artifact: boot mode, journal head, footprint digest, statement results, receipt verification.",
-    inputSchema: {
-      type: "object",
-      properties: { slug: { type: "string", description: "Kebab-case graph slug" } },
-      required: ["slug"],
-    },
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "search",
-    description: "Search provisioned Identity Graphs by name/slug fragment. Read-only connector tool.",
-    inputSchema: {
-      type: "object",
-      properties: { query: { type: "string" } },
-      required: ["query"],
-    },
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "fetch",
-    description: "Fetch one provisioned Identity Graph by id (the graph slug). Read-only connector tool.",
-    inputSchema: {
-      type: "object",
-      properties: { id: { type: "string" } },
-      required: ["id"],
-    },
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "identity_graph_whoami",
-    description:
-      "Recognize the caller. Returns the caller's own Identity Graph — their FOOTPRINT (individual) or BOUNDARY (company) — with journal chain status, footprint digest, and latest governed results. First contact seeds the graph from the registered profile; every contact after that replays the existing hash-chained journal instantly. Call this FIRST in every conversation to bind the session to the caller's identity graph before any other tool.",
-    inputSchema: { type: "object", properties: {} },
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "provision_identity",
-    description:
-      "Provision an Identity Graph from a natural-language description of a company or individual. Deterministically resolves attributes, folds the identity graph into a hash-chained journal (one-time boot; repeat calls replay idempotently), generates the executable IGL program, and runs it with the model inside the compiled governance mask. For individuals, the second statement deliberately asserts an observed-but-never-granted action and is refused with IGL_FOOTPRINT_DENIED — that refusal is the governance proof, NOT an error.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        description: { type: "string", description: "e.g. 'Example Energy, LLC is a Texas oil and gas operator' or 'Jordan Avery is a DFIR coordinator in Houston, Texas'" },
-        kind: { type: "string", enum: ["BOUNDARY", "FOOTPRINT"], description: "Optional override; omit to let the resolver decide." },
-        auto: { type: "boolean", description: "Provision a synthetic entity (description not required)." },
-      },
-    },
-    annotations: { readOnlyHint: false },
-  },
+  { name: "check_health", description: "Service and model status.", inputSchema: { type: "object", properties: {} } },
+  { name: "list_graphs", description: "Graphs the caller may read, newest first.", inputSchema: { type: "object", properties: {} } },
+  { name: "get_graph", description: "One graph by id, if the caller may read it.", inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  { name: "search", description: "Search the caller's graphs by slug, actor or kind.", inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
+  { name: "fetch", description: "Fetch one of the caller's graphs by id.", inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
+  { name: "identity_graph_whoami",
+    description: "Recognize the caller. Returns the caller's own Identity Graph — FOOTPRINT (individual) or BOUNDARY (company) — with journal chain status, footprint digest and latest governed results. First contact seeds the graph from the registered profile; every contact after that replays the hash-chained journal. Call this FIRST in every conversation.",
+    inputSchema: { type: "object", properties: {} } },
+  { name: "provision_identity",
+    description: "Provision an Identity Graph from a natural-language description. Stored under the caller's own principal; the service key may pass an explicit owner.",
+    inputSchema: { type: "object", properties: { description: { type: "string" }, kind: { type: "string", enum: ["BOUNDARY", "FOOTPRINT"] }, auto: { type: "boolean" }, owner: { type: "object", properties: { tenant: { type: "string" }, principal: { type: "string" } } } } } },
 ];
 
-function summarize(graph) {
-  if (!graph) return null;
-  const { programSource, ...rest } = graph;
-  return { ...rest, programSourceIncluded: false, note: "programSource stripped for transport; present in the .run.json artifact" };
+function summarize(g) {
+  return { id: g.id, slug: g.slug, kind: g.kind, actor: g.actor, boot: g.boot, owner: g.owner, journal: g.journal, footprintDigest: g.footprintDigest,
+    attestation: g.attestation ?? null, receiptVerification: g.receiptVerification, results: g.results, provisionedAt: g.provisionedAt };
 }
 
-async function callTool(name, args, caller) {
+function ownerFor(auth, requested) {
+  if (auth?.admin && requested?.tenant && requested?.principal) return { tenant: requested.tenant, principal: requested.principal };
+  if (!auth || !auth.tenant || !auth.principal) throw Object.assign(new Error("this session is not bound to a principal — present a registered caller key"), { status: 401 });
+  return { tenant: auth.tenant, principal: auth.principal };
+}
+
+export async function callTool(name, args, auth) {
   switch (name) {
-    case "identity_graph_whoami": {
-      if (!caller) throw new Error("unrecognized caller — this session is not bound to a registered identity key");
-      const { whoAmI } = await import("./service.mjs");
-      return whoAmI(caller);
-    }
     case "check_health":
-      return { ok: true, model: "Xenova/distilgpt2", graphs: listProvisioned().length };
+      return { ok: true, model: "Xenova/distilgpt2", graphs: listProvisioned(auth).length };
     case "list_graphs":
-      return { graphs: listProvisioned().map(summarize) };
+      return { graphs: listProvisioned(auth).map(summarize) };
     case "get_graph": {
-      const g = listProvisioned().find((x) => x.slug === args?.slug);
-      if (!g) throw new Error(`no provisioned graph with slug "${args?.slug}"`);
+      const g = getProvisioned(auth, args?.id);
+      if (!g) throw Object.assign(new Error(`no readable graph with id "${args?.id}"`), { status: 404 });
       return summarize(g);
     }
-    case "search": {
-      const q = String(args?.query ?? "").toLowerCase();
-      const hits = listProvisioned().filter((g) => g.slug.includes(q));
-      return { results: hits.map((g) => ({ id: g.slug, title: `${g.slug} (${g.kind})`, url: `mcp://graphs/${g.slug}` })) };
-    }
+    case "search":
+      return { results: searchProvisioned(auth, args?.query).map((g) => ({ id: g.id, title: `${g.slug} (${g.kind})`, url: `mcp://graphs/${g.id}` })) };
     case "fetch": {
-      const g = listProvisioned().find((x) => x.slug === args?.id);
-      if (!g) throw new Error(`no provisioned graph with id "${args?.id}"`);
-      return { id: g.slug, title: `${g.slug} (${g.kind})`, text: JSON.stringify(summarize(g)), url: `mcp://graphs/${g.slug}` };
+      const g = getProvisioned(auth, args?.id);
+      if (!g) throw Object.assign(new Error(`no readable graph with id "${args?.id}"`), { status: 404 });
+      return { id: g.id, title: `${g.slug} (${g.kind})`, text: JSON.stringify(summarize(g)), url: `mcp://graphs/${g.id}` };
+    }
+    case "identity_graph_whoami": {
+      if (!auth?.caller) throw Object.assign(new Error("unrecognized caller — this session is not bound to a registered identity key"), { status: 401 });
+      return whoAmI(auth.caller, ownerFor(auth));
     }
     case "provision_identity": {
-      // No description + recognized caller → provision the caller's OWN graph.
-      const description = (args?.description || "").trim() || caller?.description || "";
-      const kind = args?.kind ?? (description === caller?.description ? caller?.kind : null);
-      if (!args?.auto && !description)
-        throw new Error("description is required (or set auto=true)");
-      const { resolved, runtime } = await provisionIdentity({
-        description,
-        kind,
-        auto: !!args?.auto,
-      });
+      const owner = ownerFor(auth, args?.owner);
+      const description = (args?.description || "").trim() || auth?.caller?.description || "";
+      const kind = args?.kind ?? (description === auth?.caller?.description ? auth?.caller?.kind : null);
+      if (!args?.auto && !description) throw Object.assign(new Error("description is required (or set auto=true)"), { status: 400 });
+      const { resolved, runtime } = await provisionIdentity({ description, kind, auto: !!args?.auto, owner });
       return { resolved, runtime: summarize(runtime) };
     }
     default:
-      throw new Error(`unknown tool "${name}"`);
+      throw Object.assign(new Error(`unknown tool "${name}"`), { status: 404 });
   }
 }
 
-function rpcResult(id, result) {
-  return { jsonrpc: "2.0", id, result };
-}
-function rpcError(id, code, message) {
-  return { jsonrpc: "2.0", id, error: { code, message } };
-}
-
-function corsHeaders(req, { exposeSession = false } = {}) {
-  const origin = req.headers.origin;
-  const headers = {
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,authorization,mcp-session-id",
-  };
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
-    headers["access-control-allow-origin"] = origin;
-    headers["vary"] = "Origin";
-  }
-  if (exposeSession) headers["access-control-expose-headers"] = "mcp-session-id";
-  return headers;
+function rpcResult(id, result) { return { jsonrpc: "2.0", id, result }; }
+function rpcError(id, code, message) { return { jsonrpc: "2.0", id, error: { code, message } }; }
+function sendJson(req, res, body) {
+  res.writeHead(200, { "content-type": "application/json", "x-content-type-options": "nosniff", ...corsHeaders(req, ORIGINS, { exposeSession: true }) });
+  res.end(JSON.stringify(body));
 }
 
-export async function handleMcp(req, res, body, caller = null) {
+export async function handleMcp(req, res, body, auth = null) {
   const msg = body;
   if (!msg || msg.jsonrpc !== "2.0") {
-    res.writeHead(400, { "content-type": "application/json", ...corsHeaders(req) });
+    res.writeHead(400, { "content-type": "application/json", ...corsHeaders(req, ORIGINS) });
     return res.end(JSON.stringify(rpcError(msg?.id ?? null, -32600, "invalid JSON-RPC 2.0 request")));
   }
-
-  // Notifications (no id) → accepted, nothing returned.
-  if (msg.id === undefined || msg.id === null) {
-    res.writeHead(202, corsHeaders(req));
-    return res.end();
-  }
-
+  if (msg.id === undefined || msg.id === null) { res.writeHead(202, corsHeaders(req, ORIGINS)); return res.end(); }
   try {
     switch (msg.method) {
       case "initialize":
-        return sendJson(req, res, rpcResult(msg.id, {
-          protocolVersion: PROTOCOL_VERSION,
-          capabilities: { tools: {} },
-          serverInfo: SERVER_INFO,
-        }));
+        return sendJson(req, res, rpcResult(msg.id, { protocolVersion: PROTOCOL_VERSION, capabilities: { tools: {} }, serverInfo: SERVER_INFO }));
       case "ping":
         return sendJson(req, res, rpcResult(msg.id, {}));
       case "tools/list":
@@ -195,16 +106,10 @@ export async function handleMcp(req, res, body, caller = null) {
       case "tools/call": {
         const { name, arguments: args } = msg.params ?? {};
         try {
-          const out = await callTool(name, args ?? {}, caller);
-          return sendJson(req, res, rpcResult(msg.id, {
-            content: [{ type: "text", text: JSON.stringify(out, null, 2) }],
-            isError: false,
-          }));
+          const out = await callTool(name, args ?? {}, auth);
+          return sendJson(req, res, rpcResult(msg.id, { content: [{ type: "text", text: JSON.stringify(out, null, 2) }], isError: false }));
         } catch (err) {
-          return sendJson(req, res, rpcResult(msg.id, {
-            content: [{ type: "text", text: String(err?.message ?? err) }],
-            isError: true,
-          }));
+          return sendJson(req, res, rpcResult(msg.id, { content: [{ type: "text", text: String(err?.message ?? err) }], isError: true }));
         }
       }
       default:
@@ -213,12 +118,4 @@ export async function handleMcp(req, res, body, caller = null) {
   } catch (err) {
     return sendJson(req, res, rpcError(msg.id, -32603, String(err?.message ?? err)));
   }
-}
-
-function sendJson(req, res, payload) {
-  res.writeHead(200, {
-    "content-type": "application/json",
-    ...corsHeaders(req, { exposeSession: true }),
-  });
-  res.end(JSON.stringify(payload));
 }

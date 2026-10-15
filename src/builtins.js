@@ -75,6 +75,7 @@ export const BUILTINS = {
     req("Signer", "any"),
     req("Role", "symbol"),
     optl("Note", "string"),
+    optl("Approval", "any"),    /* F-04: a signed approval envelope bound to this statement (usually @Approval from the environment) */
   ], { deterministic: true, produces: "attestation" }),
 
   "IOS.Stage": sig([

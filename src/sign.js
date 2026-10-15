@@ -14,7 +14,7 @@
          replayed into the other. And headReceipt nests caller meta so it can
          never override the verified chain head. */
 
-import { generateKeyPairSync, createPublicKey, sign as edSign, verify as edVerify, createHash } from "node:crypto";
+import { generateKeyPairSync, createPublicKey, createPrivateKey, sign as edSign, verify as edVerify, createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -49,6 +49,15 @@ export function runtimeDigest() {
 
 export const DOMAIN_TRACE = "IGL-TRACE-v0.2:";
 export const DOMAIN_HEAD = "IGL-HEAD-v0.2:";
+/* rev 3 (security fixes F-03 / F-04):
+     R5  authority events (grant, revoke, key, keyrevoke) are signed envelopes
+         under their own domain, verified against a grantor registry — a
+         `by` string is a label, a signature is authority.
+     R6  a human approval is a signature by a key the service does NOT hold,
+         over the statement it approves, under its own domain. A key the
+         service holds can only ever produce a `service` attestation. */
+export const DOMAIN_GRANT = "IGL-GRANT-v0.2:";
+export const DOMAIN_APPROVAL = "IGL-APPROVAL-v0.2:";
 
 export class Signer {
   constructor({ id, privateKey, publicKey }) { Object.assign(this, { id, privateKey, publicKey }); }
@@ -60,6 +69,55 @@ export class Signer {
 
   /* SPKI DER, base64 — what travels inside a receipt and what the graph binds. */
   pub() { return this.publicKey.export({ type: "spki", format: "der" }).toString("base64"); }
+
+  /* ---- persistence: a signer that is regenerated on every run attests
+     nothing, because nothing outlives the process to be attributed to.
+     PKCS#8 PEM in, PKCS#8 PEM out; the public key is derived. ---- */
+  toPem() { return this.privateKey.export({ type: "pkcs8", format: "pem" }); }
+  static fromPem(id, pem) {
+    const privateKey = createPrivateKey(pem);
+    return new Signer({ id, privateKey, publicKey: createPublicKey(privateKey) });
+  }
+  /* A registry entry that holds only the public key: the service can VERIFY
+     signatures made by this party but can never make one. This is what a
+     human signer looks like to the runtime. */
+  static publicOnly(id, publicKeyB64) { return { id, publicKey: publicKeyB64, publicOnly: true }; }
+  static publicKeyOf(entry) {
+    if (!entry) return null;
+    if (entry instanceof Signer) return entry.pub();
+    return entry.publicKey || null;
+  }
+  static canSign(entry) { return entry instanceof Signer; }
+
+  /* ---- authority events (R5): the envelope is the event minus its signature ---- */
+  signGrant(event) {
+    const { signature, ...envelope } = event;
+    return this._sign(DOMAIN_GRANT, envelope);
+  }
+  static verifyGrant(event, publicKeyB64) {
+    if (!event || !event.signature || !publicKeyB64) return false;
+    const { signature, ...envelope } = event;
+    return this._verify(DOMAIN_GRANT, envelope, publicKeyB64, signature);
+  }
+
+  /* ---- human approval (R6): binds a signer to ONE statement ----
+     The envelope names the actor, intent, boundary and statement key the
+     approver saw, so an approval cannot be replayed onto different work. */
+  static approvalEnvelope({ signer, statementKey, actor, intent, boundary }) {
+    return { signer, statementKey, actor, intent, boundary, alg: "Ed25519" };
+  }
+  approve(subject) {
+    const envelope = Signer.approvalEnvelope({ ...subject, signer: this.id });
+    return { ...envelope, signature: this._sign(DOMAIN_APPROVAL, envelope) };
+  }
+  static verifyApproval(approval, subject, publicKeyB64) {
+    if (!approval || !approval.signature || !publicKeyB64) return { ok: false, reason: "no approval signature" };
+    const expected = Signer.approvalEnvelope({ ...subject, signer: approval.signer });
+    const { signature, ...given } = approval;
+    if (canonical(given) !== canonical(expected)) return { ok: false, reason: "approval does not describe this statement" };
+    if (!this._verify(DOMAIN_APPROVAL, expected, publicKeyB64, signature)) return { ok: false, reason: "approval signature does not verify" };
+    return { ok: true };
+  }
 
   _sign(domain, payload) {
     return edSign(null, Buffer.from(domain + canonical(payload), "utf8"), this.privateKey).toString("base64");

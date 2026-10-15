@@ -31,7 +31,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY src ./src
-COPY igl-v1/src ./igl-v1/src
 COPY provision ./provision
 
 RUN mkdir -p /data/models && chown -R node:node /data

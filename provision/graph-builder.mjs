@@ -10,7 +10,6 @@
 import { Interpreter, UDMRuntime, IOSRuntime } from "../src/interpreter.js";
 import { Bridge } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
-import { Signer as TraceSigner } from "../src/sign.js";
 import { INTENTS } from "../src/builtins.js";
 import { GovernedAI } from "./governed-ai.mjs";
 
@@ -51,7 +50,7 @@ function boundaryProgram({ resolved, grantedJurisdiction, commodities, agencyCod
   L.push(`# 1. Compliance packet at the home boundary. AI.Extract selects inside`);
   L.push(`#    the granted footprint — the governed decode IS the graph.`);
   L.push(`# ---------------------------------------------------------------------`);
-  L.push(`ID[${actor}:Operator | Jurisdiction:${grantedJurisdiction[1] ?? grantedJurisdiction[0]}, Period:${period}]`);
+  L.push(`ID[${actor}:Operator | Jurisdiction:${grantedJurisdiction[0]}, Period:${period}]`);
   L.push(`  :: Intent[Generate_Compliance_Packet, Mode=Full]`);
   L.push(`  => Context[Traces=None],`);
   L.push(`     Compute[`);
@@ -73,7 +72,7 @@ function boundaryProgram({ resolved, grantedJurisdiction, commodities, agencyCod
     L.push(`  => Context[Traces=Recent(5)],`);
     L.push(`     Compute[`);
     L.push(`       UDM.Validate(Target=@Compliance_Packet, Ruleset=production_integrity),`);
-    L.push(`       IOS.Attest(Signer=SMEPro_Governance_Board, Role=Compliance, Note="Packet reviewed against granted footprint"),`);
+    L.push(`       IOS.Attest(Signer=SMEPro_Governance_Board, Role=Compliance, Note="Service attestation: packet checked against granted footprint"),`);
     L.push(`       IOS.Trace(Channels=[Reasoning, Context])`);
     L.push(`     ]`);
     L.push(`  -> Output[Filed_Report, TurnTrace_ID]`);
@@ -83,7 +82,8 @@ function boundaryProgram({ resolved, grantedJurisdiction, commodities, agencyCod
   return L.join("\n");
 }
 
-export function buildBoundaryGraph({ resolved, journal, seeded, tok, models, governedGenerate }) {
+export function buildBoundaryGraph({ resolved, journal, seeded, tok, models, governedGenerate, signer, grantors, signerName = "SMEPro_Governance_Board" }) {
+  if (!signer || !grantors) throw new Error("buildBoundaryGraph requires a persistent signer and a grantor registry (F-03)");
   const { actor, attributes, industryDetail, period } = resolved;
   const stateNode = `US-${attributes.state}`;
   const agencyCode = attributes.industry === "oil-and-gas" ? (industryDetail.agency ?? stateNode) : null;
@@ -95,23 +95,27 @@ export function buildBoundaryGraph({ resolved, journal, seeded, tok, models, gov
     Jurisdiction: jurisdictionLattice(attributes.state, agencyCode),
     AgencyCode: { type: "lattice", parents: agencyCode ? { [agencyCode]: stateNode } : {} },
   };
-  const graph = new GraphRuntime({ dimensions, journal });
+  const graph = new GraphRuntime({ dimensions, journal, grantors });
 
-  const grantedJurisdiction = ["US", stateNode];
+  /* Sandbox provisioning grants the HOME state only. A country-wide grant
+     is enrollment, not provisioning, and comes from a signed envelope
+     outside this path. */
+  const grantedJurisdiction = [stateNode];
   if (seeded) {
-    graph.grant(actor,
+    graph.grantSigned(signer, actor,
       {
         Jurisdiction: grantedJurisdiction,
         ...(commodities ? { Commodity: commodities } : {}),
         Period: [period],
       },
-      { by: "SMEPro Governance Board", role: "Operator" });
+      { role: "Operator", note: "sandbox provisioning — home jurisdiction only" });
+    graph.bindKeySigned(signer, signerName, signer.pub());   // receipts verify PINNED to this key
     // Descriptive layers: what the graph has SEEN, distinct from authority.
     graph.observe(actor, { Jurisdiction: [stateNode], ...(commodities ? { Commodity: [commodities[1] ?? commodities[0]] } : {}) }, { cls: "deterministic" });
     for (let i = 0; i < 3; i++) graph.observe(actor, { Jurisdiction: ["US-CA"] }, { cls: "ai" });
   }
 
-  const jurisdictionValues = ["US", stateNode, "US-CA", ...(agencyCode ? [agencyCode] : [])];
+  const jurisdictionValues = [stateNode, "US-CA", ...(agencyCode ? [agencyCode] : [])];
   const udm = new UDMRuntime({
     boundaries: {
       Jurisdiction: { values: jurisdictionValues },
@@ -131,10 +135,12 @@ export function buildBoundaryGraph({ resolved, journal, seeded, tok, models, gov
   }
   const ai = new GovernedAI({ graph, bridge, models, slots, prompts, governedGenerate });
 
-  const attestSigner = TraceSigner.generate("smepro-governance-board");
+  /* F-04: the signer is persistent and service-held, so its attestations
+     are class `service`. A human-class trace needs an Approval signed by a
+     key this process does not hold (see docs/PLATFORM.md). */
   const interp = new Interpreter({
     identity: graph, udm, ai, ios: new IOSRuntime({ journal }),
-    signers: { SMEPro_Governance_Board: attestSigner },
+    signers: { [signerName]: signer },
   });
 
   const program = boundaryProgram({ resolved, grantedJurisdiction, commodities, agencyCode, hasFiling });
@@ -202,16 +208,17 @@ function footprintProgram({ resolved, granted, observedProposed, intentName, rol
   return L.join("\n");
 }
 
-export function buildFootprintGraph({ resolved, journal, seeded, tok, models, governedGenerate }) {
+export function buildFootprintGraph({ resolved, journal, seeded, tok, models, governedGenerate, signer, grantors }) {
+  if (!signer || !grantors) throw new Error("buildFootprintGraph requires a persistent signer and a grantor registry (F-03)");
   const { actor, roleActions } = resolved;
   const roleTok = roleToken(resolved.attributes.role);
   const intentName = `Execute_${roleTok}_Action`;
   const dimensions = { ...DEFAULT_DIMENSIONS, Action: { type: "set" } };
-  const graph = new GraphRuntime({ dimensions, journal });
+  const graph = new GraphRuntime({ dimensions, journal, grantors });
 
   const { granted, observedGoverning, observedProposed } = roleActions;
   if (seeded) {
-    graph.grant(actor, { Action: granted }, { by: "Graph Studio Provisioning", role: roleTok });
+    graph.grantSigned(signer, actor, { Action: granted }, { role: roleTok, note: "sandbox provisioning — role template" });
     for (let i = 0; i < 3; i++) graph.observe(actor, { Action: [observedGoverning] }, { cls: "deterministic" });
     for (let i = 0; i < 5; i++) graph.observe(actor, { Action: [observedProposed] }, { cls: "ai" });
   }

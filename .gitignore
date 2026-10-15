@@ -9,6 +9,8 @@ data/
 
 # Local credentials — NEVER commit real caller identities or keys
 provision/identities.mjs
+*.ed25519.pem
+keys/
 .env
 .env.*
 !.env.example
