@@ -6,8 +6,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Signer, GraphRuntime, DEFAULT_DIMENSIONS, FileJournal, MemoryJournal, Interpreter, IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime, parse, check } from "../src/index.js";
-import { credentialFrom, makeGate, listenConfig, principalOf, RateLimiter, Semaphore } from "../provision/auth.mjs";
+import { Signer, GraphRuntime, DEFAULT_DIMENSIONS, FileJournal, Interpreter, IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime, parse, check } from "../src/index.js";
+import { credentialFrom, makeGate, listenConfig, principalOf, RateLimiter, Semaphore, clientError } from "../provision/auth.mjs";
 import { Registry, graphIdFor } from "../provision/registry.mjs";
 import { loadOrCreateSigner } from "../provision/keys.mjs";
 
@@ -46,7 +46,7 @@ test("F-01: rate limiter and inference semaphore bound resource use", async () =
 });
 
 /* ---------------- F-02: ownership ---------------- */
-test("F-02: principals derive from the key, never the display name; same label → different storage", () => {
+test("F-02: principals derive from the key, never the display name; same label to different storage", () => {
   const a = principalOf("key-a", { name: "Analyst · Oil & Gas" }), b = principalOf("key-b", { name: "Analyst · Oil & Gas" });
   assert.notEqual(a.principal, b.principal);
   assert.notEqual(graphIdFor(a, "analyst-oil-gas"), graphIdFor(b, "analyst-oil-gas"));
@@ -95,7 +95,7 @@ test("F-03: replaying a journal re-verifies every authority event; a chain writt
   const replayed = new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: new FileJournal(join(dir, "ok.jsonl")), grantors: { board: board.pub() } });
   assert.equal(replayed.events[0].verified, true);
   const j2 = new FileJournal(join(dir, "legacy.jsonl"));
-  new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: j2 }).grant("A", { Jurisdiction: ["US-TX"] }, { by: "board" });   // no registry → unverified
+  new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: j2 }).grant("A", { Jurisdiction: ["US-TX"] }, { by: "board" });   // no registry to unverified
   assert.throws(() => new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: new FileJournal(join(dir, "legacy.jsonl")), grantors: { board: board.pub() } }), (e) => e.code === "IGL_UNVERIFIED_GRANT");
 });
 test("F-03: without a registry the runtime behaves as before but marks authority events unverified", () => {
@@ -126,7 +126,7 @@ test("F-04: a public-only signer requires an Approval; a valid approval over THI
   const human = Signer.generate("board");                       // private key lives with the human, not the runtime
   const runtime = Signer.generate("runtime");
   const interp = mk({ signers: { board: Signer.publicOnly("board", human.pub()) }, runtimeSigner: runtime });
-  /* no approval → refused */
+  /* no approval to refused */
   await assert.rejects(async () => { const r = await interp.run(PROG); if (r.results[0].status !== "committed") throw Object.assign(new Error(r.results[0].error.code), { code: r.results[0].error.code }); }, (e) => /IGL_APPROVAL_REQUIRED/.test(e.message || e.code));
   /* the human approves the statement they saw: the runtime computes the same subject */
   const probe = mk({ signers: { board: human } });                // only to learn the statement key the runtime derives
@@ -163,4 +163,20 @@ test("F-04: signer keys persist across runs and are created with owner-only perm
 test("F-04: the checker accepts Approval on IOS.Attest", () => {
   assert.equal(check(parse(PROG_APPROVED), { inputs: ["Approval"] }).length, 0, "declared input binds the reference");
   assert.equal(check(parse(PROG_APPROVED)).some((e) => e.code === "IGL_UNBOUND_REF"), true, "undeclared, it is still unbound");
+});
+
+/* ───────────── error exposure (CodeQL js/stack-trace-exposure) ───────────── */
+
+test("clientError: governed refusals and 4xx pass through, internal failures are masked", () => {
+  const governed = clientError(Object.assign(new Error("Actor is not granted X"), { code: "IGL_FOOTPRINT_DENIED" }));
+  assert.equal(governed.message, "Actor is not granted X");
+  assert.equal(governed.code, "IGL_FOOTPRINT_DENIED");
+  const bad = clientError(Object.assign(new Error("invalid JSON body"), { status: 400 }));
+  assert.equal(bad.status, 400); assert.equal(bad.message, "invalid JSON body");
+  const silent = console.error; console.error = () => {};
+  try {
+    const internal = clientError(new TypeError("Cannot read properties of undefined (reading 'x')"));
+    assert.equal(internal.status, 500); assert.equal(internal.message, "internal error"); assert.equal(internal.code, null);
+    assert.ok(!internal.message.includes("Cannot read"));
+  } finally { console.error = silent; }
 });

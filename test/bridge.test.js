@@ -17,7 +17,7 @@ test("γ turns the admissible set into a schema enum, not a suggestion", () => {
   assert.equal(env.schema.additionalProperties, false);
 });
 
-test("ABSTAIN is always reachable — a masked vocabulary must not force a choice", () => {
+test("ABSTAIN is always reachable, a masked vocabulary must not force a choice", () => {
   const env = mk().gamma({}, [FORM_SLOT]);
   assert.ok(env.schema.properties.form.enum.includes(ABSTAIN));
 });
@@ -32,7 +32,7 @@ test("γ requires an explicit parse on span slots", () => {
     e => e.code === "IGL_SPAN_NEEDS_PARSE");
 });
 
-/* R1 — the automaton, not a union */
+/* R1, the automaton, not a union */
 test("maskPlan is a prefix automaton: recombinations of admissible values are unreachable", () => {
   const tokenizer = { encode: s => [...s].map(c => c.charCodeAt(0)) };
   const env = mk({ tokenizer }).gamma({}, [FORM_SLOT]);
@@ -43,8 +43,7 @@ test("maskPlan is a prefix automaton: recombinations of admissible values are un
   /* at the root: P, H, W and _ (ABSTAIN) begin admissible values; nothing else */
   const root = Bridge.maskNext(auto, []);
   assert.deepEqual(root.allowed.map(c => String.fromCharCode(c)).sort(), ["H", "P", "W", "_"]);
-  /* after "PR-" only "2" continues (PR-202); the "1" of H-10/W-10 is NOT allowed —
-     the flat union would have admitted it and with it PR-10 */
+  /* after "PR-" only "2" continues (PR-202); the "1" of H-10/W-10 is NOT allowed, the flat union would have admitted it and with it PR-10 */
   const afterPR = Bridge.maskNext(auto, ids("PR-"));
   assert.deepEqual(afterPR.allowed.map(c => String.fromCharCode(c)), ["2"]);
   /* after "H-1" only "0", and completing it is accepting */
@@ -57,7 +56,7 @@ test("maskPlan is a prefix automaton: recombinations of admissible values are un
 
 test("BPE EDGE: the trie is over each full string's actual encoding, so merges across visual boundaries are handled", () => {
   /* A BPE tokenizer merges greedily, so two values that diverge mid-token
-     produce entirely different id sequences — H-10 and W-10 share the visual
+     produce entirely different id sequences, H-10 and W-10 share the visual
      suffix "-10" but need not share its tokens with anything else. The trie
      must be built from encode(fullString), never from per-segment encoding. */
   const enc = {
@@ -79,8 +78,8 @@ test("BPE EDGE: the trie is over each full string's actual encoding, so merges a
   assert.equal(Bridge.maskNext(auto, [10, 21]), null, "cross-value recombination is dead at the automaton");
 });
 
-/* R4 — digests */
-test("manifest digests are SHA-256 over canonical JSON — key order does not change the digest", () => {
+/* R4, digests */
+test("manifest digests are SHA-256 over canonical JSON, key order does not change the digest", () => {
   const b = mk();
   const d1 = b.gamma({ A: 1, B: 2 }, [FORM_SLOT]).manifest.scopeDigest;
   const d2 = b.gamma({ B: 2, A: 1 }, [FORM_SLOT]).manifest.scopeDigest;
@@ -88,7 +87,7 @@ test("manifest digests are SHA-256 over canonical JSON — key order does not ch
   assert.match(d1, /^[0-9a-f]{64}$/, "SHA-256, not a 64-bit toy hash");
 });
 
-/* ================= α — projection ================= */
+/* ================= α, projection ================= */
 test("an admissible value passes through exactly", () => {
   const b = mk(), env = b.gamma({}, [FORM_SLOT]);
   const r = b.alpha({ form: "PR-202" }, env, {});
@@ -111,7 +110,7 @@ test("lattice: a specialisation of an admissible value is accepted and recorded"
   assert.equal(r.projections[0].coveredBy, "US-TX");
 });
 
-test("lattice: a GENERALISATION is refused — broader than allowed is the move governance exists to stop", () => {
+test("lattice: a GENERALISATION is refused, broader than allowed is the move governance exists to stop", () => {
   const b = mk(), env = b.gamma({}, [{ name: "jurisdiction", kind: "code", dimension: "Jurisdiction", admissible: ["TX-RRC"] }]);
   const r = b.alpha({ jurisdiction: "US-TX" }, env, {});
   assert.equal(r.slots.jurisdiction, undefined);
@@ -119,7 +118,7 @@ test("lattice: a GENERALISATION is refused — broader than allowed is the move 
   assert.equal(r.unmapped[0].wouldBroaden, "TX-RRC");
 });
 
-/* R3 — fuzzy discipline */
+/* R3, fuzzy discipline */
 test("fuzzy normalisation repairs an enum and records the repair", () => {
   const b = mk({ strictness: "fuzzy" });
   const env = b.gamma({}, [{ name: "dx", kind: "enum", admissible: ["asbestosis", "silicosis"] }]);
@@ -132,12 +131,12 @@ test("fuzzy edit distance refuses ties rather than resolving them by array order
   const b = mk({ strictness: "fuzzy" });
   const env = b.gamma({}, [{ name: "code", kind: "enum", admissible: ["H-10", "W-10"] }]);
   const r = b.alpha({ code: "X-10" }, env, {});
-  assert.equal(r.slots.code, undefined, "X-10 is distance 1 from both — a silent pick is a wrong pick half the time");
+  assert.equal(r.slots.code, undefined, "X-10 is distance 1 from both, a silent pick is a wrong pick half the time");
   assert.equal(r.unmapped[0].reason, "ambiguous");
   assert.deepEqual(r.unmapped[0].candidates.sort(), ["H-10", "W-10"]);
 });
 
-test("fuzzy edit distance NEVER applies to codes — a one-edit repair is a different instrument", () => {
+test("fuzzy edit distance NEVER applies to codes, a one-edit repair is a different instrument", () => {
   const b = mk({ strictness: "fuzzy" });
   const env = b.gamma({}, [{ name: "jur", kind: "code", dimension: "Jurisdiction", admissible: ["US-TX"] }]);
   const r = b.alpha({ jur: "US-TN" }, env, {});
@@ -152,7 +151,7 @@ test("abstention is honoured rather than coerced into a value", () => {
   assert.deepEqual(r.abstained, [{ slot: "form" }]);
 });
 
-/* ================= α — the numbers rule ================= */
+/* ================= α, the numbers rule ================= */
 const DOC = "Provider 14 statement.\nTotal charges: $1,247,893.00 for the period.\nDate of service: 2019-04-11.";
 const source = id => (id === "USSH004120" ? DOC : null);
 const MANIFEST = { USSH004120: sha256(DOC) };
@@ -170,8 +169,8 @@ test("THE NUMBERS RULE: the quantity is read from source in integer minor units"
   assert.equal(r.slots.total.evidence.docSha256, MANIFEST.USSH004120, "the citation pins the document digest");
 });
 
-/* R7 — schema enforced locally */
-test("a span carrying extra properties violates the schema and is refused — the model's transcription never enters", () => {
+/* R7, schema enforced locally */
+test("a span carrying extra properties violates the schema and is refused, the model's transcription never enters", () => {
   const b = mk(), env = b.gamma({}, [AMOUNT_SLOT]);
   const r = b.alpha({ total: { file: "USSH004120", charOffset: OFFSET, length: 13, value: 999 } }, env,
     { source, manifest: MANIFEST, confidences: { total: 0.9 } });
@@ -195,7 +194,7 @@ test("a file outside the corpus manifest is refused; a digest mismatch is refuse
   assert.match(r2.unmapped[0].reason, /digest mismatch/);
 });
 
-test("a span that does not parse is unmapped — no repair, no guess", () => {
+test("a span that does not parse is unmapped, no repair, no guess", () => {
   const b = mk(), env = b.gamma({}, [AMOUNT_SLOT]);
   const r = b.alpha({ total: { file: "USSH004120", charOffset: 0, length: 8 } }, env,
     { source, manifest: MANIFEST, confidences: { total: 0.9 } });
@@ -226,7 +225,7 @@ test("currency beyond the safe-integer range degrades to a decimal string, never
   assert.equal(big, "9223372036854775808");
 });
 
-/* R2 — provenance vs selection */
+/* R2, provenance vs selection */
 test("GATING: a span value is deterministic ONLY when the location band is admissible", () => {
   const b = mk(), env = b.gamma({}, [AMOUNT_SLOT]);
   const lift = conf => b.alpha({ total: { file: "USSH004120", charOffset: OFFSET, length: 13 } }, env,
@@ -240,7 +239,7 @@ test("GATING: a span value is deterministic ONLY when the location band is admis
   assert.equal(mid.locationClassBand, "proposed");
 
   const low = lift(0.2);
-  assert.equal(low.slots.total, undefined, "held means held — the value is dropped, not promoted");
+  assert.equal(low.slots.total, undefined, "held means held, the value is dropped, not promoted");
   assert.match(low.unmapped[0].reason, /below the proposed floor/);
 
   const unstated = lift(undefined).slots.total;
@@ -266,19 +265,19 @@ test("SOUNDNESS on set slots, including the lattice path and near-miss codes", (
   for (const strictness of ["exact", "lattice", "fuzzy"]) {
     const b = mk({ strictness });
     for (let i = 0; i < 300; i++) {
-      /* form slot — flat set */
+      /* form slot, flat set */
       const formAdm = ["PR-202", "H-10", "W-10"].slice(0, 1 + (i % 3));
       const r1 = b.roundTripSound([{ name: "form", kind: "code", admissible: formAdm }],
         { form: formPool[Math.floor(Math.random() * formPool.length)] });
       if (!r1.sound) escapes++;
       if (r1.lifted?.slots.form) accepted++;
 
-      /* jurisdiction slot — a real lattice, so specialised/generalisation-refused are reachable */
+      /* jurisdiction slot, a real lattice, so specialised/generalisation-refused are reachable */
       const jurAdm = i % 2 ? ["US-TX"] : ["TX-RRC"];
       const r2 = b.roundTripSound(
         [{ name: "jur", kind: "code", dimension: "Jurisdiction", admissible: jurAdm }],
         { jur: jurPool[Math.floor(Math.random() * jurPool.length)] });
-      /* lattice specialisation admits values BELOW an admissible one — that is inside
+      /* lattice specialisation admits values BELOW an admissible one, that is inside
          the governed region by construction, so widen the membership test accordingly */
       if (r2.lifted?.slots.jur) {
         accepted++;

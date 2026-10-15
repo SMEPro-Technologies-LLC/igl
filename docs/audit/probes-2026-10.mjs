@@ -1,6 +1,6 @@
 import { MemoryJournal, FileJournal } from "../../src/store.js";
 import { IOSRuntime } from "../../src/runtime.js";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, readFileSync } from "node:fs";
 
 const out = {};
 // P1: context reuse mutates a journaled trace and breaks chain verification
@@ -15,7 +15,7 @@ const out = {};
   const after = j.verify();
   out.P1_reuse_breaks_chain = { before: before.ok, after: after.ok, reason: after.reason || null, reuseCountNow: j.entries("trace")[0].body.reuseCount };
 }
-// P2: Traces=None → n=0 → slice(-0) returns the whole pool
+// P2: Traces=None to n=0 to slice(-0) returns the whole pool
 {
   const ios = new IOSRuntime({});
   for (let i = 0; i < 3; i++) ios.write({ id: "t" + i, intent: "X", identity: { actor: "A" }, boundary: {}, attestation: "deterministic", statementKey: "s" + i, outputs: {} });

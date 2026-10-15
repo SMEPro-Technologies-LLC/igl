@@ -1,4 +1,4 @@
-/* Governed decoding — FUSE inside the active decode loop, per token.
+/* Governed decoding, FUSE inside the active decode loop, per token.
 
    The rest of the runtime governs a distribution that arrives through a seam.
    This module closes that gap: it runs the token-by-token decode loop itself
@@ -18,7 +18,7 @@
 
    z′ = z + ln(wᵢ): multiplicative governance at the probability level is
    additive governance at the logit level. Prohibited tokens carry weight 0,
-   which is -Infinity in log space — they are unreachable, not discouraged. */
+   which is -Infinity in log space, they are unreachable, not discouraged. */
 
 import { sha256, canonical } from "./sign.js";
 

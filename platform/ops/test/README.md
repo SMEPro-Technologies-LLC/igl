@@ -1,0 +1,1 @@
+`npm test` runs `scripts/test.mjs`: it boots the Worker locally with `OPS_DEV=1`, applies the intake and API schemas to local D1 copies, and checks that the page renders, the overview answers, unconfigured sources say so, and inquiry updates are validated.

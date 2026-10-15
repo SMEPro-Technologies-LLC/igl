@@ -1,0 +1,7 @@
+# Review ownership. Two approvals are required for the paths below (branch protection).
+*                     @SMEPro-Technologies-LLC/maintainers
+/src/                 @SMEPro-Technologies-LLC/maintainers
+/spec/                @SMEPro-Technologies-LLC/maintainers
+/docs/SPEC.md         @SMEPro-Technologies-LLC/maintainers
+/.github/             @SMEPro-Technologies-LLC/maintainers
+/SECURITY.md          @SMEPro-Technologies-LLC/maintainers

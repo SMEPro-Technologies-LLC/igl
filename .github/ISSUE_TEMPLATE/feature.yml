@@ -1,0 +1,24 @@
+name: Feature request
+description: A change that does not alter language semantics, the trace schema or the contract (those need an IEP)
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today, and who else is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This does not change language syntax or semantics, the journal/trace schema, provenance rules, or spec/openapi.yaml (otherwise file an IEP)
+          required: true

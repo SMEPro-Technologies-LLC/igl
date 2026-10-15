@@ -1,0 +1,105 @@
+/* IGL Governed Identity Platform API. Cloudflare Worker, D1, no framework.
+
+   Host and path layout (wrangler.toml routes):
+     api.id-me.ai/v1/*        production, contract operations
+     sandbox.id-me.ai/v1/*    sandbox, same code, separate database, igl_test_ keys
+     auth.id-me.ai/oauth2/*   the token endpoint (also served under /v1 on either host)
+   Everything the contract lists is in routes.generated.js; handlers.js has
+   one handler per operationId; admin.js has the surfaces outside the
+   contract (token endpoint, JWKS, sandbox signup, administration). */
+
+import { ROUTES } from "./routes.generated.js";
+import { handlers } from "./handlers.js";
+import { adminFetch } from "./admin.js";
+import { authenticate, rateLimit } from "./lib/auth.js";
+import { ApiError, E, problem, json, readJson, requestHash, uuid, nowIso } from "./lib/http.js";
+import { loadSigner } from "./lib/crypto.js";
+
+const ORDERED = [...ROUTES].sort((a, b) => (a.path.includes("{") ? 1 : 0) - (b.path.includes("{") ? 1 : 0));
+const CORS_HEADERS = { "access-control-allow-methods": "GET,POST,PATCH,OPTIONS", "access-control-allow-headers": "authorization,content-type,x-igl-tenant-id,x-igl-api-key,x-request-id,idempotency-key", "access-control-max-age": "600" };
+let signerPromise = null;
+
+function corsFor(request, env) {
+  const origin = request.headers.get("origin");
+  const allowed = (env.ALLOWED_ORIGINS || "https://id-me.ai,https://www.id-me.ai").split(",").map((s) => s.trim());
+  if (!origin || !allowed.includes(origin)) return {};
+  return { "access-control-allow-origin": origin, vary: "Origin", ...CORS_HEADERS };
+}
+
+function match(method, pathname) {
+  // strip the /v1 prefix; the contract's servers end in /v1
+  const path = pathname.replace(/^\/v1(?=\/|$)/, "") || "/";
+  for (const r of ORDERED) {
+    if (r.method !== method) continue;
+    const m = r.pattern.exec(path);
+    if (m) return { route: r, params: m.groups || {} };
+  }
+  // method mismatch on a known path
+  const known = ORDERED.filter((r) => r.pattern.test(path));
+  if (known.length) throw new ApiError(405, "Method not allowed", `Use ${[...new Set(known.map((r) => r.method))].join(", ")}.`, { headers: { allow: [...new Set(known.map((r) => r.method))].join(", ") } });
+  return null;
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    const requestId = request.headers.get("x-request-id")?.slice(0, 128) || uuid();
+    const url = new URL(request.url);
+    const cors = corsFor(request, env);
+    const withCommon = (res) => { const h = new Headers(res.headers); h.set("x-request-id", requestId); h.set("x-content-type-options", "nosniff"); h.set("strict-transport-security", "max-age=31536000; includeSubDomains"); for (const [k, v] of Object.entries(cors)) h.set(k, v); return new Response(res.body, { status: res.status, headers: h }); };
+    if (request.method === "OPTIONS") return withCommon(new Response(null, { status: 204 }));
+    const db = env.DB;
+    try {
+      if (!db) throw new Error("D1 binding DB is missing");
+      signerPromise = signerPromise || loadSigner(env, db);
+      const signer = await signerPromise;
+
+      const admin = await adminFetch({ request, env, ctx, db, url, signer, requestId });
+      if (admin) return withCommon(admin);
+
+      const matched = match(request.method, url.pathname);
+      if (!matched) throw E.notFound("No such operation. The contract is at https://id-me.ai/#docs.");
+      const { route, params } = matched;
+
+      let principal = null;
+      if (!route.public) {
+        principal = await authenticate({ request, env, db, signer, route, url });
+        await rateLimit(db, env, "key:" + principal.keyId, request.method === "GET" ? 1 : 5);
+      }
+
+      // Idempotency-Key on mutations: same key + same body replays the stored response; different body is a conflict.
+      let body = null, rawBody = null, idemKey = null;
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        rawBody = await request.text();
+        body = rawBody.trim() ? parseBody(rawBody, request) : {};
+        if (route.idempotent && principal) {
+          idemKey = request.headers.get("idempotency-key");
+          if (idemKey) {
+            if (idemKey.length > 255) throw E.badRequest("Idempotency-Key is too long.");
+            const prev = await db.prepare("SELECT * FROM idempotency WHERE tenant_id = ?1 AND key = ?2").bind(principal.tenantId, idemKey).first();
+            if (prev) {
+              if (prev.request_hash !== requestHash(request.method, url.pathname, rawBody)) throw E.conflict("Idempotency-Key was already used with a different request.", { code: "idempotency_mismatch" });
+              return withCommon(new Response(prev.body, { status: prev.status, headers: { "content-type": "application/json", "idempotent-replayed": "true" } }));
+            }
+          }
+        }
+      }
+
+      const handler = handlers[route.operationId];
+      if (!handler) throw new ApiError(501, "Not implemented", `${route.operationId} is in the contract but not served by this deployment.`);
+      const result = await handler({ request, env, ctx, db, url, params, principal, body, requestId, signer, route });
+      const res = json(result.body, result.status, result.headers || {});
+      if (idemKey && result.status < 500) ctx.waitUntil(db.prepare("INSERT OR IGNORE INTO idempotency (tenant_id, key, method, path, request_hash, status, body, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)").bind(principal.tenantId, idemKey, request.method, url.pathname, requestHash(request.method, url.pathname, rawBody), result.status, JSON.stringify(result.body), nowIso()).run());
+      return withCommon(res);
+    } catch (err) {
+      if (!(err instanceof ApiError)) console.error("unhandled", requestId, err?.stack || err);
+      return withCommon(problem(err instanceof ApiError ? err : { status: 500 }, requestId, url.pathname));
+    }
+  },
+};
+
+function parseBody(raw, request) {
+  const ct = request.headers.get("content-type") || "";
+  if (raw.length > 1_000_000) throw new ApiError(413, "Payload too large", "Body exceeds 1 MB.");
+  if (!/application\/json/i.test(ct)) throw E.badRequest("Content-Type must be application/json.");
+  try { return JSON.parse(raw); } catch { throw E.badRequest("Body is not valid JSON."); }
+}

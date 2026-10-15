@@ -11,13 +11,33 @@ permissions:
 
 jobs:
   test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Test suite (bridge, decode, extract, graph, igl, sign, store)
+        run: npm test
+      - name: Audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
+  contract:
+    name: Platform contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
-      - name: Test suite (112 tests — bridge, extract, graph, igl, sign, store)
-        run: npm test
+      - name: Lint spec/openapi.yaml
+        run: npx --yes @redocly/cli@1 lint spec/openapi.yaml --format=github-actions
+      - name: Service OpenAPI is valid JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('provision/openapi.json','utf8'))"

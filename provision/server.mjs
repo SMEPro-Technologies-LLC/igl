@@ -1,16 +1,16 @@
-/* HTTP surface for the provisioning service. Node stdlib only — no deps.
+/* HTTP surface for the provisioning service. Node stdlib only, no deps.
 
-     POST /api/provision        { description, kind?, auto?, owner? } → governed run, stored under the caller's principal
-     GET  /api/graphs           → graphs the caller may read, newest first
-     GET  /api/graphs/:id       → one graph by id, if the caller may read it
-     GET  /api/whoami           → the caller's own graph (seed on first contact, replay after)
-     GET  /api/health           → model warm status (public)
-     GET  /  or  /studio        → IGL Studio, a static UI shell (public; every API call it makes is gated)
-     POST /mcp                  → Model Context Protocol endpoint
+     POST /api/provision        { description, kind?, auto?, owner? } to governed run, stored under the caller's principal
+     GET  /api/graphs to graphs the caller may read, newest first
+     GET  /api/graphs/:id to one graph by id, if the caller may read it
+     GET  /api/whoami to the caller's own graph (seed on first contact, replay after)
+     GET  /api/health to model warm status (public)
+     GET  /  or  /studio to IGL Studio, a static UI shell (public; every API call it makes is gated)
+     POST /mcp to Model Context Protocol endpoint
 
    Security posture (F-01):
      · binds 127.0.0.1 unless PROVISION_PUBLIC=1, which also REQUIRES
-       PROVISION_API_KEY — the process refuses to start otherwise
+       PROVISION_API_KEY, the process refuses to start otherwise
      · credentials in headers only (Authorization: Bearer / X-IGL-Caller-Key);
        a key in the query string is ignored
      · per-principal rate limit and a concurrency cap on inference
@@ -20,7 +20,7 @@ import http from "node:http";
 import { warmRuntime, provisionIdentity, listProvisioned, getProvisioned, whoAmI } from "./service.mjs";
 import { handleMcp } from "./mcp.mjs";
 import { readFile } from "node:fs/promises";
-import { makeGate, listenConfig, RateLimiter, Semaphore, allowedOrigins, corsHeaders as cors } from "./auth.mjs";
+import { makeGate, listenConfig, RateLimiter, Semaphore, allowedOrigins, corsHeaders as cors, clientError } from "./auth.mjs";
 /* Real caller registry is gitignored (identities.mjs); the example ships in
    the repo so the service boots out of the box. */
 const { resolveCaller } = await import("./identities.mjs").catch(() => import("./identities.example.mjs"));
@@ -69,7 +69,7 @@ export const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/health")
       return send(req, res, 200, { ok: true, model: "Xenova/distilgpt2", public: cfg.isPublic });
     if (req.method === "GET" && url.pathname === "/api/whoami") {
-      if (!auth.caller) return send(req, res, 401, { error: "unrecognized caller — present a registered identity key" });
+      if (!auth.caller) return send(req, res, 401, { error: "unrecognized caller, present a registered identity key" });
       return send(req, res, 200, await withInference(() => whoAmI(auth.caller, ownerFor(auth))));
     }
     if (url.pathname === "/mcp") {
@@ -92,14 +92,15 @@ export const server = http.createServer(async (req, res) => {
     }
     send(req, res, 404, { error: "unknown route" });
   } catch (err) {
-    send(req, res, err?.status || 500, { error: String(err?.message ?? err) });
+    const e = clientError(err);
+    send(req, res, e.status, e.code ? { error: e.message, code: e.code } : { error: e.message });
   }
 });
 
 if (process.env.PROVISION_NO_LISTEN !== "1") {
   await warmRuntime();
   server.listen(cfg.port, cfg.host, () => {
-    console.log(`[provision] Identity Graph provisioning service on http://${cfg.host}:${cfg.port}${cfg.isPublic ? "" : " (loopback only — set PROVISION_PUBLIC=1 and PROVISION_API_KEY to expose)"}`);
-    console.log(`[provision] auth: ${cfg.apiKey ? "service key + registered callers" : "none configured — local operator only"}; credentials in headers only`);
+    console.log(`[provision] Identity Graph provisioning service on http://${cfg.host}:${cfg.port}${cfg.isPublic ? "" : " (loopback only, set PROVISION_PUBLIC=1 and PROVISION_API_KEY to expose)"}`);
+    console.log(`[provision] auth: ${cfg.apiKey ? "service key + registered callers" : "none configured, local operator only"}; credentials in headers only`);
   });
 }

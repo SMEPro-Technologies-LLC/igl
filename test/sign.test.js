@@ -23,11 +23,11 @@ test("a trace receipt verifies from the receipt and public key alone", () => {
   assert.equal(v.pinned, false, "without a graph the result is explicit about being unpinned");
 });
 
-test("an undated trace is refused at signing — the fallback the signer could control is unreachable", () => {
+test("an undated trace is refused at signing, the fallback the signer could control is unreachable", () => {
   assert.throws(() => Signer.generate("x").receiptForTrace({ id: "TRC-000001" }), /refusing to sign an undated trace/);
 });
 
-test("R1: swapping the signer NAME breaks the signature — the name is authenticated, not metadata", () => {
+test("R1: swapping the signer NAME breaks the signature, the name is authenticated, not metadata", () => {
   const s = Signer.generate("mallory");
   const trace = dated({ intent: "Compile_Findings" });
   trace.receipt = s.receiptForTrace(trace);
@@ -68,7 +68,7 @@ test("PIN needs a trace timestamp: an undated trace cannot be pinned even if a r
 });
 
 /* ---------------- registry pinning (R2) ---------------- */
-test("R2: a key-swap forgery FAILS registry-backed verification — attribution is now checked, not aspirational", () => {
+test("R2: a key-swap forgery FAILS registry-backed verification, attribution is now checked, not aspirational", () => {
   const graph = new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS });
   const real = Signer.generate("tbradley");
   const forger = Signer.generate("mallory");
@@ -83,8 +83,7 @@ test("R2: a key-swap forgery FAILS registry-backed verification — attribution 
   const forged = { ...trace };
   forged.receipt = forger.receiptForTrace(forged);
   forged.receipt = { ...forged.receipt, signer: "tbradley" };
-  /* name is inside the envelope, so this alone already fails; forge it properly —
-     the forger signs the COMPLETE envelope (runtime attestation included) under
+  /* name is inside the envelope, so this alone already fails; forge it properly, the forger signs the COMPLETE envelope (runtime attestation included) under
      their own key while claiming tbradley's name: */
   const envelope = { traceDigest: forged.receipt.traceDigest, signer: "tbradley", alg: "Ed25519", at: forged.receipt.at, runtime: forged.receipt.runtime };
   forged.receipt.signature = forger._sign(DOMAIN_TRACE, envelope);
@@ -139,7 +138,7 @@ test("COMPROMISE is retroactive: a signature made BEFORE discovery but after eff
 
   graph.revokeKey("tbradley", key.pub(), { by: "security", at: tDiscovered, reason: "compromised", effectiveFrom: tCompromiseFrom });
   const v = Signer.verifyTraceReceipt(trace, { graph });
-  assert.equal(v.ok, false, "the same signature is now suspect — compromise reaches backward");
+  assert.equal(v.ok, false, "the same signature is now suspect, compromise reaches backward");
   assert.match(v.reason, /key compromised/);
 });
 
@@ -242,7 +241,7 @@ test("KEYED ATTESTATION: a key the runtime holds yields a service-class trace (F
 
 test("R3 FAIL-CLOSED CLASS: an unkeyed attestation commits the statement but is CLASSED ai, not human", async () => {
   const { results } = await mkInterp({}).run(FILING);
-  assert.equal(results[0].status, "committed", "execution proceeds — the class is what refuses to lie");
+  assert.equal(results[0].status, "committed", "execution proceeds, the class is what refuses to lie");
   const t = results[0].trace;
   assert.equal(t.attestation, "ai", "human class is not mintable by omitting the registry");
   const att = t.assertions.find(a => a.assertion === "attestation");
@@ -258,7 +257,7 @@ test("FORGERY CLOSED at attest: with a registry configured, an unregistered sign
   assert.equal(results[0].error.code, "IGL_UNKNOWN_SIGNER");
 });
 
-test("an unkeyed-attested trace folds into the graph as ai-class — it cannot anchor the observation layer either", async () => {
+test("an unkeyed-attested trace folds into the graph as ai-class, it cannot anchor the observation layer either", async () => {
   const it = mkInterp({});
   await it.run(FILING);
   const fp = it.identity.footprint("Allco");

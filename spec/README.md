@@ -9,15 +9,15 @@
 | Auth | OAuth 2.0 (client credentials, authorization code) with scopes `igl.read`, `igl.write`, `igl.execute`, `igl.admin`; `X-IGL-API-Key` where listed |
 | Tenancy | `X-IGL-Tenant-Id` on every governed call |
 | Errors | `application/problem+json` (RFC 9457) |
-| Validation | `npx --yes @redocly/cli@1 lint spec/openapi.yaml` — enforced in CI |
+| Validation | `npx --yes @redocly/cli@1 lint spec/openapi.yaml`, enforced in CI |
 
 ## Services
 
-`/identities` · `/purposes` · `/authority` · `/knowledge` · `/policies` · `/evidence` · `/outcomes` · `/graph` · `/query` `/research` `/crosswalk` `/investigate` · `/agents` · `/workflows` · `/runs` · `/audit` · `/health` `/capabilities`
+`/identities`, `/purposes`, `/authority`, `/knowledge`, `/policies`, `/evidence`, `/outcomes`, `/graph`, `/query`, `/research`, `/crosswalk`, `/investigate`, `/agents`, `/workflows`, `/runs`, `/audit`, `/health`, `/capabilities`
 
 ## What changed in 0.2.0
 
-Purpose-bounded projections, so applications and model callers share one governance model: purpose profiles, `GET /identities/me`, `GET /identities/{id}/projection` with node budget and a per-node gate explanation, obligations with `attested | proposed` status, read-only consent records, and `POST /audit/interactions`. The 34 paths of 0.1.0 are unchanged. The 0.1.0 file is kept as `openapi-v0.1.yaml` for diffing.
+Purpose-bounded projections, so that applications and model callers share one governance model: purpose profiles, `GET /identities/me`, `GET /identities/{id}/projection` with node budget and a per-node gate explanation, obligations with `attested | proposed` status, read-only consent records, and `POST /audit/interactions`. The 34 paths of 0.1.0 are unchanged. The 0.1.0 file is kept as `openapi-v0.1.yaml` for diffing.
 
 ## Versioning
 

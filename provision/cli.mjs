@@ -1,4 +1,4 @@
-/* CLI for the provisioning service — proof path without HTTP.
+/* CLI for the provisioning service, proof path without HTTP.
 
      node provision/cli.mjs "Example Energy is a Texas oil and gas operator"
      node provision/cli.mjs --kind FOOTPRINT "Jane Doe is a DFIR coordinator"
@@ -29,7 +29,7 @@ console.log(`[provision] journal: ${runtime.journal.length} entries ok=${runtime
 console.log(`[provision] footprint digest: ${runtime.footprintDigest.slice(0, 16)}…`);
 console.log(`[provision] program: ${runtime.programPath}`);
 for (const r of runtime.results) {
-  console.log(`  ${r.traceId ?? "-"} ${r.status} ${r.intent ?? r.error?.code ?? ""}${r.error ? " — " + r.error.message : ""}`);
-  for (const p of r.projections) console.log(`      ${p.slot}: emitted="${p.emitted}" → value=${p.value} (${p.how})`);
+  console.log(`  ${r.traceId ?? "-"} ${r.status} ${r.intent ?? r.error?.code ?? ""}${r.error ? ", " + r.error.message : ""}`);
+  for (const p of r.projections) console.log(`      ${p.slot}: emitted="${p.emitted}" to value=${p.value} (${p.how})`);
 }
 console.log(`[provision] receipt: ${JSON.stringify(runtime.receiptVerification)}`);

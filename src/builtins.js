@@ -53,7 +53,7 @@ export const BUILTINS = {
     optl("Against", "list"),
   ], { deterministic: false, produces: "inference", requiresModel: true }),
 
-  /* Governed extraction. Runs through the UDM↔AI bridge: the admissible set
+  /* Governed extraction. Runs through the UDMandAI bridge: the admissible set
      constrains generation, the output is projected back onto it, and any
      quantity is read from source rather than generated. This is the only
      call that may put a number into an output. */
@@ -83,7 +83,7 @@ export const BUILTINS = {
   ], { deterministic: true, produces: "staged" }),
 };
 
-/* Slot registry — the governed surface AI.Extract may fill.
+/* Slot registry, the governed surface AI.Extract may fill.
    `admissible` may be a literal set or a resolver over the live boundary, so a
    scope-dependent set (which forms exist at this agency, this period) is
    computed by UDM rather than hardcoded. `kind: "span"` means the value is

@@ -1,0 +1,14 @@
+{
+  "name": "igl-platform-ops",
+  "version": "1.4.0",
+  "private": true,
+  "description": "IGL operator console at ops.id-me.ai: site traffic, GitHub, signups, intake, service health and mentions, behind Cloudflare Access",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8805 --local --var OPS_DEV:1",
+    "test": "node scripts/test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}
