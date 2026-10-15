@@ -12,8 +12,10 @@ import html, json, re, sys
 import yaml
 
 spec_path, impl_path, site_path = sys.argv[1:4]
-spec = yaml.safe_load(open(spec_path, encoding="utf-8"))
-impl = json.load(open(impl_path, encoding="utf-8"))
+with open(spec_path, encoding="utf-8") as f:
+    spec = yaml.safe_load(f)
+with open(impl_path, encoding="utf-8") as f:
+    impl = json.load(f)
 LIVE = set(impl.get("live", []))
 SANDBOX = set(impl.get("sandbox", []))
 DEPLOYED = bool(impl.get("deployed"))
@@ -146,7 +148,8 @@ d_schemas = (f'<section id="d-schemas"><h3>Schemas ({n_schemas})</h3><p>Required
              + "\n".join(sch_blocks) + '\n</div></section>\n')
 
 # ---- splice into the site
-site = open(site_path, encoding="utf-8").read()
+with open(site_path, encoding="utf-8") as f:
+    site = f.read()
 def replace_section(site, sid, new):
     start = site.index(f'<section id="{sid}">')
     end = site.index("</section>", start) + len("</section>")
@@ -155,5 +158,6 @@ def replace_section(site, sid, new):
     return site[:start] + new + site[end:]
 for sid, new in (("d-rest", d_rest), ("d-ops", d_ops), ("d-hooks", d_hooks), ("d-examples", d_examples), ("d-schemas", d_schemas)):
     site = replace_section(site, sid, new)
-open(site_path, "w", encoding="utf-8", newline="\n").write(site)
+with open(site_path, "w", encoding="utf-8", newline="\n") as f:
+    f.write(site)
 print(f"paths={n_paths} ops={n_ops} schemas={n_schemas} hooks={n_hooks} live={n_live} sandbox={n_sandbox} examples={len(ex_blocks)}")
