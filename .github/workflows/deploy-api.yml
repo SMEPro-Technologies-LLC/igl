@@ -17,11 +17,13 @@ on:
     branches: [main]
     paths:
       - "platform/api/**"
+      - "!platform/api/implemented.json"
       - "spec/openapi.yaml"
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: deploy-api
@@ -122,9 +124,13 @@ jobs:
           EOF
           pip install --quiet pyyaml
           python3 platform/site/gen_reference.py spec/openapi.yaml platform/api/implemented.json platform/site/index.html
-      - name: Commit if changed
+      - name: Commit if changed, then redeploy the site so the reference shows what is served
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "igl-deploy[bot]"; git config user.email "deploy@id-me.ai"
           git add platform/api/implemented.json platform/site/index.html
-          git diff --cached --quiet || git commit -m "deploy: record served operations for the site reference"
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit -m "deploy: record served operations for the site reference"
           git push
+          gh workflow run deploy-site.yml --ref main
