@@ -1,6 +1,6 @@
 import { MemoryJournal, FileJournal } from "../../src/store.js";
 import { IOSRuntime } from "../../src/runtime.js";
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 
 const out = {};
 // P1: context reuse mutates a journaled trace and breaks chain verification
