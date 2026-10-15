@@ -42,6 +42,7 @@ export function principalOf(key, identity = null) {
   return { principal: id, tenant };
 }
 
+/** @param {{ apiKey?: string | null, resolveCaller?: (key: string) => any, publicRoutes?: string[] }} [options] */
 export function makeGate({ apiKey = null, resolveCaller = () => null, publicRoutes = ["/api/health"] } = {}) {
   return function gate(req, url) {
     if (publicRoutes.includes(url.pathname)) return { ok: true, principal: null, tenant: null, admin: false, caller: null, anonymous: true };
@@ -74,7 +75,7 @@ export function listenConfig(env = process.env) {
 /* Token bucket per principal. */
 export class RateLimiter {
   constructor({ capacity = 60, refillPerSec = 1, now = () => Date.now() } = {}) {
-    Object.assign(this, { capacity, refillPerSec, now }); this.buckets = new Map();
+    this.capacity = capacity; this.refillPerSec = refillPerSec; this.now = now; this.buckets = new Map();
   }
   take(key, cost = 1) {
     const t = this.now();
@@ -87,7 +88,7 @@ export class RateLimiter {
 
 /* Concurrency cap for inference: queue beyond `max`, reject beyond `maxQueue`. */
 export class Semaphore {
-  constructor({ max = 2, maxQueue = 8 } = {}) { Object.assign(this, { max, maxQueue }); this.active = 0; this.queue = []; }
+  constructor({ max = 2, maxQueue = 8 } = {}) { this.max = max; this.maxQueue = maxQueue; this.active = 0; this.queue = []; }
   acquire() {
     if (this.active < this.max) { this.active++; return Promise.resolve(() => this._release()); }
     if (this.queue.length >= this.maxQueue) return Promise.reject(Object.assign(new Error("inference queue full"), { status: 503 }));

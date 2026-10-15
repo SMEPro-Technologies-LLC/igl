@@ -6,7 +6,6 @@
 const CF_API = "https://api.cloudflare.com/client/v4";
 const GQL = "https://api.cloudflare.com/client/v4/graphql";
 
-const dayAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 const iso = (d) => new Date(d).toISOString();
 
 async function cf(env, path, init = {}) {

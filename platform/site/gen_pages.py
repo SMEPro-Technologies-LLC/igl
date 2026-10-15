@@ -46,8 +46,6 @@ body_start = html.index("<body")
 body_open = html[body_start:html.index(">", body_start) + 1]
 header = html[html.index('<header class="nav">'):html.index("</header>") + len("</header>")]
 footer = html[html.index("<footer>"):html.index("</footer>") + len("</footer>")]
-scripts_start = html.index("</footer>") + len("</footer>")
-tail = html[scripts_start:]
 
 def view_html(view):
     m = re.search(r'<section class="view[^"]*" (?:id="[^"]*" )?data-view="%s" hidden>' % re.escape(view), html)

@@ -4,6 +4,69 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.5.0] (2026-10-15)
+
+The five runtime findings left open by the October 2026 security review are
+closed, each with a regression test. The repository now runs a linter and a
+type check on every pull request. The model the provisioning service reasons
+with is loaded at a pinned revision and its bytes are recorded.
+
+### Security
+
+- F-05: the idempotency key is a SHA-256 execution identity over the actor,
+  boundary, intent and parameters, the context selection, every compute step
+  with its bound arguments and pinned model version, the declared outputs and
+  the runtime build digest. Statements that differ in any material input are
+  different work. Only a durably committed trace can answer an idempotency
+  check. `Interpreter.statementKeys()` previews keys without running
+- F-06: journal records are frozen snapshots; runtimes work on copies. Reuse
+  of a trace as context is its own `reuse` journal event and the counter is
+  derived by replay, so the chain verifies after reuse, receipts stay valid and
+  confidence decay survives a restart
+- F-07: nothing is visible until it is durable. A failed persist leaves no
+  entry; write-behind entries stay pending until `flush()` succeeds and roll
+  back when it fails; `entries()` returns durable entries unless asked for
+  pending ones; the IOS runtime stages traces until durable; `FileJournal`
+  fsyncs every append
+- F-08: checkpoints. `journal.checkpoint()`, `verify({ checkpoint })`, a
+  `checkpoint` option on `FileJournal` and `D1Journal` that refuses a truncated
+  or rewritten history, and `Signer.verifyHeadReceipt(..., { extended: true })`
+  so a signed head receipt serves as the anchor
+- F-09: `Traces=None` returns no context. Every refusal or failure is journaled
+  as a `failure` event with privacy-safe fields before any `OnFail` handler runs
+- Model provenance: `provision/model.mjs` loads `Xenova/distilgpt2` at Hub
+  commit `a41c1048`, hashes the cached files and records `label@revision#digest`
+  as the model version in every AI assertion; `IGL_MODEL_LOCAL_ONLY=1` refuses
+  network fetches; health endpoints report the loaded revision and digest
+- `UDM.Validate` refuses a named ruleset UDM does not define
+  (`IGL_UNKNOWN_RULESET`) instead of validating everything
+
+### Added
+
+- `test/audit.test.js`: the review's probes, promoted into the suite (18 tests;
+  169 in all). `docs/audit/probes-2026-10.mjs` now prints the properties holding
+- ESLint (flat config) and `tsc --checkJs` over `src/`, `provision/`,
+  `platform/api/src` and `platform/ops/src`; `npm run lint`, `npm run typecheck`
+  and `npm run check`; both run in CI before the tests
+- README: a Start Here section that routes runtime users, application builders
+  and AI-client integrators to the right quickstart
+
+### Fixed
+
+- `provision/cli.mjs` had called `provisionIdentity` without the owner that
+  F-02 made mandatory in 1.3.0, so the documented CLI command failed; it now
+  acts as the local operator (`IGL_CLI_TENANT`, `IGL_CLI_PRINCIPAL` to change).
+  Found by the type check on its first run
+- Dead imports and variables across the runtime, the platform service and the
+  tests, found by the linter
+
+### Changed
+
+- The README status line no longer says experimental. It says what is true:
+  all nine findings of our own review are closed with tests, and an
+  independent review has not happened yet
+- Attestation notes join clauses with a semicolon instead of a middle dot
+
 ## [1.4.0] (2026-10-15)
 
 ### Added

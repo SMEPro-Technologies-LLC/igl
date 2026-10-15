@@ -5,7 +5,7 @@ import { sha256 } from "./crypto.js";
 export class ApiError extends Error {
   constructor(status, title, detail, { code = null, violations = null, headers = {} } = {}) {
     super(detail || title);
-    Object.assign(this, { status, title, detail, code, violations, headers });
+    this.status = status; this.title = title; this.detail = detail; this.code = code; this.violations = violations; this.headers = headers;
   }
 }
 

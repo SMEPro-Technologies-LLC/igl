@@ -12,7 +12,7 @@
 
    The service keeps the tokenizer/model warm across requests. */
 
-import { AutoTokenizer, AutoModelForCausalLM } from "@huggingface/transformers";
+import { loadPinnedModel, MODEL_ID } from "./model.mjs";
 import { FileJournal } from "../src/store.js";
 import { Signer as TraceSigner } from "../src/sign.js";
 import { sha256, canonical } from "../src/sign.js";
@@ -46,20 +46,24 @@ export function governanceSigner() {
 }
 export const GOVERNANCE_SIGNER_NAME = "SMEPro_Governance_Board";
 
-const MODEL_ID = "Xenova/distilgpt2";
-const MODELS = { "distilgpt2-local": { version: "Xenova/distilgpt2@onnx-q8" } };
-
+/* The model is loaded at a pinned revision and its cached bytes are hashed;
+   the version string in `models` names both (provision/model.mjs). */
 let runtime = null;
 export async function warmRuntime(log = console.log) {
   if (runtime) return runtime;
-  log(`[provision] loading ${MODEL_ID}…`);
-  const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-  const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
+  const { tokenizer, model, provenance, models } = await loadPinnedModel({ log });
   const tok = { encode: (s) => tokenizer.encode(s) };
   const governedGenerate = makeGovernedGenerate({ tokenizer, model });
-  runtime = { tokenizer, model, tok, governedGenerate, vocabSize: tokenizer.get_vocab().size };
-  log(`[provision] model ready, vocab ${runtime.vocabSize}`);
+  runtime = { tokenizer, model, tok, governedGenerate, models, provenance, vocabSize: tokenizer.get_vocab().size };
+  log(`[provision] model ready, ${MODEL_ID} ${provenance.version}, vocab ${runtime.vocabSize}`);
   return runtime;
+}
+export { MODEL_ID };
+/* What the health endpoints report: the label, the pinned revision and,
+   once loaded, the digest of the bytes. */
+export function modelInfo() {
+  return runtime ? { id: MODEL_ID, version: runtime.provenance.version, revision: runtime.provenance.revision, digest: runtime.provenance.digest, loaded: true }
+                 : { id: MODEL_ID, loaded: false };
 }
 
 /* Authority-relevant state only, weights decay with wall-clock and `last`
@@ -88,7 +92,7 @@ export async function provisionIdentity({ description = "", kind = null, auto = 
   const chainCheck = journal.verify();
   if (!chainCheck.ok) throw new Error(`journal for ${paths.id} failed chain verification, refusing to provision on top of tampered state`);
 
-  const buildArgs = { resolved, journal, seeded: boot === "seed", tok: rt.tok, models: MODELS, governedGenerate: rt.governedGenerate, signer, grantors, signerName: GOVERNANCE_SIGNER_NAME };
+  const buildArgs = { resolved, journal, seeded: boot === "seed", tok: rt.tok, models: rt.models, governedGenerate: rt.governedGenerate, signer, grantors, signerName: GOVERNANCE_SIGNER_NAME };
   const { graph, interp, program } = resolved.kind === "BOUNDARY" ? buildBoundaryGraph(buildArgs) : buildFootprintGraph(buildArgs);
 
   const programPath = paths.program;

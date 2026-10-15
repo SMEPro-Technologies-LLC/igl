@@ -60,7 +60,12 @@ export class Bridge {
   constructor({ udm = null, dimensions = {}, strictness = "lattice",
                 thresholds = { admissible: 0.75, proposed: 0.4 },
                 tokenizer = null, maxEdit = 1 } = {}) {
-    Object.assign(this, { udm, dimensions, strictness, thresholds, tokenizer, maxEdit });
+    /** @type {any} */ this.udm = udm;
+    /** @type {Record<string, any>} */ this.dimensions = dimensions;
+    /** @type {string} */ this.strictness = strictness;
+    /** @type {Record<string, number>} */ this.thresholds = thresholds;
+    /** @type {any} */ this.tokenizer = tokenizer;
+    this.maxEdit = maxEdit;
   }
 
   /* =================================================================

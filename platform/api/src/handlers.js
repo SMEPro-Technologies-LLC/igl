@@ -7,11 +7,10 @@
 import { E, validate, pageParams, cursorWhere, pageOut, parseJson, nowIso, uuid, UUID_RE } from "./lib/http.js";
 import { appendAudit, rowToEvent, storeDecision, issueReceipt } from "./lib/audit.js";
 import { evaluate, activePolicies, rowToPolicy } from "./lib/policy.js";
-import { project, rowToIdentity, rowToRelationship, rowToObligation, rowToConsent, rowToPurpose, newConsent, typeToNode } from "./lib/projection.js";
+import { project, rowToIdentity, rowToRelationship, rowToObligation, rowToConsent, rowToPurpose, newConsent } from "./lib/projection.js";
 import { runIntelligence, rowToFact, rowToEvidence } from "./lib/intelligence.js";
 import { emit } from "./lib/webhooks.js";
 import { CONTRACT_VERSION } from "./routes.generated.js";
-import { canonical, sha256 } from "./lib/crypto.js";
 
 const IDENTITY_TYPES = ["person", "organization", "system", "agent", "asset", "place", "document", "program", "course", "product", "other"];
 const SOURCE_TYPES = ["document", "database", "api", "web", "email", "transcript", "human", "system", "other"];
@@ -423,7 +422,7 @@ export const handlers = {
     return { status: 200, body: rowToAgent(row) };
   },
   async invokeAgent(h) {
-    const { db, env, ctx, principal, params, body, requestId, signer } = h;
+    const { db, ctx, principal, params, body, requestId, signer } = h;
     const row = await db.prepare("SELECT * FROM agents WHERE tenant_id = ?1 AND id = ?2").bind(principal.tenantId, params.agentId).first();
     if (!row) throw E.notFound();
     const agent = rowToAgent(row);

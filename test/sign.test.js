@@ -202,7 +202,8 @@ test("a head receipt binds the verified chain and fails once the chain advances 
 test("a signer refuses to sign a broken chain", () => {
   const j = new MemoryJournal();
   j.append("graph", { a: 1 }); j.append("graph", { a: 2 });
-  j.list[0].body.a = 99;
+  /* records are frozen, so tampering means replacing the entry, as a storage administrator would */
+  j.list[0] = { ...j.list[0], body: { a: 99 } };
   assert.throws(() => Signer.generate("x").headReceipt(j), /refusing to sign a broken chain/);
 });
 

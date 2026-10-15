@@ -58,6 +58,7 @@ export const DEFAULT_DIMENSIONS = {
 };
 
 export class GraphRuntime {
+  /** @param {{ dimensions?: Record<string, any>, roles?: Record<string, string[]>, halfLifeDays?: number, promoteAfter?: number, now?: () => string, journal?: any, grantors?: Record<string, string> | null }} [options] */
   constructor({
     dimensions = DEFAULT_DIMENSIONS,
     roles = {},                  // actor -> permitted roles
@@ -67,8 +68,13 @@ export class GraphRuntime {
     journal = null,              // hash-chained substrate; replayed on construction
     grantors = null,             // name -> public key (base64 SPKI); when set, authority events must be signed by it
   } = {}) {
-    Object.assign(this, { dimensions, roles, halfLifeDays, promoteAfter, now, journal, grantors });
-    this.events = journal ? journal.entries("graph").map(e => e.body) : [];
+    /** @type {Record<string, any>} */ this.dimensions = dimensions;
+    /** @type {Record<string, string[]>} */ this.roles = roles;
+    this.halfLifeDays = halfLifeDays; this.promoteAfter = promoteAfter; this.now = now;
+    /** @type {any} */ this.journal = journal;
+    /** @type {Record<string, string> | null} */ this.grantors = grantors;
+    /* working copies: the journal's records are frozen snapshots */
+    this.events = journal ? journal.entries("graph").map(e => structuredClone(e.body)) : [];
     this._cache = null;          // projection of the whole log
     /* F-03: a replayed chain proves the events were not altered since they
        were written. It does not prove they were authorised when written.
@@ -116,6 +122,7 @@ export class GraphRuntime {
   }
 
   /* Prescriptive. The only path that can widen authority. */
+  /** @param {string} actor @param {Record<string, any>} dims @param {{ by?: string, role?: string | null, at?: string | null, note?: string | null, signature?: string | null }} [opts] */
   grant(actor, dims, { by, role = null, at = null, note = null, signature = null } = {}) {
     if (!by) throw new IGLError("a grant must name its grantor", { phase: "identity", code: "IGL_UNSIGNED_GRANT" });
     return this._append({ kind: "grant", actor, dims, role, by, note, at, ...(signature ? { signature } : {}) });
@@ -139,6 +146,7 @@ export class GraphRuntime {
   }
 
   /* Revocation is explicit and takes effect at the next authorize(). */
+  /** @param {string} actor @param {Record<string, any>} dims @param {{ by?: string, role?: string | null, at?: string | null, signature?: string | null }} [opts] */
   revoke(actor, dims, { by, role = null, at = null, signature = null } = {}) {
     if (!by) throw new IGLError("a revocation must name its revoker", { phase: "identity", code: "IGL_UNSIGNED_REVOKE" });
     return this._append({ kind: "revoke", actor, dims, role, by, at, ...(signature ? { signature } : {}) });
@@ -155,6 +163,7 @@ export class GraphRuntime {
      is what makes receipt attribution rotation-safe, a receipt verifies
      against the key registered AT SIGNING TIME, so rotating a key does not
      invalidate the attestations it validly made. */
+  /** @param {string} actor @param {string} publicKey @param {{ by?: string, at?: string | null, signature?: string | null }} [opts] */
   bindKey(actor, publicKey, { by, at = null, signature = null } = {}) {
     if (!by) throw new IGLError("a key binding must name its grantor", { phase: "identity", code: "IGL_UNSIGNED_GRANT" });
     return this._append({ kind: "key", actor, key: publicKey, by, at, ...(signature ? { signature } : {}) });
@@ -167,6 +176,7 @@ export class GraphRuntime {
                       discovery). Signatures at or after that moment are
                       suspect and must FAIL verification, however early the
                       asOf projection would otherwise place them. */
+  /** @param {string} actor @param {string} publicKey @param {{ by?: string, at?: string | null, reason?: string, effectiveFrom?: string | null, signature?: string | null }} [opts] */
   revokeKey(actor, publicKey, { by, at = null, reason = "rotated", effectiveFrom = null, signature = null } = {}) {
     if (!by) throw new IGLError("a key revocation must name its revoker", { phase: "identity", code: "IGL_UNSIGNED_REVOKE" });
     if (reason !== "rotated" && reason !== "compromised")

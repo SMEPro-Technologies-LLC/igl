@@ -13,7 +13,7 @@ import { handlers } from "./handlers.js";
 import { adminFetch } from "./admin.js";
 import { handleMcp } from "./mcp.js";
 import { authenticate, rateLimit } from "./lib/auth.js";
-import { ApiError, E, problem, json, readJson, requestHash, uuid, nowIso } from "./lib/http.js";
+import { ApiError, E, problem, json, requestHash, uuid, nowIso } from "./lib/http.js";
 import { loadSigner } from "./lib/crypto.js";
 
 const ORDERED = [...ROUTES].sort((a, b) => (a.path.includes("{") ? 1 : 0) - (b.path.includes("{") ? 1 : 0));
@@ -113,7 +113,7 @@ export default {
 function landing(request, env) {
   const envName = env.IGL_ENV || "production";
   const base = `https://${envName === "sandbox" ? "sandbox" : "api"}.id-me.ai/v1`;
-  const info = { service: "IGL Governed Identity Platform API", environment: envName, version: env.SERVICE_VERSION || "1.4.0", baseUrl: base, operations: ROUTES.length, documentation: "https://id-me.ai/docs/", reference: "https://id-me.ai/docs/#d-rest", openapi: "https://id-me.ai/igl-openapi-v0.2.yaml", health: base + "/health", wellKnown: base.replace(/\/v1$/, "") + "/.well-known/igl.json", mcp: base + "/mcp", ...(envName === "sandbox" ? { signup: base.replace(/\/v1$/, "") + "/sandbox/signup" } : { sandbox: "https://sandbox.id-me.ai/v1" }), tagline: "Governed intelligence. Before execution." };
+  const info = { service: "IGL Governed Identity Platform API", environment: envName, version: env.SERVICE_VERSION || "1.5.0", baseUrl: base, operations: ROUTES.length, documentation: "https://id-me.ai/docs/", reference: "https://id-me.ai/docs/#d-rest", openapi: "https://id-me.ai/igl-openapi-v0.2.yaml", health: base + "/health", wellKnown: base.replace(/\/v1$/, "") + "/.well-known/igl.json", mcp: base + "/mcp", ...(envName === "sandbox" ? { signup: base.replace(/\/v1$/, "") + "/sandbox/signup" } : { sandbox: "https://sandbox.id-me.ai/v1" }), tagline: "Governed intelligence. Before execution." };
   if (!/text\/html/i.test(request.headers.get("accept") || "")) return json(info);
   const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const rows = Object.entries(info).filter(([k]) => !["service", "tagline"].includes(k)).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${/^https:/.test(String(v)) ? `<a href="${esc(v)}">${esc(v)}</a>` : esc(v)}</td></tr>`).join("");

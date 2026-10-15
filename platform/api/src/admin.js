@@ -12,7 +12,7 @@
    POST /admin/obligations       platform key or igl.admin: create or attest an obligation
    GET  /admin/implemented       what this deployment serves, for the site generator */
 
-import { E, readJson, validate, json, uuid, nowIso, UUID_RE } from "./lib/http.js";
+import { E, readJson, validate, json, uuid, nowIso } from "./lib/http.js";
 import { sha256, randomToken } from "./lib/crypto.js";
 import { mintToken, newApiKey, SCOPES, rateLimit, authenticate } from "./lib/auth.js";
 import { seedPurposes, newConsent } from "./lib/projection.js";

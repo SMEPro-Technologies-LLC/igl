@@ -118,7 +118,7 @@ test("capabilities and purposes", async () => {
 });
 
 const OPS = "11111111-1111-4111-8111-111111111111";
-let orgId, assetId, relId, factId, evidenceId, evidence2Id, policyId, outcomeId, receiptId;
+let orgId, assetId, evidenceId, evidence2Id, policyId, outcomeId, receiptId;
 test("identities: create, get, list, patch, context, validation, idempotency", async () => {
   const me = await call("GET", `/identities/${identityId}`, { expect: 200 });
   assert.equal(me.json.type, "person");
@@ -152,7 +152,7 @@ test("identities: create, get, list, patch, context, validation, idempotency", a
 test("graph: relationships, neighbors, paths; proposed relationships never project", async () => {
   await call("POST", "/graph/relationships", { body: { fromId: identityId, type: "employed_by", toId: identityId }, expect: 422 });
   const rel = await call("POST", "/graph/relationships", { body: { fromId: identityId, type: "employed_by", toId: orgId, status: "certified", confidence: 0.95 }, expect: 201 });
-  relId = rel.json.id; assert.equal(rel.json.status, "certified");
+  assert.equal(rel.json.status, "certified");
   const proposed = await call("POST", "/graph/relationships", { body: { fromId: orgId, type: "operates", toId: assetId, confidence: 0.7 }, expect: 201 });
   assert.equal(proposed.json.status, "proposed");
   const rels = await call("GET", `/identities/${identityId}/relationships`, { expect: 200 });
@@ -237,8 +237,7 @@ test("policies and authority: fail closed, deny wins, conditional carries approv
 });
 
 test("knowledge and evidence: facts, entities, corroboration, certification needs admin", async () => {
-  const fact = await call("POST", "/knowledge/facts", { body: { subjectId: assetId, predicate: "permit.number", object: "RRC-2026-0912", status: "proposed", confidence: 0.9, sources: [{ sourceId: "rrc-permit-0912", sourceType: "document", title: "RRC permit" }] }, expect: 201 });
-  factId = fact.json.id;
+  await call("POST", "/knowledge/facts", { body: { subjectId: assetId, predicate: "permit.number", object: "RRC-2026-0912", status: "proposed", confidence: 0.9, sources: [{ sourceId: "rrc-permit-0912", sourceType: "document", title: "RRC permit" }] }, expect: 201 });
   const facts = await call("GET", `/knowledge/facts?subjectId=${assetId}`, { expect: 200 });
   assert.equal(facts.json.items.length, 1);
   await call("POST", "/knowledge/facts", { body: { subjectId: "00000000-0000-0000-0000-000000000001", predicate: "x", object: 1 }, expect: 404 });
@@ -334,7 +333,7 @@ test("audit: events chain verifies, filters work, interactions are recorded into
   assert.ok(rec.json.eventHash && rec.json.recordedAt);
   await call("POST", "/audit/interactions", { body: { purpose: "nope", outcome: "completed" }, expect: 422 });
   // walk the whole chain, oldest first
-  let items = []; let cursor = null;
+  const items = []; let cursor = null;
   for (let i = 0; i < 20; i++) { const page = await call("GET", `/audit/events?limit=25${cursor ? "&cursor=" + cursor : ""}`, { expect: 200 }); items.push(...page.json.items); if (!page.json.page.hasMore) break; cursor = page.json.page.nextCursor; }
   items.reverse();
   assert.ok(items.length >= 20, "a real history");
@@ -418,7 +417,7 @@ test("keys: a key can be revoked through the API and stops working at once; boot
 });
 
 test("every operation in the contract was exercised", () => {
-  const all = []; for (const [p, item] of Object.entries(spec.paths)) for (const m of ["get", "post", "patch", "put", "delete"]) if (item[m]) all.push(item[m].operationId);
+  const all = []; for (const item of Object.values(spec.paths)) for (const m of ["get", "post", "patch", "put", "delete"]) if (item[m]) all.push(item[m].operationId);
   const missing = all.filter((id) => !covered.has(id));
   assert.deepEqual(missing, [], "uncovered operations");
 });

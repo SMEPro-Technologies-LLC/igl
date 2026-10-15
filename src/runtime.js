@@ -28,6 +28,7 @@ export class IdentityRuntime {
 
 /* ============================== UDM =============================== */
 export class UDMRuntime {
+  /** @param {{ boundaries?: Record<string, any>, forms?: Record<string, any>, constraints?: Record<string, any> }} [registries] */
   constructor({ boundaries = {}, forms = {}, constraints = {} } = {}) {
     this.boundaries = boundaries; this.forms = forms; this.constraints = constraints;
   }
@@ -58,7 +59,12 @@ export class UDMRuntime {
     return { assertion: "resolution", agency: AgencyCode, period: Period ?? null, forms: resolved, attestation: "deterministic", confidence: 1 };
   }
   Validate({ Target, Ruleset = "default" }) {
-    const rules = this.constraints[Ruleset] || [];
+    /* A named ruleset that UDM does not define is an error, not an empty
+       rule list: a misspelled ruleset must not validate everything. Only the
+       implicit "default" may be absent, and then it is empty. */
+    const known = Object.prototype.hasOwnProperty.call(this.constraints, Ruleset) && Array.isArray(this.constraints[Ruleset]);
+    if (!known && Ruleset !== "default") throw new IGLError(`ruleset ${Ruleset} is not defined in UDM`, { phase: "udm", code: "IGL_UNKNOWN_RULESET" });
+    const rules = known ? this.constraints[Ruleset] : [];
     const failures = rules.filter(r => !r.test(Target)).map(r => r.name);
     return { assertion: "validation", ruleset: Ruleset, ok: !failures.length, failures, attestation: "deterministic", confidence: 1 };
   }
@@ -86,7 +92,11 @@ export class AIRuntime {
      described call and must return { text, confidence, modelVersion }.
      `bridge` + `slots` enable governed extraction (AI.Extract). */
   constructor({ invoke = null, models = {}, bridge = null, slots = {}, source = null, manifest = null } = {}) {
-    Object.assign(this, { invoke, models, bridge, slots, source, manifest });
+    /** @type {any} */ this.invoke = invoke;
+    /** @type {Record<string, any>} */ this.models = models;
+    /** @type {any} */ this.bridge = bridge;
+    /** @type {Record<string, any>} */ this.slots = slots;
+    this.source = source; this.manifest = manifest;
   }
 
   /* Governed extraction: γ constrains the call, α lifts the result back onto
@@ -188,7 +198,15 @@ export class AIRuntime {
 export class IOSRuntime {
   constructor({ store = null, journal = null, decay = 0.75, floor = 0.4, maxDepth = 3, now = () => new Date().toISOString() } = {}) {
     this.journal = journal;    // hash-chained substrate; replayed on construction
-    this.traces = journal ? journal.entries("trace").map(e => e.body) : (store || []);
+    /* Working copies. The journal's own records are frozen snapshots; the
+       runtime reads from copies so nothing it does can alter the record. */
+    this.traces = journal ? journal.entries("trace").map(e => structuredClone(e.body)) : (store || []);
+    this.staged = [];          // written, not yet durable (write-behind backends); invisible until flush() succeeds
+    /* F-06: reuse is its own journal event, counters are derived by replay.
+       A trace record never changes after it is written, so a receipt over
+       it and the chain under it both stay valid as the trace is reused. */
+    this.reuse = new Map();    // trace id -> times inherited as context
+    if (journal) for (const e of journal.entries("reuse")) for (const id of e.body.traceIds || []) this.reuse.set(id, (this.reuse.get(id) || 0) + 1);
     this.decay = decay;        // per-reuse multiplier on ai-class confidence (CRITIQUE C1)
     this.floor = floor;        // below this an ai assertion is inadmissible as context
     this.maxDepth = maxDepth;  // ai-to-ai hops from a deterministic/human anchor
@@ -196,8 +214,15 @@ export class IOSRuntime {
   }
 
   /* Durability gate for async backends: the interpreter awaits this inside
-     two-phase commit, so a failed flush still discards staged outputs. */
-  async flush() { if (this.journal) await this.journal.flush(); }
+     two-phase commit, so a failed flush still discards staged outputs, and
+     the traces staged on this runtime become visible only now (F-07). */
+  async flush() {
+    if (!this.journal) return;
+    try { await this.journal.flush(); }
+    catch (e) { this.staged = []; throw e; }
+    this.traces.push(...this.staged);
+    this.staged = [];
+  }
 
   /* Selection is explicit and recorded, never implicit (CRITIQUE C2). */
   select(spec, { identity, boundary, intent }) {
@@ -214,24 +239,49 @@ export class IOSRuntime {
     });
     if (requireAttested) pool = pool.filter(t => t.attestation !== "ai");
     if (mode === "Attested") pool = pool.filter(t => t.attestation === "human");
-    pool = pool.slice(-Math.max(0, n));
+    /* F-09: Traces=None means none. slice(-0) is slice(0), so zero is handled explicitly. */
+    pool = n > 0 ? pool.slice(-n) : [];
     return { traces: pool, predicate: { mode, n, requireAttested, boundaryExact, maxDepth, floor: this.floor, decay: this.decay } };
   }
+
+  /* Times a trace has been inherited as context, derived from reuse events
+     (and, for a trace that was never journaled, from the count it carries). */
+  reuseCount(t) { return this.reuse.has(t.id) ? this.reuse.get(t.id) : (t.reuseCount || 0); }
 
   /* Confidence falls each time an inference is inherited rather than re-derived. */
   effectiveConfidence(t) {
     if (t.attestation !== "ai") return 1;
-    return (t.confidence ?? 0) * Math.pow(this.decay, t.reuseCount || 0);
+    return (t.confidence ?? 0) * Math.pow(this.decay, this.reuseCount(t));
   }
 
-  markReused(traces) {
-    for (const t of traces) if (t.attestation === "ai") t.reuseCount = (t.reuseCount || 0) + 1;
+  /* Record that these traces were read as context. The record is a journal
+     event of its own; the trace records are not touched (F-06). */
+  markReused(traces, { statementTraceId = null } = {}) {
+    const ids = traces.filter(t => t.attestation === "ai").map(t => t.id);
+    if (!ids.length) return null;
+    for (const id of ids) this.reuse.set(id, this.reuseCount({ id }) + 1);
+    if (this.journal) return this.journal.append("reuse", { traceIds: ids, by: statementTraceId, at: this.now() });
+    return null;
+  }
+
+  /* Journal a refusal or failure as a first-class event (F-09). Fields are
+     privacy-safe: no parameters, no outputs, no model text. */
+  recordFailure({ actor = null, intent = null, code = null, phase = null, line = null, message = null } = {}) {
+    const body = { actor, intent, code, phase, line, message: message ? String(message).slice(0, 500) : null, at: this.now() };
+    if (this.journal) return this.journal.append("failure", body);
+    return null;
   }
 
   write(trace) {
     if (!trace.id) throw new IGLError("refusing to write a trace with no id", { phase: "ios", code: "IGL_TRACE_INVALID" });
-    if (this.journal) this.journal.append("trace", trace);
-    this.traces.push(trace);
+    if (this.journal) {
+      const entry = this.journal.append("trace", trace);
+      /* F-07: a trace that is not yet durable is not yet visible, so a retry
+         cannot find it and return it as idempotent. */
+      if (this.journal.isDurable(entry)) this.traces.push(trace); else this.staged.push(trace);
+    } else {
+      this.traces.push(trace);
+    }
     return trace.id;
   }
 

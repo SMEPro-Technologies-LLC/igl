@@ -33,7 +33,7 @@ export function safeEqual(a, b) {
 }
 
 export class ServiceSigner {
-  constructor({ id, privateKey, publicKey }) { Object.assign(this, { id, privateKey, publicKey }); }
+  constructor({ id, privateKey, publicKey }) { this.id = id; this.privateKey = privateKey; this.publicKey = publicKey; }
   static generate(id) {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519");
     return new ServiceSigner({ id, privateKey, publicKey });

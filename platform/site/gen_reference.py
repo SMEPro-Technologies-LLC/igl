@@ -8,7 +8,7 @@ site with sections generated from the contract. Every operation carries a
 status taken from implemented.json ({"live": ["GET /health", ...]}), so the
 page can never claim more than the deployed service does.
 """
-import html, json, re, sys
+import html, json, sys
 import yaml
 
 spec_path, impl_path, site_path = sys.argv[1:4]
@@ -77,7 +77,6 @@ srv_rows = []
 for s in servers:
     state = "Deployed" if DEPLOYED else "Reserved"
     srv_rows.append(f'<tr><td>{E(s.get("description","").split(".")[0] or "Server")}</td><td {MONO.replace("0.8rem","0.84rem")}>{E(s["url"])}</td></tr>')
-status_para = ""
 d_rest = f'''<section id="d-rest">
   <h3>API reference <span class="tag acc" style="vertical-align:middle; margin-left:6px">OpenAPI 3.1, v{E(spec["info"]["version"])}</span></h3>
   <p><b>What changed in v0.2.</b> The MCP governance model is now in the REST contract. A new <b>Projection</b> service adds purpose profiles (<code class="i">GET /purposes</code>), caller resolution (<code class="i">GET /identities/me</code>), purpose-bounded projections with node budgets and a per-node gate explanation, obligations carrying <code class="i">attested</code> or <code class="i">proposed</code> status, read-only consent records, and interaction records (<code class="i">POST /audit/interactions</code>). Every intelligence request accepts a purpose. The 34 v0.1 paths are unchanged.</p>

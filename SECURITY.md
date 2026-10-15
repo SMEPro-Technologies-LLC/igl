@@ -33,9 +33,9 @@ Issues that break a core guarantee are **critical**:
 
 Issues in the platform contract (`spec/`) that would allow a conforming client to bypass a gate are treated as **high**. Issues in examples or docs are welcome but lower priority. The hosted platform at id-me.ai is in scope for reports; its infrastructure is out of scope for testing without written authorization.
 
-## Known open findings
+## Audit status
 
-The October 2026 audit (`docs/audit/SECURITY-AUDIT-2026-10.md`) lists nine findings. F-01 to F-04 were fixed in 1.3.0. F-05 to F-09 are still open and are documented there with the probe scripts that reproduce them. Please read that list before relying on the journal for anything beyond development.
+The October 2026 review (`docs/audit/SECURITY-AUDIT-2026-10.md`) lists nine findings. F-01 to F-04 were fixed in 1.3.0 and F-05 to F-09 in 1.5.0; each has a regression test (`test/security.test.js`, `test/audit.test.js`) and the probe scripts that reproduced them are kept in `docs/audit/` and now show the properties holding. The review was conducted by the project itself. No independent review has been performed yet, and we will say so until one has.
 
 ## Supported versions
 
@@ -46,6 +46,6 @@ The October 2026 audit (`docs/audit/SECURITY-AUDIT-2026-10.md`) lists nine findi
 
 ## Verification guidance for users
 
-- Release tags are signed. Verify a tag before building from source: `git tag -v v1.3.1`.
+- Release tags are signed. Verify a tag before building from source: `git tag -v v1.5.0`.
 - Published packages carry npm provenance attestations; verify with `npm audit signatures`.
-- You can check a trace yourself without trusting this project. A journal (`MemoryJournal`, `FileJournal` or `D1Journal` in `src/store.js`) has `verify()` for the hash chain, `merkleRoot()` and `inclusionProof(seq)` for selective disclosure, and the static `MemoryJournal.verifyInclusion({ leaf, proof, root })` for the auditor's side. Receipts, grants and approvals verify through `Signer` in `src/sign.js`. Everything is standard SHA-256 and Ed25519, so you can recompute it with any library you prefer.
+- You can check a trace yourself without trusting this project. A journal (`MemoryJournal`, `FileJournal` or `D1Journal` in `src/store.js`) has `verify()` for the hash chain, `verify({ checkpoint })` to detect a truncated or rewritten history against an anchor you hold, `merkleRoot()` and `inclusionProof(seq)` for selective disclosure, and the static `MemoryJournal.verifyInclusion({ leaf, proof, root })` for the auditor's side. Receipts, grants and approvals verify through `Signer` in `src/sign.js`. Everything is standard SHA-256 and Ed25519, so you can recompute it with any library you prefer.

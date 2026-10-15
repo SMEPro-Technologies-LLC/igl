@@ -60,7 +60,8 @@ export const DOMAIN_GRANT = "IGL-GRANT-v0.2:";
 export const DOMAIN_APPROVAL = "IGL-APPROVAL-v0.2:";
 
 export class Signer {
-  constructor({ id, privateKey, publicKey }) { Object.assign(this, { id, privateKey, publicKey }); }
+  /** @param {{ id: string, privateKey?: import("node:crypto").KeyObject | null, publicKey: import("node:crypto").KeyObject }} key */
+  constructor({ id, privateKey, publicKey }) { this.id = id; this.privateKey = privateKey; this.publicKey = publicKey; }
 
   static generate(id) {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519");
@@ -198,7 +199,11 @@ export class Signer {
     return { ok: true, signer: r.signer, pinned: false };
   }
 
-  static verifyHeadReceipt(receipt, { journal = null, graph = null } = {}) {
+  /* `extended: true` treats the receipt as a CHECKPOINT (F-08): the journal
+     may have grown since it was signed, but it must still contain the signed
+     head at the signed length. A chain that is shorter, or that reproduces a
+     different digest at that position, was truncated or rewritten. */
+  static verifyHeadReceipt(receipt, { journal = null, graph = null, extended = false } = {}) {
     const { publicKey, signature, ...envelope } = receipt;
     if (envelope.alg !== "Ed25519") return { ok: false, reason: "unsupported algorithm" };
     if (!this._verify(DOMAIN_HEAD, envelope, publicKey, signature))
@@ -206,7 +211,10 @@ export class Signer {
     if (journal) {
       const v = journal.verify();
       if (!v.ok) return { ok: false, reason: `chain does not verify, ${v.reason} at ${v.at}` };
-      if (v.head !== envelope.head) return { ok: false, reason: "receipt head does not match the journal head" };
+      if (extended) {
+        const c = journal.verifyCheckpoint({ head: envelope.head, length: envelope.length });
+        if (!c.ok) return { ok: false, reason: c.reason };
+      } else if (v.head !== envelope.head) return { ok: false, reason: "receipt head does not match the journal head" };
     }
     if (graph) {
       const pin = graph.hasKey ? graph.hasKey(envelope.signer, publicKey, { asOf: envelope.at }) : false;

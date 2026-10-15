@@ -4,14 +4,14 @@
     <img src="docs/assets/igl-logo.png" width="420" alt="IGL, Identity Governed Logic">
   </picture>
 </p>
-<p align="center"><strong>Governed intelligence. Before execution.</strong><br>The open-source runtime and the public API contract behind the IGL Governed Identity Platform.<br><em>Status: experimental. Read the <a href="./docs/audit/SECURITY-AUDIT-2026-10.md">security audit</a> before you run the provisioning service anywhere other than your own machine.</em></p>
+<p align="center"><strong>Governed intelligence. Before execution.</strong><br>The open-source runtime and the public API contract behind the IGL Governed Identity Platform.<br><em>Status: the nine findings of the <a href="./docs/audit/SECURITY-AUDIT-2026-10.md">October 2026 security review</a> are closed with regression tests. The review was our own; an independent one has not happened yet, so read the audit before you run the provisioning service anywhere other than your own machine.</em></p>
 
 <p align="center">
   <a href="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/SMEPro-Technologies-LLC/igl"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/SMEPro-Technologies-LLC/igl/badge"></a>
   <a href="./LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
-  <a href="./CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-1.4.0-informational"></a>
+  <a href="./CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-1.5.0-informational"></a>
   <a href="https://id-me.ai"><img alt="Platform" src="https://img.shields.io/badge/platform-id--me.ai-a9a4f2"></a>
 </p>
 
@@ -32,7 +32,7 @@ If you are not a developer: think of IGL as the rulebook and the referee for an 
 
 **The runtime** is the IGL language and its reference implementation in Node.js: the lexer, parser and static checker, the interpreter, the identity-graph runtime, the hash-chained journal with Merkle inclusion proofs, signed receipts, and the governed decode bridge that keeps a language model's output inside the declared limits. Start with the [quick start](#quick-start) below and [`docs/SPEC.md`](./docs/SPEC.md).
 
-**The platform contract** is the public OpenAPI 3.1 description of the IGL Governed Identity Platform served at [id-me.ai](https://id-me.ai). It covers identities, authority, knowledge, policies, evidence, outcomes, the graph, intelligence queries, agents, workflows, audit, and purpose-bounded projections. The contract does not depend on any particular model; Claude, Moonshot or another reasoning model can run underneath it without changing how applications call it. See [`spec/openapi.yaml`](./spec/openapi.yaml), [`spec/README.md`](./spec/README.md) and the [API reference](https://id-me.ai/#docs).
+**The platform contract** is the public OpenAPI 3.1 description of the IGL Governed Identity Platform served at [id-me.ai](https://id-me.ai). It covers identities, authority, knowledge, policies, evidence, outcomes, the graph, intelligence queries, agents, workflows, audit, and purpose-bounded projections. The contract does not depend on any particular model: the reasoning model underneath it can change without changing how applications call it, and the hosted service reports the providers it runs at `GET /capabilities`. See [`spec/openapi.yaml`](./spec/openapi.yaml), [`spec/README.md`](./spec/README.md) and the [API reference](https://id-me.ai/#docs).
 
 **The platform service** is the implementation of that contract: `platform/api`, a Cloudflare Worker with a D1 database per environment, deployed to `sandbox.id-me.ai` and `api.id-me.ai` from this repository by GitHub Actions. Its conformance suite runs all 46 operations against the service and checks every response against the contract. The public site at [id-me.ai](https://id-me.ai) is `platform/site`, also deployed from here. See [`platform/api/README.md`](./platform/api/README.md).
 
@@ -48,9 +48,17 @@ How the runtime and the platform fit together, including how runtime terms (BOUN
 | `platform/api/` | The hosted platform service that implements the contract (Cloudflare Worker, D1), with its conformance suite |
 | `platform/site/` | The id-me.ai site, its generated API reference and the Contact Sales intake function |
 | `programs/` | Reference IGL programs: a company BOUNDARY graph and an individual FOOTPRINT graph |
-| `test/` | 148 tests: bridge, decode, extract, graph, igl, sign, store, security |
+| `test/` | 169 tests: bridge, decode, extract, graph, igl, sign, store, security, resolver, and the audit regression suite (F-01 to F-09) |
 | `docs/` | Language specification (`SPEC.md`), graph model (`GRAPH.md`), decode bridge (`BRIDGE.md`), deliberate exclusions (`SCOPE.md`), platform mapping (`PLATFORM.md`), decision records (`adr/`), the security audit and its probes (`audit/`) |
 | `examples/` | Runnable end-to-end flows, including journal persistence and replay |
+
+## Start here
+
+Ten minutes, three paths, pick the one that matches you.
+
+If you want to see the idea work, run the runtime on your own machine: the [quick start](#quick-start) below, then the wiki's [Quickstart: the Runtime](https://github.com/SMEPro-Technologies-LLC/igl/wiki/Quickstart-Runtime), which walks through a program that refuses an unauthorized action before any model is called. If you want to build an application, open the [Developer Console](https://id-me.ai/#console), create a sandbox tenant, and follow [Quickstart: the API](https://github.com/SMEPro-Technologies-LLC/igl/wiki/Quickstart-API); every one of the 46 operations can be sent from the console. If you want to connect an AI assistant, [MCP Integration](https://github.com/SMEPro-Technologies-LLC/igl/wiki/MCP-Integration) covers the seven tools and the purposes they run under. The [wiki home page](https://github.com/SMEPro-Technologies-LLC/igl/wiki) is the map of everything else: concepts, security model, operations, use cases and the glossary.
+
+Before changing code, run `npm run check`: lint, type check and the full suite, the same three gates CI applies to every pull request.
 
 ## Quick start
 
@@ -60,7 +68,7 @@ You need Node.js 20 or newer.
 git clone https://github.com/SMEPro-Technologies-LLC/igl.git
 cd igl
 npm ci
-npm test
+npm run check        # lint, type check, 169 tests
 ```
 
 Run a governed program end to end. A small language model generates text inside the limits the program declares:

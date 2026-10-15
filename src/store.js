@@ -11,13 +11,32 @@
 
    Three implementations, one interface:
      MemoryJournal  tests, ephemeral rooms
-     FileJournal    JSONL on disk; durable on append; replayable; verifiable
+     FileJournal    JSONL on disk; fsync on append; replayable; verifiable
      D1Journal      write-behind for Cloudflare D1, append() chains
                     synchronously, flush() awaits the INSERTs; the interpreter
                     awaits flush inside two-phase commit, so trace durability
-                    still gates output release on async backends. */
+                    still gates output release on async backends.
 
-import { readFileSync, appendFileSync, existsSync } from "node:fs";
+   Three properties the October 2026 review asked for (F-06, F-07, F-08):
+
+     Immutable records. append() stores a deep, frozen copy of the body. A
+     caller that keeps mutating its own object cannot alter what was
+     journaled, and verify() stays true for the life of the process.
+
+     Pending versus durable. An entry is visible through entries() only once
+     its backend has made it durable: a failed persist leaves nothing behind,
+     a write-behind backend keeps its entries pending until flush() succeeds,
+     and a failed flush rolls the pending entries back so the chain can be
+     re-built against the durable head. Readers that need the whole chain,
+     including pending entries, ask for it explicitly.
+
+     Checkpoints. A checkpoint is {head, length} taken at a moment in time and
+     kept outside the journal's failure domain (a signed head receipt is one).
+     verify() against a checkpoint refuses a chain that is shorter than the
+     checkpoint or that does not reproduce its head, which is what detects a
+     truncated or rewritten unsigned chain. */
+
+import { readFileSync, existsSync, openSync, writeSync, fsyncSync, closeSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 const sha256 = s => createHash("sha256").update(s).digest("hex");
@@ -30,21 +49,49 @@ function canonical(x) {
 
 const GENESIS = "0".repeat(64);
 
+function deepFreeze(x) {
+  if (x && typeof x === "object" && !Object.isFrozen(x)) {
+    Object.freeze(x);
+    for (const k of Object.keys(x)) deepFreeze(x[k]);
+  }
+  return x;
+}
+
 export class MemoryJournal {
-  constructor() { this.list = []; }
+  /* `checkpoint` is an optional {head, length} the chain must reach; a
+     journal constructed with one refuses to replay a shorter or rewritten
+     history (F-08). */
+  constructor({ checkpoint = null } = {}) { this.list = []; this.durable = 0; this.anchor = checkpoint; }
   head() { return this.list.length ? this.list[this.list.length - 1].digest : GENESIS; }
   append(type, body) {
-    const entry = { seq: this.list.length, type, body, prev: this.head() };
-    entry.digest = sha256(entry.prev + canonical({ type, body }));
+    /* F-06: the journal keeps its own frozen snapshot. The caller's object
+       stays theirs to mutate; the record does not move. */
+    const snapshot = deepFreeze(structuredClone(body));
+    const entry = { seq: this.list.length, type, body: snapshot, prev: this.head() };
+    entry.digest = sha256(entry.prev + canonical({ type, body: snapshot }));
+    Object.freeze(entry);
+    /* F-07: persist first. If it throws, nothing was appended and nothing is
+       visible. A backend that cannot make the entry durable synchronously
+       returns false and the entry stays pending until flush(). */
+    const durableNow = this.persist(entry) !== false;
     this.list.push(entry);
-    this.persist(entry);
+    if (durableNow && this.durable === this.list.length - 1) this.durable = this.list.length;
     return entry;
   }
-  persist() {}                                    /* memory is already "durable" for its lifetime */
-  entries(type = null) { return type ? this.list.filter(e => e.type === type) : [...this.list]; }
+  /** @param {object} entry */
+  persist(entry) { return !!entry; }                /* memory is "durable" for the life of the process */
+  /* Durable entries only, unless the caller asks to see pending ones. */
+  entries(type = null, { pending = false } = {}) {
+    const visible = pending ? this.list : this.list.slice(0, this.durable);
+    return type ? visible.filter(e => e.type === type) : [...visible];
+  }
+  pendingCount() { return this.list.length - this.durable; }
+  isDurable(entry) { return entry.seq < this.durable; }
   async flush() {}
-  /* Walk the chain. Any edit, insertion, deletion or reorder breaks it. */
-  verify() {
+  /* Walk the chain. Any edit, insertion, deletion or reorder breaks it.
+     With a checkpoint, a chain that is shorter than the checkpoint or that
+     does not reproduce its head is refused as well (F-08). */
+  verify({ checkpoint = this.anchor } = {}) {
     let prev = GENESIS;
     for (const e of this.list) {
       if (e.prev !== prev) return { ok: false, at: e.seq, reason: "chain break, prev digest mismatch" };
@@ -52,7 +99,28 @@ export class MemoryJournal {
       if (e.digest !== expect) return { ok: false, at: e.seq, reason: "body does not reproduce its digest" };
       prev = e.digest;
     }
-    return { ok: true, length: this.list.length, head: prev };
+    if (checkpoint) {
+      const c = this.verifyCheckpoint(checkpoint);
+      if (!c.ok) return c;
+    }
+    return { ok: true, length: this.list.length, head: prev, durable: this.durable };
+  }
+  verifyCheckpoint({ head, length }) {
+    if (typeof length !== "number" || typeof head !== "string") return { ok: false, at: null, reason: "checkpoint must carry head and length" };
+    if (this.list.length < length)
+      return { ok: false, at: this.list.length, reason: `chain is shorter than the checkpoint (${this.list.length} entries, checkpoint at ${length}); history was truncated` };
+    const digest = length === 0 ? GENESIS : this.list[length - 1].digest;
+    if (digest !== head)
+      return { ok: false, at: length - 1, reason: "chain does not reproduce the checkpoint head; history was rewritten" };
+    return { ok: true, length, head };
+  }
+  /* The current head and length, to be kept somewhere the journal's
+     administrator cannot rewrite. Signer.headReceipt() wraps this in an
+     Ed25519 envelope. */
+  checkpoint() {
+    const v = this.verify({ checkpoint: null });
+    if (!v.ok) throw new Error(`refusing to checkpoint a broken chain, ${v.reason} at ${v.at}`);
+    return { head: v.head, length: v.length, at: new Date().toISOString() };
   }
 
   /* ---- Merkle inclusion proofs, privacy-preserving audit ----
@@ -104,24 +172,34 @@ export class MemoryJournal {
 }
 
 export class FileJournal extends MemoryJournal {
-  constructor(path) {
-    super();
+  constructor(path, { checkpoint = null } = {}) {
+    super({ checkpoint });
     this.path = path;
     if (existsSync(path)) {
       for (const line of readFileSync(path, "utf8").split("\n")) {
         if (!line.trim()) continue;
-        this.list.push(JSON.parse(line));
+        this.list.push(deepFreeze(JSON.parse(line)));
       }
+      this.durable = this.list.length;
       /* Tamper-evidence is load-bearing, not available-on-request: a doctored
          journal must refuse to LOAD, because GraphRuntime folds authority out
          of this list, a tampered grant would otherwise be live until someone
-         happened to ask. */
+         happened to ask. A checkpoint extends the refusal to a truncated one. */
       const v = this.verify();
       if (!v.ok)
         throw new Error(`journal ${path} fails verification at seq ${v.at}, ${v.reason}; refusing to load a tampered chain`);
+    } else if (checkpoint && checkpoint.length > 0) {
+      throw new Error(`journal ${path} is missing but the checkpoint expects ${checkpoint.length} entries; refusing to start an empty chain in its place`);
     }
   }
-  persist(entry) { appendFileSync(this.path, JSON.stringify(entry) + "\n"); }
+  /* Append and fsync before returning: a successful call means the bytes
+     are on the device, not in a page cache (F-07). */
+  persist(entry) {
+    const fd = openSync(this.path, "a");
+    try { writeSync(fd, JSON.stringify(entry) + "\n"); fsyncSync(fd); }
+    finally { closeSync(fd); }
+    return true;
+  }
 }
 
 /* Cloudflare D1 adapter. `exec(sql, params)` is the seam, in a Worker:
@@ -162,12 +240,13 @@ export const D1_SCHEMA_STATEMENTS = [
 export const D1_SCHEMA = D1_SCHEMA_STATEMENTS.map(s => s + ";").join("\n");
 
 export class D1Journal extends MemoryJournal {
-  constructor({ exec, rows = [] }) {
-    super();
+  constructor({ exec, rows = [], checkpoint = null }) {
+    super({ checkpoint });
     this.exec = exec;
     this.pending = [];
-    for (const r of rows) this.list.push({ seq: r.seq, type: r.type, body: JSON.parse(r.body), prev: r.prev, digest: r.digest });
-    if (this.list.length) {
+    for (const r of rows) this.list.push(deepFreeze({ seq: r.seq, type: r.type, body: JSON.parse(r.body), prev: r.prev, digest: r.digest }));
+    this.durable = this.list.length;
+    if (this.list.length || checkpoint) {
       /* same rule as FileJournal: a replayed chain must verify before any
          authority is folded out of it */
       const v = this.verify();
@@ -175,7 +254,9 @@ export class D1Journal extends MemoryJournal {
         throw new Error(`replayed journal fails verification at seq ${v.at}, ${v.reason}; refusing to load a tampered chain`);
     }
   }
-  persist(entry) { this.pending.push(entry); }
+  /* Write-behind: the entry is chained now and durable at flush(). Until
+     then it is pending and invisible to entries() (F-07). */
+  persist(entry) { this.pending.push(entry); return false; }
 
   /* One flush = head-CAS + one multi-row INSERT.
 
@@ -191,21 +272,35 @@ export class D1Journal extends MemoryJournal {
      discarded, never half-committed. */
   async flush() {
     if (!this.pending.length) return;
-    const first = this.pending[0];
-    const head = await this.exec("SELECT digest FROM igl_journal ORDER BY seq DESC LIMIT 1", []);
-    const durable = head?.results?.length ? head.results[0].digest : GENESIS;
-    if (durable !== first.prev)
-      throw new Error(`journal head moved, durable head ${durable.slice(0, 12)}… does not match pending prev ${first.prev.slice(0, 12)}…; a concurrent writer advanced the chain (losing writer must re-chain, not half-commit)`);
-    const batch = this.pending;
-    const values = batch.map(() => "(?, ?, ?, ?, ?)").join(", ");
-    const params = batch.flatMap(e => [e.seq, e.type, canonical(e.body), e.prev, e.digest]);
     try {
-      await this.exec(`INSERT INTO igl_journal (seq, type, body, prev, digest) VALUES ${values}`, params);
+      const first = this.pending[0];
+      const head = await this.exec("SELECT digest FROM igl_journal ORDER BY seq DESC LIMIT 1", []);
+      const durable = head?.results?.length ? head.results[0].digest : GENESIS;
+      if (durable !== first.prev)
+        throw new Error(`journal head moved, durable head ${durable.slice(0, 12)} does not match pending prev ${first.prev.slice(0, 12)}; a concurrent writer advanced the chain (losing writer must re-chain, not half-commit)`);
+      const batch = this.pending;
+      const values = batch.map(() => "(?, ?, ?, ?, ?)").join(", ");
+      const params = batch.flatMap(e => [e.seq, e.type, canonical(e.body), e.prev, e.digest]);
+      try {
+        await this.exec(`INSERT INTO igl_journal (seq, type, body, prev, digest) VALUES ${values}`, params);
+      } catch (e) {
+        if (/UNIQUE|PRIMARY KEY|constraint/i.test(String(e.message || e)))
+          throw new Error(`journal head moved, lost the append race at the constraint (seq/digest collision); re-chain against the new head and retry. Underlying: ${e.message}`);
+        throw e;
+      }
     } catch (e) {
-      if (/UNIQUE|PRIMARY KEY|constraint/i.test(String(e.message || e)))
-        throw new Error(`journal head moved, lost the append race at the constraint (seq/digest collision); re-chain against the new head and retry. Underlying: ${e.message}`);
+      /* Recovery (F-07): the pending entries never became durable, so they
+         leave the chain. The next append re-chains against the durable head,
+         and the caller that staged work on them has been told it failed. */
+      this.rollback();
       throw e;
     }
     this.pending = [];                            /* dequeue only after the batch is durably down */
+    this.durable = this.list.length;
+  }
+  rollback() {
+    const dropped = this.list.splice(this.durable);
+    this.pending = [];
+    return dropped;
   }
 }
