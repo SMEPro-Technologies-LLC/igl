@@ -192,7 +192,8 @@ export const ROLE_ACTIONS = {
 function extractName(text, isCompany, industryLabel, role) {
   // "called X" / "named X" patterns win; explicit "X, LLC" entity names next;
   // otherwise everything before the "is a / are the …" descriptor clause.
-  const named = text.match(/(?:called|named|name is)\s+((?:[A-Z][A-Za-z0-9.&'-]*)(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,5})/);
+  // A sentence boundary ends the name: "My name is Maria Santos. I am" names Maria Santos, not "Maria Santos. I".
+  const named = text.match(/(?:called|named|name is)\s+((?:[A-Z][A-Za-z0-9&'-]*)(?:\s+[A-Z][A-Za-z0-9&'-]*){0,5})/);
   if (named) return named[1].trim();
   if (isCompany) {
     const entity = text.match(/([A-Z][A-Za-z&']+(?:\s+[A-Za-z&']+){0,4}\s+(?:LLC|Inc|Corp(?:oration)?|Ltd|Group|Holdings|Partners))\b/);

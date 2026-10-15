@@ -1,0 +1,11 @@
+# id-me.ai, Cloudflare Pages project "id-me-ai".
+# Deploy: npx wrangler pages deploy platform/site --project-name id-me-ai
+# (the deploy-site workflow does this on every push to main that touches platform/site)
+name = "id-me-ai"
+pages_build_output_dir = "."
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "INTAKE"
+database_name = "igl-intake"
+database_id = "f8bfa36d-aa8b-45f2-b177-6f43deaabd7a"
