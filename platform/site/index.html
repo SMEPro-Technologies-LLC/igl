@@ -43,6 +43,11 @@
     apply(root.getAttribute("data-theme") === "light");
     var b = document.getElementById("theme-btn");
     if (b) b.addEventListener("click", function () { apply(root.getAttribute("data-theme") !== "light"); });
+    /* the static pages carry the header and the mobile menu but not the main script; give the menu button its toggle there */
+    var menu = document.getElementById("menu-btn"), links = document.getElementById("mlinks");
+    if (menu && links && !document.getElementById("igl-spec")) menu.addEventListener("click", function () {
+      var open = !links.classList.contains("open"); links.classList.toggle("open", open); menu.setAttribute("aria-expanded", String(open));
+    });
   });
 })();
 </script>
@@ -702,6 +707,7 @@
   </div>
 </nav>
 
+<div class="strip" role="note"><span class="spark" aria-hidden="true">+</span>IGL Studio scheduled for release November 5, 2026</div>
 
 <main id="main">
 <section class="hero view" id="top" data-view="top" style="padding-block:0">
@@ -1346,7 +1352,7 @@ npx --yes @redocly/cli@1 lint spec/openapi.yaml</pre>
   <h3>API reference <span class="tag acc" style="vertical-align:middle; margin-left:6px">OpenAPI 3.1, v0.2.0</span></h3>
   <p><b>What changed in v0.2.</b> The MCP governance model is now in the REST contract. A new <b>Projection</b> service adds purpose profiles (<code class="i">GET /purposes</code>), caller resolution (<code class="i">GET /identities/me</code>), purpose-bounded projections with node budgets and a per-node gate explanation, obligations carrying <code class="i">attested</code> or <code class="i">proposed</code> status, read-only consent records, and interaction records (<code class="i">POST /audit/interactions</code>). Every intelligence request accepts a purpose. The 34 v0.1 paths are unchanged.</p>
   <p>The API contract for Identity Governed Logic (IGL). The API exposes governed identity, authority, knowledge, policy, evidence, outcome, graph, query, research, agent, workflow, and audit services. It is model-agnostic: reasoning providers can be changed without changing the governed intelligence contract. Version 0.2 adds purpose-bounded projections: purpose profiles, identity projections with per-node gate explanations, obligations with attestation status, caller resolution, consent records, and interaction records, so applications and model callers share one governance model.</p>
-  <p>The contract covers <b>42 paths</b>, <b>46 operations</b>, <b>63 reusable schemas</b> and <b>3 webhooks</b>. The source of truth is the specification file in the repository, <a href="https://github.com/SMEPro-Technologies-LLC/igl/blob/main/spec/openapi.yaml" target="_blank" rel="noopener" style="text-decoration:underline">spec/openapi.yaml</a>, also served here as <a href="/igl-openapi-v0.2.yaml" target="_blank" rel="noopener" style="text-decoration:underline">igl-openapi-v0.2.yaml</a> (<a href="/igl-openapi-v0.1.yaml" target="_blank" rel="noopener" style="text-decoration:underline">v0.1</a> kept for comparison).</p>
+  <p>The contract covers <b>42 paths</b>, <b>46 operations</b>, <b>63 reusable schemas</b> and <b>3 webhooks</b>. The source of truth is the specification file in the repository, <a href="https://github.com/SMEPro-Technologies-LLC/igl/blob/main/spec/openapi.yaml" target="_blank" rel="noopener" style="text-decoration:underline">spec/openapi.yaml</a>, also served here as <a href="/igl-openapi-v0.2.yaml" target="_blank" rel="noopener" style="text-decoration:underline">igl-openapi-v0.2.yaml</a>. Earlier versions are in the repository history.</p>
   <div class="tbl"><table><thead><tr><th>Server</th><th>URL</th></tr></thead><tbody>
 <tr><td>Production</td><td style="font-family:var(--mono); font-size:0.84rem">https://api.id-me.ai/v1</td></tr>
 <tr><td>Sandbox</td><td style="font-family:var(--mono); font-size:0.84rem">https://sandbox.id-me.ai/v1</td></tr>
@@ -1785,7 +1791,7 @@ curl -X POST https://sandbox.id-me.ai/v1/query \
           <h3>What this console does and does not do</h3>
           <p>It reads the published OpenAPI v0.2 contract and builds requests, bodies and response shapes from it, so what you send or copy is exactly what the contract requires: tenant header, idempotency key on mutations, scopes, and schema-correct examples. Send request runs the composed request against the selected environment with the credential from this browser and shows the live response.</p>
           <p style="margin-top:10px">Requests go to the environment selected under Environment.</p>
-          <p style="margin-top:10px">The spec files: <a href="/igl-openapi-v0.2.yaml" target="_blank" rel="noopener" style="text-decoration:underline">v0.2</a> and <a href="/igl-openapi-v0.1.yaml" target="_blank" rel="noopener" style="text-decoration:underline">v0.1</a>; v0.2 is the file in <code class="i">spec/</code> in the repository.</p>
+          <p style="margin-top:10px">The spec file: <a href="/igl-openapi-v0.2.yaml" target="_blank" rel="noopener" style="text-decoration:underline">igl-openapi-v0.2.yaml</a>, the same file as <code class="i">spec/openapi.yaml</code> in the repository.</p>
         </div>
       </div>
     </div>

@@ -43,6 +43,16 @@ with is loaded at a pinned revision and its bytes are recorded.
 
 ### Added
 
+- Platform: the refusal record. Every deny, and every escalate on a path that
+  cannot park the work, now produces a signed governance receipt and an entry
+  in the tenant's hash chain before the 403 leaves, and the 403 names the
+  `decisionId` and `receiptId`. Every `AuthorityDecision` carries
+  `policiesMatched` (id, name, version, effect and a SHA-256 of the rule as it
+  stood) and `subject` (action, resource type and id, identity, organization,
+  roles). Every receipt carries `auditHead`, the chain head at issue time, so a
+  receipt held outside the system is a checkpoint the database cannot rewrite.
+  Policies are immutable at the schema (triggers): a change is a new version.
+  Conformance test: a denied investigation is checked the way an auditor would
 - `test/audit.test.js`: the review's probes, promoted into the suite (18 tests;
   169 in all). `docs/audit/probes-2026-10.mjs` now prints the properties holding
 - ESLint (flat config) and `tsc --checkJs` over `src/`, `provision/`,
@@ -59,6 +69,19 @@ with is loaded at a pinned revision and its bytes are recorded.
   Found by the type check on its first run
 - Dead imports and variables across the runtime, the platform service and the
   tests, found by the linter
+
+### Removed
+
+- `examples/run-vdrpros.js` and `examples/vdrpros-ussh.igl`: the one example
+  that ran against stubbed runtimes (canned inference, constraint checks that
+  always passed). Every remaining example runs the real runtime against the
+  pinned model
+- `spec/openapi-v0.1.yaml` and the served copy: superseded by 0.2.0; the file
+  is in the repository history
+- `OPEN_SOURCE_CHECKLIST.md` and `SECURITY-REVIEW.md`: an internal checklist
+  whose items were done, and scan notes that the audit document supersedes
+- References in `docs/SPEC.md`, `docs/SCOPE.md` and source comments to design
+  documents that are not in the repository now say so instead of linking to them
 
 ### Changed
 

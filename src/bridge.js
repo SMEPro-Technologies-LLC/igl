@@ -14,7 +14,7 @@
      R2  a span value is deterministic ONLY when its location band is
          admissible or its locator is itself deterministic. Provenance is
          deterministic; selection is inference. A held-band location is
-         dropped, exactly as §3 defines "held".
+         dropped, exactly as section 3 of the specification defines "held".
      R3  fuzzy edit distance refuses ties and is disabled for codes.
      R4  manifest digests are SHA-256 over canonical (sorted-key) JSON.
      R5  currency parses to integer minor units; span indices are named

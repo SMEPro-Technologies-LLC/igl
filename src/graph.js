@@ -23,7 +23,7 @@
    2. AI-CLASS EVIDENCE NEVER PROMOTES.
       Observations are classed. `deterministic` and `human` deltas land in the
       governing observation layer; `ai` deltas land in `proposed` and stay
-      there regardless of count. This is §9's anchoring rule applied one layer
+      there regardless of count. This is section 9's anchoring rule applied one layer
       down, to the substrate rather than to the assertions.
 
    3. THE PAST IS RECONSTRUCTIBLE.

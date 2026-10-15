@@ -44,7 +44,8 @@ head_end = html.index("</head>")
 head = html[:head_end]
 body_start = html.index("<body")
 body_open = html[body_start:html.index(">", body_start) + 1]
-header = html[html.index('<header class="nav">'):html.index("</header>") + len("</header>")]
+# the header, the mobile menu and the launch strip travel together to every static page
+header = html[html.index('<header class="nav">'):html.index("<main id=\"main\">")].rstrip()
 footer = html[html.index("<footer>"):html.index("</footer>") + len("</footer>")]
 
 def view_html(view):

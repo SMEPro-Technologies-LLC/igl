@@ -15,7 +15,7 @@ The change from v0.1 is the second clause of that sentence. v0.1 said
 "intelligence becomes recursive instead of disposable." Recursion alone is not a
 virtue: a loop that feeds its own inferences back as evidence amplifies its
 errors as readily as its insights. v0.2 keeps the loop and adds the damping that
-makes it convergent. See `CRITIQUE.md` §C1.
+makes it convergent. This is design review item C1; the review items are cited by number in the source comments.
 
 ### 1.1 Design invariants
 
@@ -23,20 +23,20 @@ These hold everywhere in the language. Anything that violates one is a defect.
 
 | # | Invariant | Enforced by |
 |---|---|---|
-| I1 | A statement without an actor and a boundary does not parse | grammar §4.2 |
-| I2 | Untraced computation is inadmissible | static check §7, two-phase commit §8.3 |
-| I3 | Deterministic and probabilistic computation are never confused | separate namespaces §5.2 |
-| I4 | No inference is asserted without a pinned model | static check §7 |
-| I5 | Nothing material is produced without a durable trace | two-phase commit §8.3 |
-| I6 | Nothing files without a human | attestation gate §8.4 |
-| I7 | Unanchored inference loses force with each reuse | decay + depth cap §9 |
+| I1 | A statement without an actor and a boundary does not parse | grammar item 4.2 |
+| I2 | Untraced computation is inadmissible | static check item 7, two-phase commit item 8.3 |
+| I3 | Deterministic and probabilistic computation are never confused | separate namespaces item 5.2 |
+| I4 | No inference is asserted without a pinned model | static check item 7 |
+| I5 | Nothing material is produced without a durable trace | two-phase commit item 8.3 |
+| I6 | Nothing files without a human | attestation gate item 8.4 |
+| I7 | Unanchored inference loses force with each reuse | decay + depth cap item 9 |
 
 ---
 
 ## 2. Notation
 
 Grammar is EBNF. `"x"` is a literal, `A*` is zero or more, `A?` is optional,
-`A | B` is alternation. Lexical classes are defined in §3 and referenced in
+`A | B` is alternation. Lexical classes are defined in item 3 and referenced in
 upper camel case.
 
 ---
@@ -78,7 +78,7 @@ passing one where the other is required is a static type error.
 
 Subsystem names `UDM`, `AI`, `IOS` are reserved in call position only.
 
-(`Boundary` was reserved in v0.1 with no production. Removed, see CRITIQUE §A4.)
+(`Boundary` was reserved in v0.1 with no production. Removed, design review item A4.)
 
 ### 3.4 Operators
 
@@ -150,7 +150,7 @@ ContextItem  ::= Identifier "=" Value | Value
 Selection is explicit and recorded. `Traces=Recent(n)`, `Traces=Attested`,
 `Boundary_Exact`, `MaxDepth=n`. Absent a `Context` block the defaults apply
 (`Recent(20)`, `MaxDepth=3`) and are still recorded, so the loaded set is never
-implicit. See CRITIQUE §C2.
+implicit. Design review item C2.
 
 ### 4.5 Compute
 
@@ -214,7 +214,7 @@ that did not happen.
 
 A reader can always see, at a call site, which parts of a program are governed
 fact and which are inference. This distinction is what makes attestation classes
-(§9.1) implementable at all.
+(section 9.1) implementable at all.
 
 ### 5.2 Declared signatures
 
@@ -370,7 +370,7 @@ blast radius of any single wrong inference to a finite subtree.
 
 UDM enforces *structure*. It can reject an invalid agency code or a violated
 numerical constraint. It cannot detect an inference that is structurally
-impeccable and factually wrong. Without §9.2 and §9.3, such an inference is
+impeccable and factually wrong. Without item 9.2 and item 9.3, such an inference is
 stored, loaded at the next turn as established precedent, agreed with, models
 are strongly disposed to agree with their context, and re-asserted, now with two
 supporting traces. That is a positive feedback loop with no damping term.
@@ -387,11 +387,11 @@ not recursion by itself, is what makes the loop tighten.
 An implementation is **conforming** if it:
 
 - **C1** accepts every program in `test/igl.test.js` that the reference accepts, and rejects every one it rejects, with the same error code;
-- **C2** implements the fixed evaluation order of §8.1;
-- **C3** implements two-phase commit such that no output is observable without a durable trace (§8.3);
-- **C4** refuses to execute any statement in a program containing a static error (§7);
-- **C5** refuses `AI.*` calls without a registered, version-pinned model (§5.2);
-- **C6** implements attestation classes, confidence decay and the depth cap (§9), and records the parameters in force in every trace;
+- **C2** implements the fixed evaluation order of item 8.1;
+- **C3** implements two-phase commit such that no output is observable without a durable trace (section 8.3);
+- **C4** refuses to execute any statement in a program containing a static error (section 7);
+- **C5** refuses `AI.*` calls without a registered, version-pinned model (section 5.2);
+- **C6** implements attestation classes, confidence decay and the depth cap (section 9), and records the parameters in force in every trace;
 - **C7** records, in every trace: identity, boundary, intent, parameters, context trace ids, the selection predicate, all assertions with their classes, model versions and seeds, state, and outputs.
 
 A implementation that omits **C3** or **C6** may not be described as IGL. They

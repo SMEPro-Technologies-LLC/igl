@@ -17,7 +17,7 @@
 
 ## What changed in 0.2.0
 
-Purpose-bounded projections, so that applications and model callers share one governance model: purpose profiles, `GET /identities/me`, `GET /identities/{id}/projection` with node budget and a per-node gate explanation, obligations with `attested | proposed` status, read-only consent records, and `POST /audit/interactions`. The 34 paths of 0.1.0 are unchanged. The 0.1.0 file is kept as `openapi-v0.1.yaml` for diffing.
+Purpose-bounded projections, so that applications and model callers share one governance model: purpose profiles, `GET /identities/me`, `GET /identities/{id}/projection` with node budget and a per-node gate explanation, obligations with `attested | proposed` status, read-only consent records, and `POST /audit/interactions`. The 34 paths of 0.1.0 are unchanged; the 0.1.0 file is in the repository history (tag v1.3.0).
 
 ## Versioning
 

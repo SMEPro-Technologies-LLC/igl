@@ -1,5 +1,5 @@
 /* IGL parser, v0.2
-   Builds the AST described in SPEC.md §6. Every node carries source position so
+   Builds the AST described in SPEC.md item 6. Every node carries source position so
    that a governed error can point at the clause that caused it. */
 
 import { lex, IGLError } from "./lexer.js";
