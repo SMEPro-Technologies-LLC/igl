@@ -19,5 +19,5 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Test suite (112 tests — bridge, extract, graph, igl, sign, store)
+      - name: Test suite
         run: npm test

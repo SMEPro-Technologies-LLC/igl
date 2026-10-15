@@ -21,7 +21,7 @@ const graph = () => {
 };
 
 /* Adversarial on two axes: a wrong diagnosis phrasing outside the set, and a
-   high-confidence span. The transcription attack is exercised separately —
+   high-confidence span. The transcription attack is exercised separately :
    under R7 an extra property now voids the span at the schema, so the clean
    ref is the payload here. */
 const adversarial = async () => ({
@@ -62,7 +62,7 @@ test("AI.Extract reads the quantity from the cited characters, in minor units, w
   assert.equal(ex.slots.total_charges.evidence.docSha256, MANIFEST.USSH004120);
 });
 
-test("a span smuggling a transcription is voided at the schema — the model's number cannot enter at all", async () => {
+test("a span smuggling a transcription is voided at the schema: the model's number cannot enter at all", async () => {
   const smuggler = async () => ({
     structured: { total_charges: { file: "USSH004120", charOffset: OFFSET, length: 13, value: 999 } },
     confidences: { total_charges: 0.95 },

@@ -26,12 +26,17 @@ For work routed through IGL, the runtime sits between the caller and the model. 
 
 ## Quick start
 
+Requires Node.js 20 or later.
+
 ```bash
 git clone https://github.com/SMEPro-Technologies-LLC/igl.git
 cd igl
 npm ci
 npm test
 ```
+
+The first example or service run downloads the model if it is not already
+cached, so an internet connection is needed for that initial download.
 
 Run an end-to-end program that decodes model output inside the compiled footprint:
 
@@ -45,6 +50,8 @@ Start the provisioning service. It listens on port 8787 and provides the MCP end
 npm run provision
 ```
 
+Open <http://localhost:8787> in a browser to use the Studio.
+
 If a browser client will connect to the service, set `PROVISION_ALLOWED_ORIGINS` to a comma-separated list of allowed origins.
 
 Provision an identity graph from a plain-language description:
@@ -52,6 +59,19 @@ Provision an identity graph from a plain-language description:
 ```bash
 node provision/cli.mjs "Example Energy, LLC is a Texas oil and gas operator"
 ```
+
+## Connect an MCP client
+
+The provisioning service exposes an MCP endpoint at `http://localhost:8787/mcp`.
+Before connecting a client, copy `provision/identities.example.mjs` to
+`provision/identities.mjs` and replace the example key and profile with your
+caller's details. The local identity file is ignored by Git so caller keys are
+not committed.
+
+If you expose the service outside your computer, set `PROVISION_API_KEY` and
+configure `PROVISION_ALLOWED_ORIGINS` for browser clients. Use
+`identity_graph_whoami` to identify a registered caller before using other MCP
+tools.
 
 ## What a program looks like
 
@@ -92,9 +112,11 @@ The decode automaton is compiled from the granted set only. At trace level, the 
 
 `provision/mcp.mjs` is a Model Context Protocol endpoint. An MCP-capable client (e.g. ChatGPT developer-mode connectors) connects with a caller key and is recognized on contact: first contact seeds the caller's identity graph from the registered profile; every contact after that replays the hash-chained journal. The caller's grants and refusals then govern every tool call in that session.
 
-## Roadmap
+## Planned work
 
-Shipped in 1.0.0 is the Node.js reference runtime above. Planned and **not yet in this repository**: a WASM core and browser playground, Python and TypeScript SDKs, and the policy-pack registry. Roadmap items are tracked in issues; the README only describes what exists.
+This repository contains the Node.js reference runtime. A WASM core, browser
+playground, Python and TypeScript SDKs, and policy-pack registry are planned but
+are not included here. Track progress in the project issues.
 
 ## License and IP
 

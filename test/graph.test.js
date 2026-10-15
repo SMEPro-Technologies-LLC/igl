@@ -66,7 +66,7 @@ test("promotion candidates are offered, never applied", () => {
   assert.equal(g.authorize("Allco", { Jurisdiction: "NM-OCD" }).ok, false, "eligibility is not application");
 });
 
-test("FAIL-CLOSED ROLE: an actor with no recorded roles holds no role — the empty set is not a wildcard", () => {
+test("FAIL-CLOSED ROLE: an actor with no recorded roles holds no role: the empty set is not a wildcard", () => {
   const g = new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS });      // no roles seeded
   g.grant("Ghost", { Jurisdiction: ["TX-RRC"] }, { by: "admin" });
   assert.throws(() => g.resolve(["Ghost", "Operator"]), e => e.code === "IGL_ROLE_DENIED",
@@ -94,7 +94,7 @@ test("DISUSE MUST NOT REVOKE: a grant unused for years still authorises", () => 
   g.grant("Allco", { Jurisdiction: ["TX-RRC"] }, { by: "admin", at: longAgo });
   g.observe("Allco", { Jurisdiction: ["TX-RRC"] }, { cls: "deterministic", at: longAgo });
   assert.equal(g.authorize("Allco", { Jurisdiction: "TX-RRC" }).ok, true,
-    "absence of activity is not a revocation — the alternative is a silent security event");
+    "absence of activity is not a revocation: the alternative is a silent security event");
   const fp = g.footprint("Allco");
   assert.ok(fp.observed.governing.Jurisdiction[0].weight < 0.01, "descriptive weight does decay");
 });
@@ -174,7 +174,7 @@ test("a committed trace folds back into the graph and lands in the right layer",
 
   const fp = g.footprint("Allco");
   assert.ok(fp.observed.proposed.Jurisdiction?.some(x => x.value === "TX-RRC"),
-    "the trace folded back — the graph learned from its own execution");
+    "the trace folded back: the graph learned from its own execution");
   assert.equal(fp.observed.governing.Jurisdiction, undefined,
     "an ai-class trace may never reach the layer that could widen authority");
 });

@@ -1,4 +1,4 @@
-# IGL — Identity-Governed Language
+# IGL: Identity-Governed Language
 
 **Version 0.2** · supersedes 0.1 · reference implementation in `../src`
 
@@ -6,16 +6,14 @@
 
 ## 1. Purpose and one-sentence definition
 
-IGL is a domain-specific language in which every computation is bound to an
-identity, governed by a declared boundary, assisted by pinned models, and
-preserved as a replayable trace — so that intelligence accumulates where it is
-anchored and decays where it is not.
+IGL is a domain-specific language. Each computation is tied to an identity,
+limited by a declared boundary, run with pinned models, and recorded in a
+replayable trace. Anchored information persists; unanchored model inferences
+lose confidence over time.
 
-The change from v0.1 is the second clause of that sentence. v0.1 said
-"intelligence becomes recursive instead of disposable." Recursion alone is not a
-virtue: a loop that feeds its own inferences back as evidence amplifies its
-errors as readily as its insights. v0.2 keeps the loop and adds the damping that
-makes it convergent. See `CRITIQUE.md` §C1.
+Version 0.2 adds confidence decay and a derivation-depth limit. These rules
+reduce the risk that model inferences will be reused as evidence and amplify
+their own errors. See `CRITIQUE.md` §C1.
 
 ### 1.1 Design invariants
 
@@ -78,7 +76,8 @@ passing one where the other is required is a static type error.
 
 Subsystem names `UDM`, `AI`, `IOS` are reserved in call position only.
 
-(`Boundary` was reserved in v0.1 with no production. Removed — see CRITIQUE §A4.)
+(`Boundary` was reserved in v0.1 but had no production. It was removed; see
+CRITIQUE §A4.)
 
 ### 3.4 Operators
 
@@ -140,7 +139,7 @@ Intents are registered, not open. The registry declares, per intent: permitted
 roles, required boundary keys, permitted parameters and their value domains,
 declared outputs and their types, and whether human attestation is required.
 
-### 4.4 Context — trace selection
+### 4.4 Context: trace selection
 
 ```ebnf
 ContextBlock ::= "Context" "[" ContextItem ("," ContextItem)* "]"
@@ -192,8 +191,8 @@ OnFailBlock ::= "OnFail" "[" Handler ("," Handler)* "]"
 Handler     ::= ("Remediate" | "Halt" | "Fallback" | "Retry") ArgList?
 ```
 
-The handler set is closed. Open-ended failure handling in a governed language is
-how boundaries get bypassed under production pressure.
+The handler set is fixed. This prevents a failure handler from bypassing the
+language's boundary checks.
 
 Absent an `OnFail` block, a failing statement is **recorded as failed and the
 program halts**. The failure is never silently swallowed and never merely thrown
@@ -208,8 +207,8 @@ that did not happen.
 
 | Namespace | Character | Role |
 |---|---|---|
-| `UDM.*` | deterministic | governed structure, codes, constraints — the brake |
-| `AI.*` | probabilistic | inference and completion — pinned, seeded, bounded |
+| `UDM.*` | deterministic | checks structures, codes, and constraints |
+| `AI.*` | probabilistic | runs pinned, seeded, bounded inference and completion |
 | `IOS.*` | orchestration | trace capture, attestation, staging |
 
 A reader can always see, at a call site, which parts of a program are governed
@@ -302,16 +301,16 @@ normalised parameters and the compute shape. Re-execution with the same key
 returns the prior trace and output with status `idempotent`, unless forced. For
 filings and productions, the alternative is a duplicate submission to a regulator.
 
-### 8.3 Two-phase commit — the fail-closed rule
+### 8.3 Two-phase commit: do not release output before the trace
 
 Outputs are materialised to a staging area. The trace is written **first**. Only
 a durable trace releases the output. A trace write failure discards the staged
 outputs and raises `IGL_TRACE_FAILED`.
 
-v0.1 said "if IOS cannot trace → fail the computation" but did not say what
-happens to work already performed. Without step ordering, a failed trace leaves a
-materialised output with no record — precisely the condition the rule exists to
-prevent.
+The v0.1 rule said to fail the computation if IOS could not write a trace, but
+did not specify what happens to work already performed. Without a fixed order,
+a failed trace could leave a materialised output with no record. Writing the
+trace first prevents that.
 
 ### 8.4 Attestation gate
 
@@ -362,23 +361,23 @@ effective_confidence = 1                                     (human, determinist
 ### 9.3 Derivation depth cap
 
 Every assertion records how many AI-to-AI hops separate it from a deterministic
-or human anchor. Beyond `maxDepth` (default 3) it cannot be used as context at
-all, and an attempt to stack further raises `IGL_DEPTH_EXCEEDED`. This bounds the
-blast radius of any single wrong inference to a finite subtree.
+or human anchor. Beyond `maxDepth` (default 3), it cannot be used as context.
+An attempt to stack further raises `IGL_DEPTH_EXCEEDED`. This limits how far a
+wrong inference can affect later work.
 
 ### 9.4 Why this makes the loop convergent
 
 UDM enforces *structure*. It can reject an invalid agency code or a violated
 numerical constraint. It cannot detect an inference that is structurally
 impeccable and factually wrong. Without §9.2 and §9.3, such an inference is
-stored, loaded at the next turn as established precedent, agreed with — models
-are strongly disposed to agree with their context — and re-asserted, now with two
-supporting traces. That is a positive feedback loop with no damping term.
+stored, loaded on the next turn as established precedent, and then re-asserted.
+Models tend to agree with their context, so each reuse can add another
+supporting trace. Without decay or a depth limit, this creates a positive
+feedback loop.
 
-With decay and the depth cap, an unanchored error fades from the corpus instead
-of compounding, while anything a human or a deterministic computation attests
-persists at full weight. Intelligence accumulates where it is anchored. That, and
-not recursion by itself, is what makes the loop tighten.
+Decay and the depth cap reduce the influence of unanchored errors over time.
+Facts attested by a person or deterministic computation retain their full
+weight.
 
 ---
 

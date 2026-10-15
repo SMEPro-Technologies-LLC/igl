@@ -1,9 +1,7 @@
-/* Execute the generated IGL programs for the two computed identity graphs,
-   with a REAL model (Xenova/distilgpt2) bound in as the interpreter's AI
-   runtime through the bridge automaton. The model is not adjacent to the
-   language — it operates INSIDE it: every AI.Extract step is compiled by
-   gamma() into a per-token mask over the model's vocabulary derived from
-   the actor's granted footprint, and lifted back by project().
+/* Run the generated IGL programs for two identity graphs with the
+   Xenova/distilgpt2 model connected through the bridge. Each AI.Extract step
+   uses the actor's granted footprint to constrain model output at every
+   sampling step. The bridge then checks the returned values.
 
    Artifacts: artifacts/igl-hilcorp-program-run.json, igl-jordan-avery-program-run.json */
 
@@ -32,7 +30,7 @@ const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
 const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
 const VOCAB = []; // id -> string
 for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
-console.log(`[igl-live] model ready — vocab ${VOCAB.length}`);
+console.log(`[igl-live] model ready: vocab ${VOCAB.length}`);
 
 async function rawNextDist(ids) {
   const input_ids = new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]);
@@ -77,7 +75,7 @@ async function governedGenerate({ prompt, automaton }) {
 
 /* The interpreter's AI subsystem, replaced by the live governed model.
    Admissible sets are read from the actor's LIVE granted footprint at the
-   moment of execution — not from configuration. */
+   moment of execution: not from configuration. */
 class GovernedAI extends AIRuntime {
   constructor({ graph, bridge, prompts, ...rest }) {
     super(rest);
@@ -97,7 +95,7 @@ class GovernedAI extends AIRuntime {
       if (!def) throw new Error(`slot ${name} is not in the governed slot registry`);
       const admissible = fp.granted[def.dimension] || [];
       if (!admissible.length)
-        throw new Error(`slot ${name}: the granted footprint of ${actor} covers no value for ${def.dimension} — failing closed`);
+        throw new Error(`slot ${name}: the granted footprint of ${actor} covers no value for ${def.dimension}: failing closed`);
       specs.push({ name, kind: def.kind, dimension: def.dimension, admissible });
     }
 
@@ -155,7 +153,7 @@ function averyGraph() {
 const tok = { encode: (s) => tokenizer.encode(s) };
 const models = { "distilgpt2-local": { version: "Xenova/distilgpt2@onnx-q8" } };
 
-/* ================= RUN 1 — Hilcorp program ================= */
+/* ================= RUN 1: Hilcorp program ================= */
 async function runHilcorpProgram() {
   const graph = hilcorpGraph();
   const udm = new UDMRuntime({
@@ -188,7 +186,7 @@ async function runHilcorpProgram() {
   return { program: source, graph: graph.footprint("Hilcorp_Energy"), result, receiptVerification };
 }
 
-/* ================= RUN 2 — Avery program ================= */
+/* ================= RUN 2: Avery program ================= */
 async function runAveryProgram() {
   const graph = averyGraph();
   const udm = new UDMRuntime({
@@ -228,7 +226,7 @@ console.log(`[Hilcorp] filing receipt verifies: ${JSON.stringify(hilcorp.receipt
 
 const avery = await runAveryProgram();
 console.log("\n[Avery program] statements:");
-for (const r of avery.result.results) console.log(`  ${r.traceId ?? "-"} ${r.status} ${r.trace?.intent ?? r.error?.code ?? ""} ${r.error ? "— " + r.error.message.slice(0, 140) : ""}`);
+for (const r of avery.result.results) console.log(`  ${r.traceId ?? "-"} ${r.status} ${r.trace?.intent ?? r.error?.code ?? ""} ${r.error ? ": " + r.error.message.slice(0, 140) : ""}`);
 
 fs.writeFileSync(path.join(ARTIFACTS, "igl-hilcorp-program-run.json"), JSON.stringify(hilcorp, null, 2));
 fs.writeFileSync(path.join(ARTIFACTS, "igl-jordan-avery-program-run.json"), JSON.stringify(avery, null, 2));

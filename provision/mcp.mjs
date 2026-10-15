@@ -1,13 +1,13 @@
-/* MCP (Model Context Protocol) endpoint for the provisioning service —
-   this is what ChatGPT's "Apps" model connects to. Streamable-HTTP flavour:
-   JSON-RPC 2.0 over POST /mcp, stateless, no SSE session required.
+/* MCP (Model Context Protocol) endpoint for the provisioning service.
+   ChatGPT Apps and other MCP clients connect over HTTP POST /mcp using JSON-RPC
+   2.0. The endpoint is stateless and does not require an SSE session.
 
    Tools:
-     check_health       read-only — service + model status
-     list_graphs        read-only — every provisioned graph, newest first
-     get_graph          read-only — one graph by slug
-     search / fetch     read-only — the pair read-only ChatGPT connectors expect
-     provision_identity write     — resolve → fold → generate .igl → governed run
+     check_health       read-only: service + model status
+     list_graphs        read-only: every provisioned graph, newest first
+     get_graph          read-only: one graph by slug
+     search / fetch     read-only tools for finding and retrieving graphs
+     provision_identity write: resolve attributes, record graph, run IGL program
 
    Auth: when PROVISION_API_KEY is set, the MCP endpoint accepts it as either
    an Authorization bearer header or a ?key= query parameter (developer-mode

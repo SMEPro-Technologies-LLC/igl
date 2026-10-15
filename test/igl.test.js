@@ -93,7 +93,7 @@ test("a positional argument after a named one is rejected", () => {
     e => e.code === "IGL_ARG_ORDER");
 });
 
-test("an identity block with no boundary does not parse — governance is not optional", () => {
+test("an identity block with no boundary does not parse: governance is not optional", () => {
   assert.throws(() => parse(`ID[Allco:Operator] :: Intent[X] => Compute[IOS.Trace(Channels=[Reasoning])] -> Output[Y];`),
     e => e.code === "IGL_NO_BOUNDARY");
 });

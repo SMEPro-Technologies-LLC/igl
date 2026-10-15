@@ -1,15 +1,10 @@
-/* Identity registry — EXAMPLE. Copy this file to `identities.mjs` and replace
-   the entry with your own caller(s). `identities.mjs` is gitignored on purpose:
-   real caller keys are credentials and never belong in version control.
+/* Example caller registry. Copy this file to `identities.mjs` and replace the
+   sample entry with your caller's key and profile. `identities.mjs` is ignored
+   by Git because it contains credentials.
 
-   The key IS the login. It lives in the client configuration once; every
-   session after that opens with the runtime already knowing whose graph this
-   is. On first contact the actor's graph is seeded from the stored profile
-   (one-time boot); after that, recognition is a replay of the hash-chained
-   journal — instant, idempotent, and theirs.
-
-   Keys are NOT the service gate (PROVISION_API_KEY protects the endpoint);
-   these are per-person caller identities resolved AFTER the gate. */
+   The first request creates the caller's graph from the profile. Later
+   requests replay its journal. Caller keys identify individual clients.
+   `PROVISION_API_KEY` is a separate, optional key for the service endpoint. */
 
 export const IDENTITIES = {
   "igm-example-caller-REPLACE_ME": {
@@ -18,7 +13,7 @@ export const IDENTITIES = {
     kind: "FOOTPRINT", // FOOTPRINT = individual, BOUNDARY = company
     role: "engineer",
     description:
-      "Example Caller is an engineer evaluating IGL identity governed computation",
+      "Example Caller is an engineer testing the IGL runtime",
   },
 };
 

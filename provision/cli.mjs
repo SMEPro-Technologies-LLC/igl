@@ -1,4 +1,4 @@
-/* CLI for the provisioning service — proof path without HTTP.
+/* Command-line interface for the provisioning service.
 
      node provision/cli.mjs "Example Energy is a Texas oil and gas operator"
      node provision/cli.mjs --kind FOOTPRINT "Jane Doe is a DFIR coordinator"

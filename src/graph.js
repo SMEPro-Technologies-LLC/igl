@@ -1,37 +1,32 @@
-/* Identity graph as a fold over the trace stream — IGL v0.2
+/* Identity graph as a fold over the trace stream: IGL v0.2
 
    Boundary and footprint are not registry lookups. They are materialised
    views over an append-only event log, recomputed continuously:
 
        F_t(actor) = F_{t-1} ⊕ δ(trace_t)
 
-   Three properties this file is responsible for, in order of importance:
+   This module enforces three properties:
 
-   1. OBSERVATION NEVER GRANTS AUTHORITY.
-      The fold maintains two layers. `granted` is prescriptive — what an actor
-      MAY do — and moves only on an explicit, signed grant or revoke.
-      `observed` is descriptive — what an actor DOES — and accumulates freely
-      from traces. authorize() reads `granted` and nothing else. No volume of
-      observation, however consistent, can widen authority; it can only raise
-      a promotion candidate for a human to act on.
+   1. Observation never grants authority.
+      The fold maintains two layers. `granted` records what an actor may do and
+      changes only through an explicit, signed grant or revoke. `observed`
+      records what an actor did and accumulates from traces. `authorize()` reads
+      only `granted`. Observations can raise a promotion candidate for a person
+      to review, but cannot widen authority.
 
-      Without this split the loop grants permissions by habit: an actor who
-      repeatedly files somewhere accumulates evidence that they file there,
-      and a system that learns from its own behaviour eventually concludes
-      they are allowed to.
+      Without this split, the system could treat repeated activity as
+      permission. An actor who files repeatedly in a jurisdiction would appear
+      authorized based on their own activity.
 
-   2. AI-CLASS EVIDENCE NEVER PROMOTES.
-      Observations are classed. `deterministic` and `human` deltas land in the
-      governing observation layer; `ai` deltas land in `proposed` and stay
-      there regardless of count. This is §9's anchoring rule applied one layer
-      down, to the substrate rather than to the assertions.
+   2. AI-class evidence does not become governing evidence.
+      `deterministic` and `human` observations enter the governing layer.
+      `ai` observations enter `proposed` and stay there regardless of count.
 
-   3. THE PAST IS RECONSTRUCTIBLE.
-      project(asOf) replays the log to a timestamp. A statement executed in
-      2026-Q1 is audited against the footprint as it stood then, not as it
-      stands now.
+   3. Past state can be reconstructed.
+      `project(asOf)` replays the log to a timestamp. A statement executed in
+      2026-Q1 is audited against the footprint at that time.
 
-   The merge is per-dimension, associative and commutative, so the log can be
+   The merge is per-dimension, associative, and commutative, so the log can be
    sharded, replayed partially, or folded out of order and reach the same
    state. test/graph.test.js asserts this by shuffling. */
 
@@ -42,9 +37,9 @@ const ts = x => (x instanceof Date ? x.getTime() : Date.parse(x));
 
 /* ---------------- dimensions ----------------
    Each governed dimension declares how containment is decided.
-     set      — plain membership
-     lattice  — membership, or membership of any ancestor (US-TX covers TX-RRC)
-     custom   — a contains(grantedValue, boundaryValue) predicate            */
+     set     : plain membership
+     lattice : membership, or membership of any ancestor (US-TX covers TX-RRC)
+     custom  : a contains(grantedValue, boundaryValue) predicate            */
 export const DEFAULT_DIMENSIONS = {
   Jurisdiction: {
     type: "lattice",
@@ -99,21 +94,17 @@ export class GraphRuntime {
   /* ---- signing keys as journal events ----
      Keys travel the same substrate as grants: bound by a named grantor,
      revoked explicitly, replayed with the chain, reconstructible asOf. This
-     is what makes receipt attribution rotation-safe — a receipt verifies
+     is what makes receipt attribution rotation-safe: a receipt verifies
      against the key registered AT SIGNING TIME, so rotating a key does not
      invalidate the attestations it validly made. */
   bindKey(actor, publicKey, { by, at = null } = {}) {
     if (!by) throw new IGLError("a key binding must name its grantor", { phase: "identity", code: "IGL_UNSIGNED_GRANT" });
     return this._append({ kind: "key", actor, key: publicKey, by, at });
   }
-  /* Revocation carries its reason, because rotation and compromise demand
-     OPPOSITE retroactive behaviour from the same event shape:
-       rotated      — prospective. Signatures before the revocation stay
-                      valid; the key simply makes no new ones.
-       compromised  — retroactive from `effectiveFrom` (often earlier than
-                      discovery). Signatures at or after that moment are
-                      suspect and must FAIL verification, however early the
-                      asOf projection would otherwise place them. */
+  /* Revocation records why a key was removed.
+       rotated: signatures made before revocation remain valid.
+       compromised: signatures at or after `effectiveFrom` fail verification.
+     The effective time may be earlier than when the compromise was discovered. */
   revokeKey(actor, publicKey, { by, at = null, reason = "rotated", effectiveFrom = null } = {}) {
     if (!by) throw new IGLError("a key revocation must name its revoker", { phase: "identity", code: "IGL_UNSIGNED_REVOKE" });
     if (reason !== "rotated" && reason !== "compromised")
@@ -124,10 +115,9 @@ export class GraphRuntime {
 
   /* Key validity at a signing time. Deliberately NOT a projection query:
      a compromise recorded at discovery time must reach BACKWARD to its
-     effectiveFrom, so the scan reads the full log regardless of asOf —
-     the one place where reconstructing "what was known then" is exactly
-     the wrong question, because the answer we need is "what is true now
-     about then". */
+     effectiveFrom, so the scan reads the full log regardless of `asOf`.
+     Here the relevant question is what is true now about a past signing time,
+     not what was known at that time. */
   keyStatus(actor, publicKey, { asOf = null } = {}) {
     const t = asOf ? ts(asOf) : Date.now();
     let active = false, compromised = false;
@@ -171,7 +161,7 @@ export class GraphRuntime {
     };
     const dimMap = (m, d) => { if (!m.has(d)) m.set(d, new Map()); return m.get(d); };
 
-    /* Fold in TIME order, not insertion order — grant/revoke and key/revoke
+    /* Fold in TIME order, not insertion order: grant/revoke and key/revoke
        are order-sensitive, and a backdated bind appended after a revocation
        must not resurrect what the revocation killed. Ties break by append
        sequence, so the fold stays deterministic. */
@@ -232,8 +222,8 @@ export class GraphRuntime {
   }
 
   /* ---------------- footprint ---------------- */
-  /* The projection is emitted in canonical order — dimensions and values
-     sorted — so two folds of the same events serialise identically regardless
+  /* The projection is emitted in canonical order: dimensions and values
+     sorted: so two folds of the same events serialise identically regardless
      of arrival order. Without this the state is set-equal but not hashable,
      and a footprint cannot be diffed or committed to a trace by digest. */
   footprint(actor, { asOf = null } = {}) {
@@ -296,7 +286,7 @@ export class GraphRuntime {
           violations.push({
             dimension: d, value: one,
             reason: fp.granted[d] ? `granted ${d}: ${fp.granted[d].join(", ")} does not cover ${one}` : `no ${d} grant on this footprint`,
-            /* say so explicitly — this is exactly the inference the system must refuse to make */
+            /* say so explicitly: this is exactly the inference the system must refuse to make */
             note: observed ? `observed ${observed.count}× but observation does not confer authority` : undefined,
           });
         }
@@ -321,9 +311,9 @@ export class GraphRuntime {
             anchored: e.anchored, count: e.count, weight: e.weight, lastSeen: e.last,
             eligible,
             rationale: layer === "proposed"
-              ? "AI-class observation only — cannot promote at any volume; re-derive from source or attest"
+              ? "AI-class observation only: cannot promote at any volume; re-derive from source or attest"
               : eligible
-                ? `${e.anchored} anchored observation(s) — eligible for grant by a signer`
+                ? `${e.anchored} anchored observation(s): eligible for grant by a signer`
                 : `${e.anchored} of ${this.promoteAfter} anchored observations required`,
           });
         }
@@ -339,7 +329,7 @@ export class GraphRuntime {
     if (!fp) throw new IGLError(`actor ${actor} is not in the identity graph`, { phase: "identity", code: "IGL_UNKNOWN_ACTOR" });
     const role = actorPath.length > 1 ? actorPath[actorPath.length - 1] : (this.roles[actor] || [])[0];
     /* fail-closed: an asserted role must be HELD. An actor with no recorded
-       roles holds no roles — the empty set is not a wildcard. */
+       roles holds no roles: the empty set is not a wildcard. */
     if (role && !fp.roles.includes(role))
       throw new IGLError(`${actor} does not hold role ${role}`, { phase: "identity", code: "IGL_ROLE_DENIED" });
     return { id: actorPath.join(":"), actor, role, footprint: fp };

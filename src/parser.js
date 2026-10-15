@@ -1,4 +1,4 @@
-/* IGL parser — v0.2
+/* IGL parser: v0.2
    Builds the AST described in SPEC.md §6. Every node carries source position so
    that a governed error can point at the clause that caused it. */
 
@@ -27,7 +27,7 @@ export function parse(src) {
     if (t.type === "STRING") { p++; return { kind: "String", value: t.value, ...pos(t) }; }
     if (t.type === "NUMBER") { p++; return { kind: "Number", value: t.value, ...pos(t) }; }
     if (t.type === "CODE")   { p++; return { kind: "Code", value: t.value, ...pos(t) }; }
-    if (t.type === "AT") {                              // @name — output reference (CRITIQUE B2/D1)
+    if (t.type === "AT") {                              // @name: output reference (CRITIQUE B2/D1)
       p++;
       const id = eat("IDENT", undefined, "an output name after @");
       return { kind: "Ref", name: id.value, ...pos(t) };
@@ -105,7 +105,7 @@ export function parse(src) {
       } while (opt("COMMA"));
     }
     eat("RBRACK", undefined, "] to close the identity block");
-    if (!boundary.length) err("identity block declares no boundary — governance is not optional", "IGL_NO_BOUNDARY", start);
+    if (!boundary.length) err("identity block declares no boundary: governance is not optional", "IGL_NO_BOUNDARY", start);
     return { kind: "Identity", actor, boundary, ...pos(start) };
   }
 
@@ -151,7 +151,7 @@ export function parse(src) {
     return { kind: "Compute", steps, ...pos(start) };
   }
 
-  /* ---------- Context[...] — trace selection, explicit and traced (CRITIQUE C2) ---------- */
+  /* ---------- Context[...]: trace selection, explicit and traced (CRITIQUE C2) ---------- */
   function parseContext() {
     const start = eat("KEYWORD", "Context", "Context");
     eat("LBRACK", undefined, "[ after Context");
@@ -201,7 +201,7 @@ export function parse(src) {
       do {
         const t = peek();
         if (t.type !== "IDENT" || !HANDLERS.has(t.value))
-          err(`unknown failure handler — expected one of ${[...HANDLERS].join(", ")}`, "IGL_UNKNOWN_HANDLER", t);
+          err(`unknown failure handler: expected one of ${[...HANDLERS].join(", ")}`, "IGL_UNKNOWN_HANDLER", t);
         p++;
         const args = at("LPAREN") ? parseArgs() : [];
         handlers.push({ name: t.value, args, ...pos(t) });

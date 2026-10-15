@@ -1,13 +1,13 @@
-/* HTTP surface for the provisioning service. Node stdlib only — no deps.
+/* HTTP endpoints for the provisioning service. Uses Node.js built-in modules.
 
      POST /api/provision   { description, kind?, auto? } → full governed run
      GET  /api/graphs      → every provisioned graph, newest first
      GET  /api/graphs/:slug → one graph's runtime artifact
-     GET  /api/health      → model warm status
+     GET  /api/health      → model readiness
      POST /mcp             → Model Context Protocol endpoint (ChatGPT Apps)
 
-   The model loads once at boot and stays warm; every provision is a real
-   governed execution against the actor's hash-chained journal. */
+   The model loads once when the service starts. Each request runs against the
+   actor's hash-chained journal. */
 
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -66,12 +66,10 @@ function readBody(req) {
 
 await warmRuntime();
 
-/* Optional bearer gate — set PROVISION_API_KEY when the service is exposed
-   beyond localhost (e.g. tunnelled for ChatGPT). Health stays open so uptime
-   checks work; everything else requires the key. The MCP endpoint also
-   accepts ?key= because developer-mode connectors cannot always send custom
-   headers. Registered caller keys (identities.mjs) pass the gate the same
-   way — and carry the caller's identity graph with them. */
+/* Set PROVISION_API_KEY when exposing the service beyond localhost. Health
+   checks do not require a key; other routes do. The MCP endpoint also accepts
+   a ?key= query parameter for clients that cannot send custom headers.
+   Registered caller keys from identities.mjs are also accepted. */
 const API_KEY = process.env.PROVISION_API_KEY || null;
 function callerKey(req, url) {
   const bearer = req.headers.authorization?.startsWith("Bearer ")

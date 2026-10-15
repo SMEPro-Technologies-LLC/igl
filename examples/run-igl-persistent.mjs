@@ -1,21 +1,15 @@
-/* Persistent identity graphs — hash-chained journal wiring (store.js).
+/* Demonstrate journal persistence across two runs:
 
-   Two boots, two processes, one chain per actor:
+     node examples/run-igl-persistent.mjs seed   : fresh FileJournals, grants
+        and observations are recorded, both programs run, and journal digests
+        are saved to artifacts/journal-seal.json.
 
-     node examples/run-igl-persistent.mjs seed    — fresh FileJournals, grants
-        and observations append as chained graph events, both .igl programs
-        execute, traces commit INTO THE SAME CHAIN, head + footprint digests
-        are recorded to artifacts/journal-seal.json.
+     node examples/run-igl-persistent.mjs replay : new process. FileJournal
+        loads and verifies the journal, then runs the programs again. Earlier
+        statements reuse their recorded results. A new statement for each
+        actor runs against the restored footprint.
 
-     node examples/run-igl-persistent.mjs replay  — new process. FileJournal
-        loads the chain AND REFUSES TO LOAD if any entry was tampered with;
-        GraphRuntime folds the footprint out of replayed events; both programs
-        re-run: original statements return idempotent against replayed traces
-        (or fail identically, deterministically), then one NEW governed
-        statement per actor executes live against the replayed footprint —
-        including the model, which still runs inside the compiled mask.
-
-   The point: authority is a function of the chain, not of any process. */
+   The journal preserves the graph state between processes. */
 
 import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@huggingface/transformers";
 import { Interpreter, UDMRuntime, AIRuntime, IOSRuntime } from "../src/interpreter.js";
@@ -46,7 +40,7 @@ const SEAL = path.join(ARTIFACTS, "journal-seal.json");
 
 if (MODE === "seed") for (const f of [J_HILCORP, J_AVERY, SEAL]) if (fs.existsSync(f)) fs.unlinkSync(f);
 if (MODE === "replay" && (!fs.existsSync(J_HILCORP) || !fs.existsSync(J_AVERY))) {
-  console.error("replay requested but journals are missing — run seed first");
+  console.error("replay requested but journals are missing: run seed first");
   process.exit(2);
 }
 
@@ -57,7 +51,7 @@ const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
 const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
 const VOCAB = []; // id -> string
 for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
-console.log(`[${MODE}] model ready — vocab ${VOCAB.length}`);
+console.log(`[${MODE}] model ready: vocab ${VOCAB.length}`);
 
 async function rawNextDist(ids) {
   const input_ids = new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]);
@@ -107,7 +101,7 @@ class GovernedAI extends AIRuntime {
       if (!def) throw new Error(`slot ${name} is not in the governed slot registry`);
       const admissible = fp.granted[def.dimension] || [];
       if (!admissible.length)
-        throw new Error(`slot ${name}: the granted footprint of ${ctx.identity.actor} covers no value for ${def.dimension} — failing closed`);
+        throw new Error(`slot ${name}: the granted footprint of ${ctx.identity.actor} covers no value for ${def.dimension}: failing closed`);
       specs.push({ name, kind: def.kind, dimension: def.dimension, admissible });
     }
     const envelope = this.bridge.gamma(ctx.boundary, specs, { model: args.Model, seed: args.Seed ?? null });
@@ -210,7 +204,7 @@ function buildAvery(journal) {
   return { graph, interp };
 }
 
-/* New statements for the replay boot — different statementKeys, so they
+/* New statements for the replay boot: different statementKeys, so they
    EXECUTE against the replayed footprint rather than returning idempotent. */
 const HILCORP_REPLAY_STATEMENT = `
 ID[Hilcorp_Energy:Operator | Jurisdiction:US-NM, Period:2026-Q3]
@@ -247,7 +241,7 @@ const mk = buildAvery(jM);
 
 /* Stable footprint digest: authority-relevant state only. `weight` decays
    with wall-clock (recency half-life on the DESCRIPTIVE layer) and `last` is
-   an event timestamp — neither changes what an actor may do. Granted, roles,
+   an event timestamp: neither changes what an actor may do. Granted, roles,
    and observed value/count/anchored are the state a replay must reproduce. */
 function stableFootprint(fp) {
   const strip = (layer) =>
@@ -261,7 +255,7 @@ function stableFootprint(fp) {
 const hilFp = hil.graph.footprint("Hilcorp_Energy");
 const mkFp = mk.graph.footprint("Jordan_Avery");
 const fpDigests = { hilcorp: sha256(canonical(stableFootprint(hilFp))), avery: sha256(canonical(stableFootprint(mkFp))) };
-console.log(`[${MODE}] footprint digests — hilcorp ${fpDigests.hilcorp.slice(0, 16)}… avery ${fpDigests.avery.slice(0, 16)}…`);
+console.log(`[${MODE}] footprint digests: hilcorp ${fpDigests.hilcorp.slice(0, 16)}… avery ${fpDigests.avery.slice(0, 16)}…`);
 
 const hilSrc = fs.readFileSync(path.join(PROGRAMS, "hilcorp-energy-boundary.igl"), "utf8");
 const mkSrc = fs.readFileSync(path.join(PROGRAMS, "jordan-avery-dfir-footprint.igl"), "utf8");
@@ -272,7 +266,7 @@ const mkRun = await mk.interp.run(mkSrc);
 console.log(`\n[${MODE}] Hilcorp program:`);
 for (const r of hilRun.results) console.log(`  ${r.traceId ?? "-"} ${r.status} ${r.trace?.intent ?? r.error?.code ?? ""}`);
 console.log(`[${MODE}] Avery program:`);
-for (const r of mkRun.results) console.log(`  ${r.traceId ?? "-"} ${r.status} ${r.trace?.intent ?? r.error?.code ?? ""} ${r.error ? "— " + r.error.message.slice(0, 120) : ""}`);
+for (const r of mkRun.results) console.log(`  ${r.traceId ?? "-"} ${r.status} ${r.trace?.intent ?? r.error?.code ?? ""} ${r.error ? ": " + r.error.message.slice(0, 120) : ""}`);
 
 let hilReplayStmt = null, mkReplayStmt = null, replayChecks = null;
 
@@ -329,7 +323,7 @@ const out = {
 
 /* Seal the POST-RUN footprint: committed traces fold back into the graph as
    observations, so the state a replay must reproduce is the one after both
-   programs committed — not the state before they ran. */
+   programs committed: not the state before they ran. */
 if (MODE === "seed") {
   const post = {
     hilcorp: sha256(canonical(stableFootprint(hil.graph.footprint("Hilcorp_Energy")))),

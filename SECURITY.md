@@ -46,4 +46,6 @@ Issues in examples, docs, or the playground are welcome but lower priority.
 
 - Release tags are signed (`git tag -v v1.0.0`). Verify before building from source.
 - Published packages include checksums; verify against the release notes.
-- Trace integrity is independently verifiable: `igl trace <id> --verify` re-computes the hash chain locally. Trust the math, then us.
+- Verify signed release tags with `git tag -v v1.0.0` before building from source.
+- Check published package checksums against the release notes.
+- Use the journal's `verify()` method to check that its captured entries form a valid hash chain.

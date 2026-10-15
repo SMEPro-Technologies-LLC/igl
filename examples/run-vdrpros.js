@@ -50,11 +50,11 @@ const interp = new Interpreter({ identity, udm, ai, ios });
 const { results, halted } = await interp.run(src);
 
 const pad = (s, n) => String(s).padEnd(n);
-console.log("\nUSSH / USSP discovery — IGL execution ledger\n");
+console.log("\nUSSH / USSP discovery: IGL execution ledger\n");
 console.log(pad("TRACE", 12), pad("INTENT", 30), pad("STATE", 11), pad("CLASS", 14), "DEPTH  CONF");
 console.log("-".repeat(88));
 for (const r of results) {
-  if (r.status === "failed") { console.log(pad("—", 12), pad(r.error.code, 30), pad("failed", 11), r.error.message); continue; }
+  if (r.status === "failed") { console.log(pad("ERROR", 12), pad(r.error.code, 30), pad("failed", 11), r.error.message); continue; }
   const t = r.trace;
   console.log(pad(t.id, 12), pad(t.intent, 30), pad(t.state, 11), pad(t.attestation, 14),
     pad(t.depth, 6), t.confidence.toFixed(2));

@@ -1,17 +1,11 @@
-/* Deterministic Attribute Resolution — the doctrine requires State, Industry,
-   Activity, Asset, Land, Role to be resolved BEFORE any model turn. The model
-   never sees the raw description; it only ever operates inside the graph this
-   resolution produces. Resolution is pure: same description → same graph.
+/* Resolve a description into graph attributes before any model call. The
+   resolver is deterministic: the same description produces the same graph.
 
-   Alignment rules (revised 2026-08-16):
-   · Personal-context language ("at-home mother", "I am", "my store") resolves
-     to FOOTPRINT even when the person runs a business — the individual is the
-     subject. Only an explicit legal entity suffix (LLC/Inc/Corp/Ltd) forces a
-     BOUNDARY over personal context.
-   · Unmentioned jurisdiction falls back to the workspace default (TX), never
-     a hash roll.
-   · Names are synthesized semantically (Role · Industry) — never the raw
-     sentence slug. */
+   Personal descriptions such as "I am" or "my store" create a FOOTPRINT,
+   even when the person runs a business. An explicit legal suffix such as LLC,
+   Inc, Corp, or Ltd creates a BOUNDARY.
+   Missing jurisdictions use the workspace default (TX). Display names use the
+   role and industry, not the raw description. */
 
 export function hash53(str, seed = 0) {
   let h1 = 0xdeadbeef ^ seed;
@@ -129,7 +123,7 @@ const INDIVIDUAL_ROLE_RULES = [
   [/consult/i, "consultant"],
 ];
 
-/* Granted action vocabularies per individual role — the footprint's authority
+/* Granted action vocabularies per individual role: the footprint's authority
    layer. Actions outside the granted set are what the refusal demonstrates. */
 export const ROLE_ACTIONS = {
   "dfir-coordinator": {

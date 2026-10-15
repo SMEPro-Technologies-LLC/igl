@@ -1,4 +1,4 @@
-/* IGL lexer — v0.2
+/* IGL lexer: v0.2
    Token classes are deliberately narrow: the value types the language can
    express are the value types UDM can govern. See docs/CRITIQUE.md §A2. */
 
@@ -50,10 +50,10 @@ export function lex(src) {
     if (c === "\n") { i++; line++; col = 1; continue; }
     if (c === " " || c === "\t" || c === "\r") { i++; col++; continue; }
 
-    // comments — # to end of line (CRITIQUE A5)
+    // comments: # to end of line (CRITIQUE A5)
     if (c === "#") { while (i < src.length && src[i] !== "\n") i++; continue; }
 
-    // version pragma — %igl 0.2 (CRITIQUE D2)
+    // version pragma: %igl 0.2 (CRITIQUE D2)
     if (c === "%" && src.slice(i, i + 4) === "%igl") {
       const startCol = col;
       i += 4; col += 4;
@@ -64,7 +64,7 @@ export function lex(src) {
       continue;
     }
 
-    // string literal — JSON syntax exactly (CRITIQUE A6)
+    // string literal: JSON syntax exactly (CRITIQUE A6)
     if (c === '"') {
       const startLine = line, startCol = col;
       let raw = '"';
@@ -72,7 +72,7 @@ export function lex(src) {
       for (;;) {
         if (i >= src.length) { line = startLine; col = startCol; err("unterminated string literal", "IGL_UNTERMINATED_STRING"); }
         const ch = src[i];
-        if (ch === "\n") { err("newline in string literal — use \\n", "IGL_NEWLINE_IN_STRING"); }
+        if (ch === "\n") { err("newline in string literal: use \\n", "IGL_NEWLINE_IN_STRING"); }
         raw += ch; i++; col++;
         if (ch === "\\") {
           if (i >= src.length) err("dangling escape in string literal", "IGL_BAD_ESCAPE");
@@ -88,7 +88,7 @@ export function lex(src) {
       continue;
     }
 
-    // numbers — tried first, but only when the run really is numeric.
+    // numbers: tried first, but only when the run really is numeric.
     // `2026-Q3` starts numeric and is not a number; `1.5` is.
     if (isDigit(c) || (c === "-" && isDigit(src[i + 1] || ""))) {
       const startCol = col;
