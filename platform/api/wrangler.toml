@@ -1,0 +1,63 @@
+# IGL Governed Identity Platform API.
+#   npx wrangler deploy --env production   -> api.id-me.ai and auth.id-me.ai
+#   npx wrangler deploy --env sandbox      -> sandbox.id-me.ai
+# Secrets per environment (wrangler secret put <NAME> --env <env>):
+#   ANTHROPIC_API_KEY   reasoning provider for /query, /research, /crosswalk, /investigate
+#   BOOTSTRAP_TOKEN     one-time, for POST /admin/bootstrap
+#   SIGNING_KEY_PEM     optional; otherwise a key is generated once and kept in the database
+name = "igl-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[observability]
+enabled = true
+
+[vars]
+IGL_ENV = "local"
+SERVICE_VERSION = "1.4.0"
+IGL_MODEL = "claude-sonnet-4-5"
+ALLOWED_ORIGINS = "https://id-me.ai,https://www.id-me.ai,http://localhost:8788"
+RATE_BURST = "120"
+RATE_PER_SEC = "2"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "igl-api-local"
+database_id = "local"
+
+[env.production]
+name = "igl-api"
+routes = [
+  { pattern = "api.id-me.ai/*", zone_name = "id-me.ai" },
+  { pattern = "auth.id-me.ai/*", zone_name = "id-me.ai" },
+]
+[env.production.vars]
+IGL_ENV = "production"
+SERVICE_VERSION = "1.4.0"
+IGL_MODEL = "claude-sonnet-4-5"
+ALLOWED_ORIGINS = "https://id-me.ai,https://www.id-me.ai"
+RATE_BURST = "120"
+RATE_PER_SEC = "2"
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "igl-api-production"
+database_id = "9cb410a2-45a4-4a60-bea5-3400afccbc96"
+
+[env.sandbox]
+name = "igl-api-sandbox"
+routes = [
+  { pattern = "sandbox.id-me.ai/*", zone_name = "id-me.ai" },
+]
+[env.sandbox.vars]
+IGL_ENV = "sandbox"
+SERVICE_VERSION = "1.4.0"
+IGL_MODEL = "claude-sonnet-4-5"
+ALLOWED_ORIGINS = "https://id-me.ai,https://www.id-me.ai"
+RATE_BURST = "60"
+RATE_PER_SEC = "1"
+[[env.sandbox.d1_databases]]
+binding = "DB"
+database_name = "igl-api-sandbox"
+database_id = "9eb93da4-4bd4-4686-97db-9d407b5a11ed"

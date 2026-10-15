@@ -4,6 +4,29 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.4.0] (2026-10-15)
+
+### Added
+
+- `platform/api`: the IGL Governed Identity Platform API, a Cloudflare Worker
+  with a D1 database per environment that implements all 46 operations of
+  `spec/openapi.yaml`. Routes are generated from the contract; one handler per
+  operation; a conformance suite exercises every operation against the running
+  service and validates each response against the contract's schemas. API
+  keys and OAuth 2.0 client-credentials tokens (EdDSA, JWKS published), tenancy
+  on every call, scopes as the contract lists them, purpose-bounded projections
+  with the four gates and a per-node explanation, policy evaluation that fails
+  closed, governed intelligence that can only answer from records the caller
+  may see and must cite them, agents and workflows as runs with approval
+  states, a per-tenant SHA-256 audit chain with append-only triggers, signed
+  governance receipts, idempotency keys, rate limits, signed webhooks and
+  problem+json errors. Deployed by `.github/workflows/deploy-api.yml` to
+  sandbox.id-me.ai and api.id-me.ai, which then records the served operations
+  for the site reference
+- `platform/site`: the id-me.ai source, generated API reference, Contact Sales
+  intake function, interactive User Center running `provision/resolver.mjs`
+- `docs/examples/verify-audit-chain.mjs` and `docs/examples/verify-journals.mjs`
+
 ## [1.3.1] (2026-10-14)
 
 ### Security

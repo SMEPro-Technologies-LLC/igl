@@ -1,1 +1,5 @@
-{ "deployed": false, "live": [], "sandbox": [] }
+{
+  "deployed": false,
+  "live": [],
+  "sandbox": []
+}
