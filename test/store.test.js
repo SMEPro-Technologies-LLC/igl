@@ -60,7 +60,7 @@ test("PERSISTENCE: a footprint folded in one process is identical after replay i
   assert.equal(g2.authorize("Allco", { Jurisdiction: "TX-RRC" }).ok, true, "authority survives the process boundary");
 });
 
-test("PERSISTENCE: idempotency holds across a restart — the same statement does not file twice", async () => {
+test("PERSISTENCE: idempotency holds across a restart, the same statement does not file twice", async () => {
   const path = tmp();
   const udm = () => new UDMRuntime({
     boundaries: { Jurisdiction: { values: ["TX-RRC"] }, Period: { values: ["2026-Q3"] } },
@@ -108,11 +108,11 @@ test("FAIL-CLOSED SURVIVES ASYNC: a failed D1 flush discards staged outputs", as
   assert.equal(it.env.has("Compliance_Packet"), false, "no output may survive a failed flush");
 });
 
-test("D1Journal flushes as head-CAS + one batched INSERT — no mid-batch partial state", async () => {
+test("D1Journal flushes as head-CAS + one batched INSERT, no mid-batch partial state", async () => {
   const calls = [];
   const j = new D1Journal({ exec: async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.trimStart().startsWith("SELECT")) return { results: [] };   // empty table → head is GENESIS
+    if (sql.trimStart().startsWith("SELECT")) return { results: [] };   // empty table to head is GENESIS
   } });
   j.append("trace", { id: "TRC-000001" });
   j.append("graph", { kind: "observe" });
@@ -120,7 +120,7 @@ test("D1Journal flushes as head-CAS + one batched INSERT — no mid-batch partia
   assert.equal(calls.length, 2, "exactly one SELECT (CAS) and one INSERT (batch)");
   assert.match(calls[0].sql, /SELECT digest FROM igl_journal/);
   assert.match(calls[1].sql, /INSERT INTO igl_journal .* VALUES \(\?, \?, \?, \?, \?\), \(\?, \?, \?, \?, \?\)/);
-  assert.equal(calls[1].params.length, 10, "both rows travel in one statement — all land or none do");
+  assert.equal(calls[1].params.length, 10, "both rows travel in one statement, all land or none do");
   assert.equal(j.pending.length, 0);
   assert.equal(j.verify().ok, true, "the in-memory chain is intact after flush");
 });

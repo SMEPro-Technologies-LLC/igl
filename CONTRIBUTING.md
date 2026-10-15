@@ -1,11 +1,11 @@
 # Contributing to IGL
 
-Thank you for your interest in contributing. IGL is a governance runtime — the bar for changes is deliberately high, because the guarantees IGL makes (identity, boundary, intent, trace) only hold if the implementation is disciplined. This document explains the process.
+Thank you for your interest in contributing. IGL is a governance runtime, the bar for changes is deliberately high, because the guarantees IGL makes (identity, boundary, intent, trace) only hold if the implementation is disciplined. This document explains the process.
 
 ## Before you write code
 
 - **Small fixes** (typos, docs, bug fixes with tests): open a pull request directly.
-- **Language or contract changes** (syntax, semantics, new bindings, changes to the trace schema, any change to `spec/openapi.yaml`): open an **IGL Enhancement Proposal (IEP)** first, as an issue using the [IEP template](https://github.com/SMEPro-Technologies-LLC/igl/issues/new?template=iep.yml). Language and contract changes require discussion before implementation. The four bindings are invariant — proposals that weaken identity, boundary, intent, or trace guarantees will not be accepted.
+- **Language or contract changes** (syntax, semantics, new bindings, changes to the trace schema, any change to `spec/openapi.yaml`): open an **IGL Enhancement Proposal (IEP)** first, as an issue using the [IEP template](https://github.com/SMEPro-Technologies-LLC/igl/issues/new?template=iep.yml). Language and contract changes require discussion before implementation. The four bindings are invariant, proposals that weaken identity, boundary, intent, or trace guarantees will not be accepted.
 - **New capture channels or event types**: must conform to the existing journal envelope and provenance taxonomy (see [`docs/SPEC.md`](./docs/SPEC.md)). Provenance is assigned by capture route, never by payload self-claims ([ADR 0002](./docs/adr/0002-provenance-assigned-by-capture-route.md)). This rule is not negotiable.
 
 ## Developer Certificate of Origin (DCO)
@@ -25,7 +25,7 @@ This appends `Signed-off-by: Your Name <you@example.com>` to the commit message.
 ## Code standards
 
 - **Tests are required.** A PR without tests will not be merged. Governance-critical paths (identity check, boundary evaluation, hash chain, provenance assignment) require unit tests, and property-based tests where the input space allows.
-- **Canonicalization is law.** Any code touching hashing or serialization must produce canonical output (sorted keys, no whitespace) — see the canonicalization section of [`docs/SPEC.md`](./docs/SPEC.md) and `canonical()` in `src/sign.js`.
+- **Canonicalization is law.** Any code touching hashing or serialization must produce canonical output (sorted keys, no whitespace), see the canonicalization section of [`docs/SPEC.md`](./docs/SPEC.md) and `canonical()` in `src/sign.js`.
 - **No provenance upgrades.** Code that reclassifies a lower provenance class as a higher one will be rejected on review. This is a security invariant.
 - **Contract changes are validated.** `npx --yes @redocly/cli@1 lint spec/openapi.yaml` must pass; additive changes bump the minor version, breaking changes need a new `/v{n}` base path.
 - **Signed commits are encouraged** (`git commit -S`) and required for maintainers.
@@ -33,14 +33,14 @@ This appends `Signed-off-by: Your Name <you@example.com>` to the commit message.
 ## Pull request process
 
 1. Fork and branch from `main`.
-2. Keep PRs focused — one concern per PR.
+2. Keep PRs focused, one concern per PR.
 3. CI must pass: tests on Node 20 and 22, contract lint, DCO, CodeQL, dependency review.
 4. At least one maintainer review; two for changes to `src/` or `spec/` (enforced by `CODEOWNERS`).
 5. Squash-merge with a clear commit message.
 
 ## Reporting bugs
 
-Open a GitHub issue with a minimal reproduction using the bug template. For **security vulnerabilities, do not open a public issue** — see [SECURITY.md](./SECURITY.md).
+Open a GitHub issue with a minimal reproduction using the bug template. For **security vulnerabilities, do not open a public issue**, see [SECURITY.md](./SECURITY.md).
 
 ## Code of Conduct
 

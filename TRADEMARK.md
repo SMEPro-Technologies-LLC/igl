@@ -1,8 +1,8 @@
 # IGL Trademark Policy
 
-"IGL," "Identity Governed Logic," the IGL logo, and associated marks (the "Marks") are trademarks of SMEPro Technologies LLC. This policy describes how you may — and may not — use the Marks.
+"IGL," "Identity Governed Logic," the IGL logo, and associated marks (the "Marks") are trademarks of SMEPro Technologies LLC. This policy describes how you may, and may not, use the Marks.
 
-The Apache License 2.0 that covers the code in this repository **does not grant any rights to the Marks**. Copyright in code and trademark in names are separate things, and they stay separate here — the same model used by the Python Software Foundation, the Rust Foundation, and the Linux Foundation (Kubernetes).
+The Apache License 2.0 that covers the code in this repository **does not grant any rights to the Marks**. Copyright in code and trademark in names are separate things, and they stay separate here, the same model used by the Python Software Foundation, the Rust Foundation, and the Linux Foundation (Kubernetes).
 
 ## What the Marks are for
 
@@ -13,7 +13,7 @@ The Marks exist so that when someone downloads "IGL," they know it came from thi
 - Refer to the language and this project by name in text: "built with IGL," "an IGL implementation," "compatible with the IGL specification."
 - Use the Marks in journalism, research, teaching, conference talks, and honest reviews.
 - State truthful compatibility: "works with IGL v1.0," "implements the IGL specification."
-- Fork the code under the Apache 2.0 license — but see the naming rules below.
+- Fork the code under the Apache 2.0 license, but see the naming rules below.
 
 ## You MAY NOT, without written permission
 
@@ -24,7 +24,7 @@ The Marks exist so that when someone downloads "IGL," they know it came from thi
 
 ## Forks and derivatives
 
-Forks are welcome — that is what the license is for. A fork must:
+Forks are welcome, that is what the license is for. A fork must:
 
 1. Use its own distinct name and branding.
 2. Remove the IGL logo and project branding from its distributions.
@@ -41,7 +41,7 @@ If you see a product or service using the Marks in a confusing or misleading way
 
 ## Nominative fair use
 
-Nothing in this policy limits your legal right to nominative fair use — truthful reference to the Marks to identify this project. When in doubt, ask: trademarks@id-me.ai.
+Nothing in this policy limits your legal right to nominative fair use, truthful reference to the Marks to identify this project. When in doubt, ask: trademarks@id-me.ai.
 
 ---
 

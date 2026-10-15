@@ -1,6 +1,6 @@
 # The runtime and the platform
 
-This repository holds two layers of one system. This page says how they fit, so nobody has to infer it.
+This repository holds two layers of one system. This page explains how they fit together so nobody has to guess.
 
 ## Layers
 
@@ -8,16 +8,16 @@ This repository holds two layers of one system. This page says how they fit, so 
 Customer applications  (Ricorsa, WellSite, LeaseXPlorer, VDRPros, TortGraph, RealEChat, RealStar, …)
         │  call
         ▼
-IGL API  — the platform contract in spec/openapi.yaml, served at api.id-me.ai/v1
+IGL API, the platform contract in spec/openapi.yaml, served at api.id-me.ai/v1
         │  resolves against
         ▼
-Six governed graphs — Identity · Authority · Knowledge · Policy · Evidence · Outcome
+Six governed graphs: Identity, Authority, Knowledge, Policy, Evidence, Outcome
         │  enforced and recorded by
         ▼
-IGL runtime — this repository's src/: identity binding, boundary enforcement, intent, hash-chained trace
+IGL runtime, this repository's src/: identity binding, boundary enforcement, intent, hash-chained trace
         │  reasoning delegated to
         ▼
-Reasoning layer — Claude, Moonshot, enterprise models, agents, tools (interchangeable)
+Reasoning layer, Claude, Moonshot, enterprise models, agents, tools (interchangeable)
 ```
 
 The runtime is open source (Apache-2.0) and its own MCP surface today is the provisioning service's seven tools (`check_health`, `list_graphs`, `get_graph`, `search`, `fetch`, `identity_graph_whoami`, `provision_identity`); the platform's seven tools below are the governed-projection surface specified by contract 0.2. The hosted platform is a product of SMEPro Technologies LLC; its contract is open so that applications and model callers can be built and verified against it independently.
@@ -43,7 +43,7 @@ The runtime is open source (Apache-2.0) and its own MCP surface today is the pro
 
 A projection is a deliberately partial view of an identity, admitted node by node through four gates in order: **node type** (does the purpose profile permit it), **sensitivity** (below the profile's ceiling), **consent** (an active record covers this purpose), **jurisdiction** (the transfer policy allows serving it where the caller is). The first failure is the reason, and `GET /identities/{id}/projection/explain` returns it verbatim so a caller can pass it through rather than paraphrase it.
 
-Four signals change what a caller should say: `truncated: true` (node budget hit; context is incomplete), `emptyWarning` (identity exists, context does not — usually no consent), proposed relationships never appear, and an obligation's `status` of `proposed` is not a confirmed date.
+Four signals change what a caller should say: `truncated: true` (node budget hit; context is incomplete), `emptyWarning` (identity exists, context does not, usually no consent), proposed relationships never appear, and an obligation's `status` of `proposed` is not a confirmed date.
 
 ## MCP tools and their REST equivalents
 
@@ -54,9 +54,9 @@ Four signals change what a caller should say: `truncated: true` (node budget hit
 | `get_identity_context` | `GET /identities/{id}/projection` |
 | `explain_projection` | `GET /identities/{id}/projection/explain` |
 | `list_obligations` | `GET /identities/{id}/obligations` |
-| `search_graph` | `GET /identities?q=` · `POST /graph/paths` |
+| `search_graph` | `GET /identities?q=` and `POST /graph/paths` |
 | `record_interaction` | `POST /audit/interactions` |
 
 ## What the contract does not do
 
-It cannot change governance. No profile edits, no consent grants, no attestation. That is the control plane's job, and the separation is deliberate: a model that can rewrite the policy governing it is not governed.
+It cannot change governance. There are no calls to edit a purpose profile, grant consent or attest something. Those belong to the control plane, and the separation is deliberate: if a model could rewrite the policy that governs it, it would not be governed at all.

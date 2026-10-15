@@ -1,6 +1,6 @@
 # Security Policy
 
-IGL is a governance and audit runtime. A vulnerability in IGL is not just a software bug — it can undermine the integrity of identity, boundary, intent, or trace guarantees that downstream systems rely on. We treat security reports with corresponding seriousness.
+IGL is a governance and audit runtime. A security bug in IGL can break the identity, boundary, intent or trace guarantees that other systems rely on, so we treat every report seriously and quickly.
 
 ## Reporting a vulnerability
 
@@ -8,7 +8,7 @@ IGL is a governance and audit runtime. A vulnerability in IGL is not just a soft
 
 Report privately through either channel:
 
-- **GitHub private vulnerability reporting:** [Report a vulnerability](https://github.com/SMEPro-Technologies-LLC/igl/security/advisories/new) (preferred — creates a private advisory thread)
+- **GitHub private vulnerability reporting:** [Report a vulnerability](https://github.com/SMEPro-Technologies-LLC/igl/security/advisories/new) (preferred, creates a private advisory thread)
 - **Email:** security@id-me.ai
 
 Include a description of the vulnerability and which guarantee it affects (identity, boundary enforcement, intent recording, trace integrity, provenance rules), steps to reproduce or a proof of concept, and affected versions if known.
@@ -33,15 +33,19 @@ Issues that break a core guarantee are **critical**:
 
 Issues in the platform contract (`spec/`) that would allow a conforming client to bypass a gate are treated as **high**. Issues in examples or docs are welcome but lower priority. The hosted platform at id-me.ai is in scope for reports; its infrastructure is out of scope for testing without written authorization.
 
+## Known open findings
+
+The October 2026 audit (`docs/audit/SECURITY-AUDIT-2026-10.md`) lists nine findings. F-01 to F-04 were fixed in 1.3.0. F-05 to F-09 are still open and are documented there with the probe scripts that reproduce them. Please read that list before relying on the journal for anything beyond development.
+
 ## Supported versions
 
 | Version | Supported |
 |---|---|
-| 1.x (latest minor) | Yes — security fixes |
+| 1.x (latest minor) | Yes, security fixes |
 | Older minors | Critical fixes only, at maintainer discretion |
 
 ## Verification guidance for users
 
-- Release tags are signed; verify before building from source: `git tag -v v1.2.1`.
+- Release tags are signed. Verify a tag before building from source: `git tag -v v1.3.1`.
 - Published packages carry npm provenance attestations; verify with `npm audit signatures`.
-- Trace integrity is independently verifiable without this project's help: a journal (`MemoryJournal`, `FileJournal` or `D1Journal` in `src/store.js`) exposes `verify()` for the hash chain, `merkleRoot()` and `inclusionProof(seq)` for selective disclosure, and the static `MemoryJournal.verifyInclusion({ leaf, proof, root })` for the auditor's side. Receipts verify through `Signer` in `src/sign.js`. Re-compute locally. Trust the math, then us.
+- You can check a trace yourself without trusting this project. A journal (`MemoryJournal`, `FileJournal` or `D1Journal` in `src/store.js`) has `verify()` for the hash chain, `merkleRoot()` and `inclusionProof(seq)` for selective disclosure, and the static `MemoryJournal.verifyInclusion({ leaf, proof, root })` for the auditor's side. Receipts, grants and approvals verify through `Signer` in `src/sign.js`. Everything is standard SHA-256 and Ed25519, so you can recompute it with any library you prefer.

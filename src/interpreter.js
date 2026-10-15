@@ -1,4 +1,4 @@
-/* IGL interpreter — v0.2
+/* IGL interpreter, v0.2
 
    Execution order is fixed and enforced (CRITIQUE D5):
      1. resolve identity
@@ -8,7 +8,7 @@
      5. load context traces (explicit predicate, recorded)
      6. execute compute steps in order
      7. stage outputs
-     8. write trace  ← two-phase commit: the trace commits before the output
+     8. write trace  from two-phase commit: the trace commits before the output
      9. release staged outputs, or discard them and raise
 
    Step 8 before step 9 is the whole point. An output that exists without a
@@ -110,7 +110,7 @@ export class Interpreter {
     /* 2. boundary */
     const boundary = this.udm.validateBoundary(st.identity.boundary);
 
-    /* 2b. footprint containment — boundary ⊆ granted footprint.
+    /* 2b. footprint containment, boundary ⊆ granted footprint.
        Reads the prescriptive layer only: no amount of observation, however
        consistent, may authorise a statement. Resolved live rather than cached,
        so a revocation takes effect on the next statement. */
@@ -119,7 +119,7 @@ export class Interpreter {
       if (!authz.ok) {
         const first = authz.violations[0];
         throw new IGLError(
-          `footprint does not cover this boundary — ${authz.violations.map(v => v.reason).join("; ")}` +
+          `footprint does not cover this boundary, ${authz.violations.map(v => v.reason).join("; ")}` +
           (first?.note ? ` (${first.note})` : ""),
           { line: st.identity.line, phase: "authz", code: "IGL_FOOTPRINT_DENIED" });
       }
@@ -161,22 +161,22 @@ export class Interpreter {
           : await this.ai.run(step.fn, args, ctx);
         assertions.push({ step: key, ...a });
         if (a.depth > (cspec.maxDepth ?? this.ios.maxDepth))
-          throw new IGLError(`inference derivation depth ${a.depth} exceeds the cap — re-derive from source rather than inherit`,
+          throw new IGLError(`inference derivation depth ${a.depth} exceeds the cap, re-derive from source rather than inherit`,
             { line: step.line, phase: "exec", code: "IGL_DEPTH_EXCEEDED" });
       } else if (step.subsystem === "IOS") {
         if (step.fn === "Trace") { (args.Channels || []).forEach(c => channels.add(c)); }
         else if (step.fn === "Attest") {
           /* F-04. Three classes, fail-closed:
-               ai       — no registry, or symbolic signer: decays, counts toward depth
-               service  — a registered key the SERVICE holds signed it: proves
+               ai, no registry, or symbolic signer: decays, counts toward depth
+               service, a registered key the SERVICE holds signed it: proves
                           this build ran with this key; proves no human saw it
-               human    — a registered key the service does NOT hold produced an
+               human, a registered key the service does NOT hold produced an
                           Approval over THIS statement (actor, intent, boundary,
                           statement key). Only this class never decays. */
           const signerName = String(args.Signer);
           const entry = this.signers[signerName] || null;
           if (Object.keys(this.signers).length && !entry)
-            throw new IGLError(`signer ${signerName} holds no registered key — an unkeyed attestation is not attributable`,
+            throw new IGLError(`signer ${signerName} holds no registered key, an unkeyed attestation is not attributable`,
               { line: step.line, phase: "attest", code: "IGL_UNKNOWN_SIGNER" });
           const keyed = !!entry;
           const subject = { statementKey, actor: ident.actor, intent: st.intent.name, boundary };
@@ -184,14 +184,14 @@ export class Interpreter {
           if (keyed && args.Approval) {
             const v = Signer.verifyApproval(args.Approval, subject, Signer.publicKeyOf(entry));
             if (!v.ok)
-              throw new IGLError(`approval by ${signerName} refused — ${v.reason}`, { line: step.line, phase: "attest", code: "IGL_BAD_APPROVAL" });
+              throw new IGLError(`approval by ${signerName} refused, ${v.reason}`, { line: step.line, phase: "attest", code: "IGL_BAD_APPROVAL" });
             if (Signer.canSign(entry))
-              throw new IGLError(`approval by ${signerName} refused — the runtime holds this signer's private key, so an approval under it cannot evidence a human decision`,
+              throw new IGLError(`approval by ${signerName} refused, the runtime holds this signer's private key, so an approval under it cannot evidence a human decision`,
                 { line: step.line, phase: "attest", code: "IGL_SELF_APPROVAL" });
             cls = "human"; approval = args.Approval;
           } else if (keyed) {
             if (!Signer.canSign(entry))
-              throw new IGLError(`signer ${signerName} is a public-only registry entry — attestation requires an Approval signed by its holder`,
+              throw new IGLError(`signer ${signerName} is a public-only registry entry, attestation requires an Approval signed by its holder`,
                 { line: step.line, phase: "attest", code: "IGL_APPROVAL_REQUIRED" });
             cls = "service";
           }
@@ -200,15 +200,15 @@ export class Interpreter {
             attestation: cls,
             confidence: cls === "ai" ? 0.5 : 1,
             ...(approval ? { approval } : {}),
-            ...(cls === "ai" ? { note: (args.Note ? args.Note + " · " : "") + "unkeyed attestation — human class requires a registered signing key and an approval" } : {}),
-            ...(cls === "service" ? { note: (args.Note ? args.Note + " · " : "") + "service attestation — signed by a key the runtime holds; not evidence of human review" } : {}) });
+            ...(cls === "ai" ? { note: (args.Note ? args.Note + " · " : "") + "unkeyed attestation, human class requires a registered signing key and an approval" } : {}),
+            ...(cls === "service" ? { note: (args.Note ? args.Note + " · " : "") + "service attestation, signed by a key the runtime holds; not evidence of human review" } : {}) });
         } else if (step.fn === "Stage") {
           assertions.push({ step: key, assertion: "staged", artifact: args.Artifact, attestation: "deterministic", confidence: 1 });
         }
       }
     }
 
-    /* 7. stage outputs — not released until the trace is durable */
+    /* 7. stage outputs, not released until the trace is durable */
     const staged = {};
     for (const item of st.output.items) {
       staged[item.name] = item.value ? this.evalValue(item.value)
@@ -236,7 +236,7 @@ export class Interpreter {
       channels: [...channels],
       assertions,
       /* trace-level provenance: the weakest link governs (CRITIQUE C1);
-         human requires a KEYED attestation — see the attest step above */
+         human requires a KEYED attestation, see the attest step above */
       attestation: attested ? (attested.cls === "ai" ? "ai" : attested.cls) : (aiAssertions.length ? "ai" : "deterministic"),
       confidence: aiAssertions.length ? Math.min(...aiAssertions.map(a => a.confidence ?? 0)) : 1,
       depth: aiAssertions.length ? Math.max(...aiAssertions.map(a => a.depth || 1)) : 0,
@@ -258,20 +258,19 @@ export class Interpreter {
       written = this.ios.write(trace);
       /* async backends (D1) buffer on write; durability is the flush. The
          await sits INSIDE the try so a failed flush is a failed trace and the
-         staged outputs are discarded — fail-closed survives the persistence
+         staged outputs are discarded, fail-closed survives the persistence
          layer going async. */
       if (typeof this.ios.flush === "function") await this.ios.flush();
     }
     catch (e) {
-      /* 9a. trace failed → discard staged output. No untraced intelligence. */
-      throw new IGLError(`trace capture failed; staged outputs discarded — ${e.message}`,
+      /* 9a. trace failed to discard staged output. No untraced intelligence. */
+      throw new IGLError(`trace capture failed; staged outputs discarded, ${e.message}`,
         { line: st.line, phase: "trace", code: "IGL_TRACE_FAILED" });
     }
     if (!written) throw new IGLError("trace capture returned no id; staged outputs discarded", { phase: "trace", code: "IGL_TRACE_FAILED" });
 
     /* 9b. release, and close the loop: the committed trace folds back into the
-       identity graph. Its own attestation class decides which layer it reaches —
-       an ai-class trace can never land anywhere that widens authority. */
+       identity graph. Its own attestation class decides which layer it reaches, an ai-class trace can never land anywhere that widens authority. */
     this.ios.markReused(contextTraces);
     if (typeof this.identity.fold === "function") this.identity.fold(trace);
     if (committed) for (const [k, v] of Object.entries(staged)) this.env.set(k, v);
@@ -289,7 +288,7 @@ export class Interpreter {
   /* ---------- failure handling (CRITIQUE B1) ---------- */
   async handleFailure(st, error) {
     /* No handler declared: the failure is recorded, not swallowed and not
-       thrown away. The program halts — a governed pipeline does not run its
+       thrown away. The program halts, a governed pipeline does not run its
        later statements on the strength of a step that did not happen. */
     if (!st.onFail) {
       return { status: "failed", halted: true,

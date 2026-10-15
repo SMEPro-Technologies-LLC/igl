@@ -2,12 +2,12 @@
    Streamable-HTTP flavour: JSON-RPC 2.0 over POST /mcp, stateless.
 
    Tools:
-     check_health            read-only — service + model status
-     list_graphs             read-only — the caller's graphs (every tenant's for the service principal)
-     get_graph               read-only — one graph by id, if the caller may read it
-     search / fetch          read-only — the pair read-only connectors expect, scoped the same way
-     identity_graph_whoami   read/write — the caller's OWN graph: seeds on first contact, replays after
-     provision_identity      write     — resolve → fold → generate .igl → governed run, stored under the caller's principal
+     check_health            read-only, service + model status
+     list_graphs             read-only, the caller's graphs (every tenant's for the service principal)
+     get_graph               read-only, one graph by id, if the caller may read it
+     search / fetch          read-only, the pair read-only connectors expect, scoped the same way
+     identity_graph_whoami   read/write, the caller's OWN graph: seeds on first contact, replays after
+     provision_identity      write, resolve to fold to generate .igl to governed run, stored under the caller's principal
 
    Auth (F-01/F-02): credentials in headers only (Authorization: Bearer or
    X-IGL-Caller-Key). Every call runs under an `auth` object from the gate;
@@ -28,7 +28,7 @@ const TOOLS = [
   { name: "search", description: "Search the caller's graphs by slug, actor or kind.", inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
   { name: "fetch", description: "Fetch one of the caller's graphs by id.", inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "identity_graph_whoami",
-    description: "Recognize the caller. Returns the caller's own Identity Graph — FOOTPRINT (individual) or BOUNDARY (company) — with journal chain status, footprint digest and latest governed results. First contact seeds the graph from the registered profile; every contact after that replays the hash-chained journal. Call this FIRST in every conversation.",
+    description: "Recognize the caller. Returns the caller's own Identity Graph, FOOTPRINT (individual) or BOUNDARY (company), with journal chain status, footprint digest and latest governed results. First contact seeds the graph from the registered profile; every contact after that replays the hash-chained journal. Call this FIRST in every conversation.",
     inputSchema: { type: "object", properties: {} } },
   { name: "provision_identity",
     description: "Provision an Identity Graph from a natural-language description. Stored under the caller's own principal; the service key may pass an explicit owner.",
@@ -42,7 +42,7 @@ function summarize(g) {
 
 function ownerFor(auth, requested) {
   if (auth?.admin && requested?.tenant && requested?.principal) return { tenant: requested.tenant, principal: requested.principal };
-  if (!auth || !auth.tenant || !auth.principal) throw Object.assign(new Error("this session is not bound to a principal — present a registered caller key"), { status: 401 });
+  if (!auth || !auth.tenant || !auth.principal) throw Object.assign(new Error("this session is not bound to a principal, present a registered caller key"), { status: 401 });
   return { tenant: auth.tenant, principal: auth.principal };
 }
 
@@ -65,7 +65,7 @@ export async function callTool(name, args, auth) {
       return { id: g.id, title: `${g.slug} (${g.kind})`, text: JSON.stringify(summarize(g)), url: `mcp://graphs/${g.id}` };
     }
     case "identity_graph_whoami": {
-      if (!auth?.caller) throw Object.assign(new Error("unrecognized caller — this session is not bound to a registered identity key"), { status: 401 });
+      if (!auth?.caller) throw Object.assign(new Error("unrecognized caller, this session is not bound to a registered identity key"), { status: 401 });
       return whoAmI(auth.caller, ownerFor(auth));
     }
     case "provision_identity": {

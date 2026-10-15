@@ -1,7 +1,6 @@
-/* IGL static checker — v0.2
+/* IGL static checker, v0.2
    Everything that can be rejected before a model call is rejected here.
-   Evaluation order is fixed (CRITIQUE D5): identity → boundary → intent →
-   arguments → references. Errors accumulate; the caller sees all of them. */
+   Evaluation order is fixed (CRITIQUE D5): identity to boundary to intent to arguments to references. Errors accumulate; the caller sees all of them. */
 
 import { IGLError } from "./lexer.js";
 import { BUILTINS, INTENTS, TRACE_CHANNELS } from "./builtins.js";
@@ -100,7 +99,7 @@ export function check(ast, { intents = INTENTS, builtins = BUILTINS, inputs = []
 
       // model pinning is mandatory for probabilistic calls (CRITIQUE B3)
       if (sg.requiresModel && !named.has("Model"))
-        add(`${key} must pin a model — an unpinned inference cannot be replayed or audited`, step, "IGL_UNPINNED_MODEL");
+        add(`${key} must pin a model, an unpinned inference cannot be replayed or audited`, step, "IGL_UNPINNED_MODEL");
 
       // trace channels must be known
       if (key === "IOS.Trace") {
@@ -117,7 +116,7 @@ export function check(ast, { intents = INTENTS, builtins = BUILTINS, inputs = []
 
     /* 5. fail-closed on trace is a static property, not a runtime hope */
     if (!sawTrace)
-      add("statement has no IOS.Trace step — untraced computation is not admissible", st.compute, "IGL_UNTRACED");
+      add("statement has no IOS.Trace step, untraced computation is not admissible", st.compute, "IGL_UNTRACED");
 
     /* 6. output typing against the intent's declared outputs (CRITIQUE B4) */
     if (spec) {
@@ -129,7 +128,7 @@ export function check(ast, { intents = INTENTS, builtins = BUILTINS, inputs = []
       if (spec.requiresAttestation) {
         const hasAttest = st.compute.steps.some(s => s.subsystem === "IOS" && s.fn === "Attest");
         if (!hasAttest)
-          add(`intent ${st.intent.name} requires human attestation — add IOS.Attest(Signer=..., Role=...)`,
+          add(`intent ${st.intent.name} requires human attestation, add IOS.Attest(Signer=..., Role=...)`,
               st.intent, "IGL_NO_ATTESTATION");
       }
     }

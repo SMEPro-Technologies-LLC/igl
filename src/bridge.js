@@ -1,15 +1,15 @@
-/* UDM ↔ AI translation bridge — IGL v0.2 (rev 2, post-review)
+/* UDM and AI translation bridge, IGL v0.2 (rev 2, post-review)
 
-       γ : UDM_set     → model_constraint      "decode down"
-       α : model_output → UDM_element          "lift up"
+       γ : UDM_set to model_constraint      "decode down"
+       α : model_output to UDM_element          "lift up"
 
        soundness:  α(γ(S)) ⊆ S ∪ {ABSTAIN}
 
-   Abstention is a distinguished outcome, not a member of S — consumers must
+   Abstention is a distinguished outcome, not a member of S, consumers must
    handle it, so the property is stated in the form implemented.
 
    Review remediations carried in this revision:
-     R1  maskPlan is a prefix automaton, not a token union — a recombination
+     R1  maskPlan is a prefix automaton, not a token union, a recombination
          of admissible values (PR-10 from PR-202/H-10) is unreachable.
      R2  a span value is deterministic ONLY when its location band is
          admissible or its locator is itself deterministic. Provenance is
@@ -64,7 +64,7 @@ export class Bridge {
   }
 
   /* =================================================================
-     γ — concretization
+     γ, concretization
      ================================================================= */
   gamma(scope, slots, { exemplars = [], model = null, seed = null } = {}) {
     const properties = {}, required = [], plan = {};
@@ -73,7 +73,7 @@ export class Bridge {
       if (!KINDS.has(slot.kind))
         throw new IGLError(
           slot.kind === "number"
-            ? `slot ${slot.name}: a quantity may never be generated — declare kind "span" so the value is read from source`
+            ? `slot ${slot.name}: a quantity may never be generated, declare kind "span" so the value is read from source`
             : `slot ${slot.name}: unknown kind ${slot.kind}`,
           { phase: "bridge", code: "IGL_BAD_SLOT_KIND" });
 
@@ -92,7 +92,7 @@ export class Bridge {
           description: "Locate the value; do not transcribe it. The system reads the characters at this span.",
           properties: {
             file: { type: "string" },
-            charOffset: { type: "integer", minimum: 0 },   /* UTF-16 code units — named for what it is (R5) */
+            charOffset: { type: "integer", minimum: 0 },   /* UTF-16 code units, named for what it is (R5) */
             length: { type: "integer", minimum: 1 },
           },
           required: ["file", "charOffset", "length"],
@@ -108,7 +108,7 @@ export class Bridge {
 
     const schema = { type: "object", properties, required, additionalProperties: false };
 
-    /* R1 — prefix automaton per constrained slot. At each step only tokens
+    /* R1, prefix automaton per constrained slot. At each step only tokens
        that continue at least one admissible completion of the emitted prefix
        are allowed. A flat union would admit recombinations (PR-10). */
     let maskPlan = null;
@@ -187,7 +187,7 @@ export class Bridge {
       if (exactNorm.length === 1) return { value: exactNorm[0], how: "normalised", candidate: v };
       if (exactNorm.length > 1)
         return { value: null, rejected: true, how: "ambiguous", candidate: v, candidates: exactNorm };
-      /* R3 — edit distance never applies to codes: regulatory codes are dense
+      /* R3, edit distance never applies to codes: regulatory codes are dense
          in edit space (US-TX/US-TN, 211120/211130) and a one-edit repair is a
          different instrument, not a typo. */
       if (kind !== "code") {
@@ -214,9 +214,9 @@ export class Bridge {
   }
 
   /* =================================================================
-     α — abstraction
+     α, abstraction
      `source(fileId) -> string` resolves documents.
-     `manifest` (optional) — { fileId: sha256(sourceText) }: a span may only
+     `manifest` (optional), { fileId: sha256(sourceText) }: a span may only
      cite a file the corpus knows, and the citation pins the digest so the
      evidence survives re-OCR or re-export (R7).
      ================================================================= */
@@ -228,10 +228,10 @@ export class Bridge {
       return out;
     }
 
-    /* R7 — additionalProperties enforced locally, not just declared:
+    /* R7, additionalProperties enforced locally, not just declared:
        undeclared top-level keys are surfaced, never silently read. */
     for (const key of Object.keys(payload))
-      if (!envelope.plan[key]) out.unmapped.push({ slot: key, reason: "undeclared property — outside the emitted schema" });
+      if (!envelope.plan[key]) out.unmapped.push({ slot: key, reason: "undeclared property, outside the emitted schema" });
 
     for (const [name, p] of Object.entries(envelope.plan)) {
       const got = payload[name];
@@ -244,7 +244,7 @@ export class Bridge {
         }
         const extra = Object.keys(got).filter(k => !["file", "charOffset", "length"].includes(k));
         if (extra.length) {                                   /* R7: shape is enforced, not advisory */
-          out.unmapped.push({ slot: name, reason: `span violates schema — unexpected propert${extra.length > 1 ? "ies" : "y"}: ${extra.join(", ")}` });
+          out.unmapped.push({ slot: name, reason: `span violates schema, unexpected propert${extra.length > 1 ? "ies" : "y"}: ${extra.join(", ")}` });
           continue;
         }
         const ref = got;
@@ -259,7 +259,7 @@ export class Bridge {
         if (typeof text !== "string") { out.unmapped.push({ slot: name, reason: `source ${ref.file} not resolvable` }); continue; }
         const docDigest = sha256(text);
         if (manifest && manifest[ref.file] !== docDigest) {
-          out.unmapped.push({ slot: name, reason: `source ${ref.file} digest mismatch — document changed since the manifest was cut`, ref }); continue;
+          out.unmapped.push({ slot: name, reason: `source ${ref.file} digest mismatch, document changed since the manifest was cut`, ref }); continue;
         }
         if (ref.charOffset + ref.length > text.length) {
           out.unmapped.push({ slot: name, reason: "span out of bounds", ref }); continue;
@@ -268,15 +268,15 @@ export class Bridge {
         const parsed = parseSpan(chars, p.parse);
         if (parsed === null) { out.unmapped.push({ slot: name, reason: `span did not parse as ${p.parse}`, raw: chars, ref }); continue; }
 
-        /* R2 — provenance is deterministic; selection is inference.
-             admissible location → the value is an anchor
-             proposed  location → the value is proposed, trace class ai
-             held      location → dropped, exactly as "held" is defined
-             unstated  location → proposed; absence of a confidence is not
+        /* R2, provenance is deterministic; selection is inference.
+             admissible location to the value is an anchor
+             proposed  location to the value is proposed, trace class ai
+             held      location to dropped, exactly as "held" is defined
+             unstated  location to proposed; absence of a confidence is not
                                    evidence of confidence                    */
         const band = this.classify(confidences[name]);
         if (band === "held") {
-          out.unmapped.push({ slot: name, reason: `location confidence below the proposed floor — held, not asserted`, ref, confidence: confidences[name] });
+          out.unmapped.push({ slot: name, reason: `location confidence below the proposed floor, held, not asserted`, ref, confidence: confidences[name] });
           continue;
         }
         out.slots[name] = {
@@ -325,7 +325,7 @@ export class Bridge {
   }
 
   /* soundness: α(γ(S)) ⊆ ↓S ∪ {ABSTAIN}
-     ↓S is the downward closure of the admissible set — under lattice
+     ↓S is the downward closure of the admissible set, under lattice
      strictness a SPECIALISATION of an admissible value lies inside the
      governed region (US-TX admits TX-RRC beneath it), while anything broader
      or lateral does not. Span/text slots are outside this property and carry
@@ -349,9 +349,9 @@ export class Bridge {
 function safeParse(s) { try { return JSON.parse(s); } catch { return null; } }
 
 /* Deterministic parsers. No inference, no repair.
-   currency → integer minor units (R5): binary floating point is the wrong
+   currency to integer minor units (R5): binary floating point is the wrong
    representation for money by the same argument that bars model-generated
-   numbers. `number` → canonical decimal string, for the same reason. */
+   numbers. `number` to canonical decimal string, for the same reason. */
 export function parseSpan(chars, kind) {
   const t = String(chars).trim();
   switch (kind) {

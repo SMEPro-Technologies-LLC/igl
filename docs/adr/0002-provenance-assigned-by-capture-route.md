@@ -9,7 +9,7 @@ A model, a tool, and a human can each put the same claim into the graph. If the 
 
 ## Decision
 
-The capture route sets provenance (`granted`, `observed: governing`, `observed: proposed`). Code that reclassifies a lower class as a higher one is rejected on review (`CONTRIBUTING.md`). The platform contract mirrors this with `seed → proposed → certified` and `attested | proposed`, where only the control plane certifies or attests.
+The capture route sets provenance (`granted`, `observed: governing`, `observed: proposed`). Code that reclassifies a lower class as a higher one is rejected on review (`CONTRIBUTING.md`). The platform contract mirrors this with `seed to proposed to certified` and `attested | proposed`, where only the control plane certifies or attests.
 
 ## Consequences
 

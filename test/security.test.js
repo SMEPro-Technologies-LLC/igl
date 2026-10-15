@@ -46,7 +46,7 @@ test("F-01: rate limiter and inference semaphore bound resource use", async () =
 });
 
 /* ---------------- F-02: ownership ---------------- */
-test("F-02: principals derive from the key, never the display name; same label → different storage", () => {
+test("F-02: principals derive from the key, never the display name; same label to different storage", () => {
   const a = principalOf("key-a", { name: "Analyst · Oil & Gas" }), b = principalOf("key-b", { name: "Analyst · Oil & Gas" });
   assert.notEqual(a.principal, b.principal);
   assert.notEqual(graphIdFor(a, "analyst-oil-gas"), graphIdFor(b, "analyst-oil-gas"));
@@ -95,7 +95,7 @@ test("F-03: replaying a journal re-verifies every authority event; a chain writt
   const replayed = new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: new FileJournal(join(dir, "ok.jsonl")), grantors: { board: board.pub() } });
   assert.equal(replayed.events[0].verified, true);
   const j2 = new FileJournal(join(dir, "legacy.jsonl"));
-  new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: j2 }).grant("A", { Jurisdiction: ["US-TX"] }, { by: "board" });   // no registry → unverified
+  new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: j2 }).grant("A", { Jurisdiction: ["US-TX"] }, { by: "board" });   // no registry to unverified
   assert.throws(() => new GraphRuntime({ dimensions: DEFAULT_DIMENSIONS, journal: new FileJournal(join(dir, "legacy.jsonl")), grantors: { board: board.pub() } }), (e) => e.code === "IGL_UNVERIFIED_GRANT");
 });
 test("F-03: without a registry the runtime behaves as before but marks authority events unverified", () => {
@@ -126,7 +126,7 @@ test("F-04: a public-only signer requires an Approval; a valid approval over THI
   const human = Signer.generate("board");                       // private key lives with the human, not the runtime
   const runtime = Signer.generate("runtime");
   const interp = mk({ signers: { board: Signer.publicOnly("board", human.pub()) }, runtimeSigner: runtime });
-  /* no approval → refused */
+  /* no approval to refused */
   await assert.rejects(async () => { const r = await interp.run(PROG); if (r.results[0].status !== "committed") throw Object.assign(new Error(r.results[0].error.code), { code: r.results[0].error.code }); }, (e) => /IGL_APPROVAL_REQUIRED/.test(e.message || e.code));
   /* the human approves the statement they saw: the runtime computes the same subject */
   const probe = mk({ signers: { board: human } });                // only to learn the statement key the runtime derives

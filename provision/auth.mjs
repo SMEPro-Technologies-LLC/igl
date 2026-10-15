@@ -3,13 +3,13 @@
    Credentials travel in headers only:
      Authorization: Bearer <service key | caller key>
      X-IGL-Caller-Key: <caller key>           (for clients that reserve Authorization)
-   A key in the query string is ignored — it would land in access logs,
+   A key in the query string is ignored, it would land in access logs,
    proxies and browser history.
 
    Two kinds of principal come out of the gate:
-     service  — PROVISION_API_KEY. Administrative: may read every tenant and
+     service, PROVISION_API_KEY. Administrative: may read every tenant and
                 provision on behalf of any owner.
-     caller   — a registered identity (identities.mjs). Scoped to its own
+     caller, a registered identity (identities.mjs). Scoped to its own
                 tenant and principal; sees and writes only its own graphs.
 
    The service never runs open on a routable interface: with no key it binds
@@ -67,7 +67,7 @@ export function listenConfig(env = process.env) {
   const isPublic = env.PROVISION_PUBLIC === "1";
   const apiKey = env.PROVISION_API_KEY || null;
   if (isPublic && !apiKey)
-    throw new Error("PROVISION_PUBLIC=1 requires PROVISION_API_KEY — refusing to expose the provisioning service without authentication");
+    throw new Error("PROVISION_PUBLIC=1 requires PROVISION_API_KEY, refusing to expose the provisioning service without authentication");
   return { host: isPublic ? (env.PROVISION_HOST || "0.0.0.0") : "127.0.0.1", port, isPublic, apiKey };
 }
 
