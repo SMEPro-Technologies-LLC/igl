@@ -2,6 +2,40 @@
    the content security policy can be strict. Renders /api/overview and
    /api/mentions. */
 
+export const SIGNOUT = `<form method="post" action="/logout" style="margin:0"><button type="submit">Sign out</button></form>`;
+
+export const LOGIN = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IGL operations, sign in</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { color-scheme: dark; --bg: #0b0d14; --panel: #12151e; --hair: #262a36; --ink: #e8ecf4; --ink2: #a9b0c2; --acc: #6a7bff; --bad: #ef5d5d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 16px; }
+  form { width: 100%; max-width: 360px; background: var(--panel); border: 1px solid var(--hair); border-radius: 14px; padding: 24px; display: grid; gap: 12px; }
+  h1 { font-size: 16px; margin: 0 0 4px; } h1 b { letter-spacing: .08em; } h1 span { color: var(--ink2); font-weight: 400; }
+  label { display: grid; gap: 4px; font-size: 13px; color: var(--ink2); }
+  input { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--hair); border-radius: 8px; padding: 9px 10px; }
+  button { font: inherit; color: #fff; background: var(--acc); border: 1px solid var(--acc); border-radius: 8px; padding: 9px 12px; cursor: pointer; }
+  .err { color: var(--bad); font-size: 13px; min-height: 1.2em; }
+  .note { color: var(--ink2); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<form method="post" action="/login" autocomplete="on">
+  <h1><b>IGL</b> <span>operations</span></h1>
+  <label>Username <input name="username" autocomplete="username" required autofocus></label>
+  <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+  <div class="err">__ERROR__</div>
+  <button type="submit">Sign in</button>
+  <div class="note">Private console for SMEPro Technologies operators. Sessions last twelve hours.</div>
+</form>
+</body>
+</html>`;
+
 export const PAGE = `<!doctype html>
 <html lang="en">
 <head>
@@ -45,7 +79,7 @@ export const PAGE = `<!doctype html>
   <div><b>IGL</b> <span class="sub">operations</span></div>
   <div class="r"><span id="who">__WHO__</span>
     <select id="days"><option value="1">last 24 hours</option><option value="7" selected>last 7 days</option><option value="30">last 30 days</option><option value="90">last 90 days</option></select>
-    <button id="refresh" class="p">Refresh</button><span id="stamp" class="sub"></span></div>
+    <button id="refresh" class="p">Refresh</button><span id="stamp" class="sub"></span>__SIGNOUT__</div>
 </header>
 <main id="main"><div class="note">Loading</div></main>
 <script>

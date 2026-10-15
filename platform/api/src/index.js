@@ -11,6 +11,7 @@
 import { ROUTES } from "./routes.generated.js";
 import { handlers } from "./handlers.js";
 import { adminFetch } from "./admin.js";
+import { handleMcp } from "./mcp.js";
 import { authenticate, rateLimit } from "./lib/auth.js";
 import { ApiError, E, problem, json, readJson, requestHash, uuid, nowIso } from "./lib/http.js";
 import { loadSigner } from "./lib/crypto.js";
@@ -56,6 +57,16 @@ export default {
       const admin = await adminFetch({ request, env, ctx, db, url, signer, requestId });
       if (admin) return withCommon(admin);
 
+      // MCP endpoint: authenticated like any operation; each tool call is checked against its operation's scopes
+      if (url.pathname === "/v1/mcp" || url.pathname === "/mcp") {
+        if (request.method !== "POST") throw new ApiError(405, "Method not allowed", "MCP is POST-only on this endpoint.", { headers: { allow: "POST" } });
+        const principal = await authenticate({ request, env, db, signer, route: { scopes: [], apiKey: true }, url });
+        await rateLimit(db, env, "key:" + principal.keyId, 2);
+        const raw = await request.text(); const msg = parseBody(raw, request);
+        const checkScopes = (route) => { const need = route.scopes || []; if (need.length && !principal.scopes.includes("igl.platform") && !need.some((s) => principal.scopes.includes(s))) throw E.forbidden(`This tool requires scope ${need.join(" or ")}.`, { code: "insufficient_scope" }); };
+        const out = await handleMcp({ request, env, ctx, db, url, principal, requestId, signer }, msg, checkScopes);
+        return withCommon(out.body === null ? new Response(null, { status: out.status }) : json(out.body, out.status));
+      }
       const matched = match(request.method, url.pathname);
       if (!matched) throw E.notFound("No such operation. The contract is at https://id-me.ai/#docs.");
       const { route, params } = matched;

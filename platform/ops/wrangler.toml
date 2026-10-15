@@ -3,14 +3,16 @@
 # Secrets (wrangler secret put <NAME>):
 #   CLOUDFLARE_API_TOKEN  Zone Analytics: Read, Zone: Read on id-me.ai (site traffic)
 #   GITHUB_TOKEN          classic or fine-grained token with push access to the repo (traffic, clones); optional
-# Vars ACCESS_TEAM_DOMAIN and ACCESS_AUD come from the Access application you create for ops.id-me.ai.
+#   OPS_ADMIN_PASSWORD    the console's own sign-in (username OPS_ADMIN_USER, below); set it and the sign-in page is live
+# Cloudflare Access can be used instead: set ACCESS_TEAM_DOMAIN and ACCESS_AUD from the Access application for ops.id-me.ai.
 name = "igl-ops"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
+# ops.id-me.ai is a Cloudflare Custom Domain; the first deploy creates its DNS record and certificate.
 routes = [
-  { pattern = "ops.id-me.ai/*", zone_name = "id-me.ai" },
+  { pattern = "ops.id-me.ai", custom_domain = true },
 ]
 
 [observability]
@@ -20,6 +22,7 @@ enabled = true
 ZONE_NAME = "id-me.ai"
 GITHUB_REPO = "SMEPro-Technologies-LLC/igl"
 MENTION_QUERY = "id-me.ai"
+OPS_ADMIN_USER = "admin"
 ACCESS_TEAM_DOMAIN = ""
 ACCESS_AUD = ""
 NPM_PACKAGE = ""

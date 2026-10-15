@@ -48,7 +48,7 @@ function responseSchema(op, status) {
   return ajv.compile({ ...sch, components: spec.components });
 }
 
-let tenant, key, identityId, token;
+let tenant, key, identityId, token, tokenTenant;
 async function call(method, path, { body, headers = {}, raw = false, auth = true, expect } = {}) {
   const url = BASE + "/v1" + path;
   const h = { "content-type": "application/json" };
@@ -105,7 +105,7 @@ test("client credentials token works like the key and carries scopes", async () 
   assert.equal(denied.status, 403, "igl.read token must not write");
   const bad = await fetch(BASE + "/oauth2/token", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ grant_type: "client_credentials", client_id: signup.clientId, client_secret: "wrong" }) });
   assert.equal(bad.status, 401);
-  token = t.access_token;
+  token = t.access_token; tokenTenant = signup.tenantId;
 });
 
 test("capabilities and purposes", async () => {
@@ -350,6 +350,44 @@ test("audit: events chain verifies, filters work, interactions are recorded into
   const filtered = await call("GET", `/audit/events?eventType=identity.created&resourceId=${orgId}`, { expect: 200 });
   assert.equal(filtered.json.items.length, 1);
   await call("GET", "/audit/receipts/00000000-0000-0000-0000-000000000008", { expect: 404 });
+});
+
+test("MCP endpoint: the seven tools run through the same handlers and scopes", async () => {
+  const rpc = async (body, auth = key, tenantId = tenant) => { const r = await fetch(BASE + "/v1/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${auth}`, "x-igl-tenant-id": tenantId }, body: JSON.stringify(body) }); return { status: r.status, json: await r.json().catch(() => null) }; };
+  const init = await rpc({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
+  assert.equal(init.json.result.serverInfo.name, "igl_identity_mcp");
+  const list = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+  assert.deepEqual(list.json.result.tools.map((t) => t.name), ["whoami", "list_purposes", "get_identity_context", "explain_projection", "list_obligations", "search_graph", "record_interaction"]);
+  const me = await rpc({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "whoami", arguments: { purpose: "identity-introduction" } } });
+  assert.equal(me.json.result.isError, false); assert.equal(me.json.result.structuredContent.identityId, identityId); assert.ok(me.json.result.structuredContent.governance.signature);
+  const ex = await rpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "explain_projection", arguments: { identityId, purpose: "scientific-research" } } });
+  assert.ok(ex.json.result.structuredContent.considered.length > 0);
+  const ob = await rpc({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "list_obligations", arguments: { identityId, purpose: "regulatory-filing" } } });
+  assert.equal(ob.json.result.structuredContent.items.length, 2);
+  const sg = await rpc({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "search_graph", arguments: { q: "Rio" } } });
+  assert.ok(sg.json.result.structuredContent.items.some((i) => i.id === orgId));
+  const page1 = await rpc({ jsonrpc: "2.0", id: 61, method: "tools/call", params: { name: "search_graph", arguments: { limit: 1 } } });
+  assert.equal(page1.json.result.structuredContent.items.length, 1); assert.ok(page1.json.result.structuredContent.page.nextCursor, "paged search exposes nextCursor");
+  const page2 = await rpc({ jsonrpc: "2.0", id: 62, method: "tools/call", params: { name: "search_graph", arguments: { limit: 1, cursor: page1.json.result.structuredContent.page.nextCursor } } });
+  assert.equal(page2.json.result.structuredContent.items.length, 1); assert.notEqual(page2.json.result.structuredContent.items[0].id, page1.json.result.structuredContent.items[0].id, "cursor advances");
+  const obPage = await rpc({ jsonrpc: "2.0", id: 63, method: "tools/call", params: { name: "list_obligations", arguments: { identityId, purpose: "regulatory-filing", limit: 1 } } });
+  assert.equal(obPage.json.result.structuredContent.items.length, 1); assert.ok(obPage.json.result.structuredContent.page.nextCursor);
+  const paths = await rpc({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "search_graph", arguments: { fromId: identityId, toId: assetId, maxHops: 4 } } });
+  assert.equal(paths.json.result.structuredContent.paths.length, 1);
+  const rec = await rpc({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "record_interaction", arguments: { identityId, purpose: "identity-introduction", outcome: "completed", model: "mcp-test" } } });
+  assert.ok(rec.json.result.structuredContent.eventHash);
+  const refused = await rpc({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "list_obligations", arguments: { identityId, purpose: "directory-lookup" } } });
+  assert.equal(refused.json.result.isError, true); assert.match(refused.json.result.content[0].text, /does not permit/);
+  const ro = await rpc({ jsonrpc: "2.0", id: 10, method: "tools/call", params: { name: "record_interaction", arguments: { purpose: "identity-introduction", outcome: "completed" } } }, token, tokenTenant);
+  assert.equal(ro.status, 200); assert.equal(ro.json.result.isError, true); assert.match(ro.json.result.content[0].text, /scope igl\.write/, "a read-only token in its own tenant is refused by scope, not by tenant");
+  const roRead = await rpc({ jsonrpc: "2.0", id: 101, method: "tools/call", params: { name: "list_purposes", arguments: {} } }, token, tokenTenant);
+  assert.equal(roRead.json.result.isError, false, "the same token may read");
+  const wrongTenant = await rpc({ jsonrpc: "2.0", id: 102, method: "ping" }, token);
+  assert.equal(wrongTenant.status, 403, "a token used against another tenant is refused before any tool runs");
+  const nope = await rpc({ jsonrpc: "2.0", id: 11, method: "nope" });
+  assert.equal(nope.json.error.code, -32601);
+  const anon = await fetch(BASE + "/v1/mcp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }) });
+  assert.equal(anon.status, 401);
 });
 
 test("every operation in the contract was exercised", () => {

@@ -1,6 +1,8 @@
 # IGL Governed Identity Platform API.
 #   npx wrangler deploy --env production   -> api.id-me.ai and auth.id-me.ai
 #   npx wrangler deploy --env sandbox      -> sandbox.id-me.ai
+# The hostnames are Cloudflare Custom Domains: the first deploy creates the DNS
+# record and the certificate for each one, so nothing has to be added by hand.
 # Secrets per environment (wrangler secret put <NAME> --env <env>):
 #   ANTHROPIC_API_KEY   reasoning provider for /query, /research, /crosswalk, /investigate
 #   BOOTSTRAP_TOKEN     one-time, for POST /admin/bootstrap
@@ -30,8 +32,8 @@ database_id = "local"
 [env.production]
 name = "igl-api"
 routes = [
-  { pattern = "api.id-me.ai/*", zone_name = "id-me.ai" },
-  { pattern = "auth.id-me.ai/*", zone_name = "id-me.ai" },
+  { pattern = "api.id-me.ai", custom_domain = true },
+  { pattern = "auth.id-me.ai", custom_domain = true },
 ]
 [env.production.vars]
 IGL_ENV = "production"
@@ -48,7 +50,7 @@ database_id = "9cb410a2-45a4-4a60-bea5-3400afccbc96"
 [env.sandbox]
 name = "igl-api-sandbox"
 routes = [
-  { pattern = "sandbox.id-me.ai/*", zone_name = "id-me.ai" },
+  { pattern = "sandbox.id-me.ai", custom_domain = true },
 ]
 [env.sandbox.vars]
 IGL_ENV = "sandbox"
