@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: If you use IGL in research, please cite it as below.
+title: "IGL: Identity Governed Logic"
+type: software
+authors:
+  - name: SMEPro Technologies LLC
+    website: https://www.smeprotech.com
+version: 1.2.1
+date-released: 2026-08-18
+license: Apache-2.0
+repository-code: https://github.com/SMEPro-Technologies-LLC/igl
+url: https://id-me.ai
+abstract: A language and runtime in which identity, boundaries, intent and a hash-chained trace are bound into the computation, and the public contract of the IGL Governed Identity Platform.

@@ -19,6 +19,7 @@ import { parse } from "./parser.js";
 import { check } from "./check.js";
 import { BUILTINS, INTENTS, SLOTS } from "./builtins.js";
 import { IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime } from "./runtime.js";
+import { Signer } from "./sign.js";
 
 const hash = s => {
   // FNV-1a 64-ish, hex; deterministic and dependency-free
@@ -39,11 +40,12 @@ export class Interpreter {
     intents = INTENTS,
     builtins = BUILTINS,
     handlers = {},
-    signers = {},                /* name -> Signer; when non-empty, attestation must be keyed */
+    signers = {},                /* name -> Signer (service-held key) or Signer.publicOnly(...) (human's key); when non-empty, attestation must be keyed */
+    runtimeSigner = null,        /* optional Signer that countersigns every committed trace (receipts for human-approved traces) */
     now = () => new Date().toISOString(),
     traceIdSeq = null,
   } = {}) {
-    Object.assign(this, { identity, udm, ai, ios, intents, builtins, handlers, signers, now });
+    Object.assign(this, { identity, udm, ai, ios, intents, builtins, handlers, signers, runtimeSigner, now });
     this._seq = 0;
     this._traceId = traceIdSeq || (() => `TRC-${String(++this._seq).padStart(6, "0")}`);
     this.env = new Map();       // output name -> value (CRITIQUE B2)
@@ -164,26 +166,42 @@ export class Interpreter {
       } else if (step.subsystem === "IOS") {
         if (step.fn === "Trace") { (args.Channels || []).forEach(c => channels.add(c)); }
         else if (step.fn === "Attest") {
-          /* When a signer registry is configured, an attestation must be
-             attributable to a registered key — a human-class trace cannot be
-             minted by writing a name into a field. Without a registry the
-             reference implementation accepts symbolic signers, unkeyed. */
+          /* F-04. Three classes, fail-closed:
+               ai       — no registry, or symbolic signer: decays, counts toward depth
+               service  — a registered key the SERVICE holds signed it: proves
+                          this build ran with this key; proves no human saw it
+               human    — a registered key the service does NOT hold produced an
+                          Approval over THIS statement (actor, intent, boundary,
+                          statement key). Only this class never decays. */
           const signerName = String(args.Signer);
-          const signerKey = this.signers[signerName] || null;
-          if (Object.keys(this.signers).length && !signerKey)
+          const entry = this.signers[signerName] || null;
+          if (Object.keys(this.signers).length && !entry)
             throw new IGLError(`signer ${signerName} holds no registered key — an unkeyed attestation is not attributable`,
               { line: step.line, phase: "attest", code: "IGL_UNKNOWN_SIGNER" });
-          /* Fail-closed on class: `human` is the non-decaying, never-inherited
-             class in SPEC §9, so it must not be mintable by configuration.
-             An unkeyed attestation still satisfies the intent's attestation
-             gate (the statement commits) but is CLASSED ai — it decays, it
-             counts toward depth, and the trace says why. The guarantee no
-             longer depends on whether a registry happened to be deployed. */
-          attested = { signer: signerName, role: args.Role, note: args.Note ?? null, at: this.now(), keyed: !!signerKey };
-          assertions.push({ step: key, assertion: "attestation", ...attested,
-            attestation: attested.keyed ? "human" : "ai",
-            confidence: attested.keyed ? 1 : 0.5,
-            ...(attested.keyed ? {} : { note: (args.Note ? args.Note + " · " : "") + "unkeyed attestation — human class requires a registered signing key" }) });
+          const keyed = !!entry;
+          const subject = { statementKey, actor: ident.actor, intent: st.intent.name, boundary };
+          let cls = "ai", approval = null;
+          if (keyed && args.Approval) {
+            const v = Signer.verifyApproval(args.Approval, subject, Signer.publicKeyOf(entry));
+            if (!v.ok)
+              throw new IGLError(`approval by ${signerName} refused — ${v.reason}`, { line: step.line, phase: "attest", code: "IGL_BAD_APPROVAL" });
+            if (Signer.canSign(entry))
+              throw new IGLError(`approval by ${signerName} refused — the runtime holds this signer's private key, so an approval under it cannot evidence a human decision`,
+                { line: step.line, phase: "attest", code: "IGL_SELF_APPROVAL" });
+            cls = "human"; approval = args.Approval;
+          } else if (keyed) {
+            if (!Signer.canSign(entry))
+              throw new IGLError(`signer ${signerName} is a public-only registry entry — attestation requires an Approval signed by its holder`,
+                { line: step.line, phase: "attest", code: "IGL_APPROVAL_REQUIRED" });
+            cls = "service";
+          }
+          attested = { signer: signerName, role: args.Role, note: args.Note ?? null, at: this.now(), keyed, cls, approval };
+          assertions.push({ step: key, assertion: "attestation", signer: signerName, role: args.Role, note: attested.note, at: attested.at, keyed,
+            attestation: cls,
+            confidence: cls === "ai" ? 0.5 : 1,
+            ...(approval ? { approval } : {}),
+            ...(cls === "ai" ? { note: (args.Note ? args.Note + " · " : "") + "unkeyed attestation — human class requires a registered signing key and an approval" } : {}),
+            ...(cls === "service" ? { note: (args.Note ? args.Note + " · " : "") + "service attestation — signed by a key the runtime holds; not evidence of human review" } : {}) });
         } else if (step.fn === "Stage") {
           assertions.push({ step: key, assertion: "staged", artifact: args.Artifact, attestation: "deterministic", confidence: 1 });
         }
@@ -219,7 +237,7 @@ export class Interpreter {
       assertions,
       /* trace-level provenance: the weakest link governs (CRITIQUE C1);
          human requires a KEYED attestation — see the attest step above */
-      attestation: (attested && attested.keyed) ? "human" : (aiAssertions.length || attested ? "ai" : "deterministic"),
+      attestation: attested ? (attested.cls === "ai" ? "ai" : attested.cls) : (aiAssertions.length ? "ai" : "deterministic"),
       confidence: aiAssertions.length ? Math.min(...aiAssertions.map(a => a.confidence ?? 0)) : 1,
       depth: aiAssertions.length ? Math.max(...aiAssertions.map(a => a.depth || 1)) : 0,
       reuseCount: 0,
@@ -229,8 +247,12 @@ export class Interpreter {
     /* Keyed attestation: the signer's Ed25519 key signs the canonical trace
        BEFORE it enters the journal, so the chain covers the receipt and a
        third party can verify both the record and who stood behind it. */
-    if (attested && this.signers[attested.signer])
-      trace.receipt = this.signers[attested.signer].receiptForTrace(trace);
+    /* Receipt: a service-held signer countersigns its own attestation; a
+       human-approved trace carries the human's approval inside the signed
+       body and is countersigned by the runtime signer when one is configured. */
+    const entry = attested ? this.signers[attested.signer] : null;
+    if (entry && Signer.canSign(entry)) trace.receipt = entry.receiptForTrace(trace);
+    else if (this.runtimeSigner) trace.receipt = this.runtimeSigner.receiptForTrace(trace);
     let written;
     try {
       written = this.ios.write(trace);
@@ -297,7 +319,7 @@ export class Interpreter {
   async run(source, { skipCheck = false } = {}) {
     const ast = typeof source === "string" ? parse(source) : source;
     if (!skipCheck) {
-      const errors = check(ast, { intents: this.intents, builtins: this.builtins });
+      const errors = check(ast, { intents: this.intents, builtins: this.builtins, inputs: [...this.env.keys()] });
       if (errors.length) {
         const e = new IGLError(`${errors.length} static error(s); nothing was executed`, { phase: "check", code: "IGL_STATIC_ERRORS" });
         e.errors = errors;

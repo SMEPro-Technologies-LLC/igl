@@ -1,6 +1,6 @@
 # IGL Trademark Policy
 
-"IGL," "Identity Governed Logic," the IGL logo, and associated marks (the "Marks") are trademarks of [LEGAL ENTITY NAME]. This policy describes how you may — and may not — use the Marks.
+"IGL," "Identity Governed Logic," the IGL logo, and associated marks (the "Marks") are trademarks of SMEPro Technologies LLC. This policy describes how you may — and may not — use the Marks.
 
 The Apache License 2.0 that covers the code in this repository **does not grant any rights to the Marks**. Copyright in code and trademark in names are separate things, and they stay separate here — the same model used by the Python Software Foundation, the Rust Foundation, and the Linux Foundation (Kubernetes).
 
@@ -20,7 +20,7 @@ The Marks exist so that when someone downloads "IGL," they know it came from thi
 - Name a fork, derivative, or reimplementation "IGL" or anything confusingly similar (e.g., "IGL Pro," "OpenIGL," "IGL Enterprise") in a way that implies it is this project or is endorsed by it.
 - Use the IGL logo, or a modified version of it, on any derivative product, service, or distribution.
 - Use the Marks in a company name, product name, domain name, or social media handle (e.g., `igl-cloud.com`, `@igl-hosting`).
-- Imply endorsement, partnership, or certification by [LEGAL ENTITY NAME] without a written agreement.
+- Imply endorsement, partnership, or certification by SMEPro Technologies LLC without a written agreement.
 
 ## Forks and derivatives
 
@@ -33,16 +33,16 @@ Forks are welcome — that is what the license is for. A fork must:
 
 ## Policy Packs and certification
 
-Signed Policy Packs in the official registry are verified against project-held keys. "IGL Certified" and similar designations are reserved for implementations that pass the official conformance suite under a written agreement. Contact: [TRADEMARK CONTACT EMAIL].
+Signed Policy Packs in the official registry are verified against project-held keys. "IGL Certified" and similar designations are reserved for implementations that pass the official conformance suite under a written agreement. Contact: trademarks@id-me.ai.
 
 ## Reporting misuse
 
-If you see a product or service using the Marks in a confusing or misleading way, report it to [TRADEMARK CONTACT EMAIL].
+If you see a product or service using the Marks in a confusing or misleading way, report it to trademarks@id-me.ai.
 
 ## Nominative fair use
 
-Nothing in this policy limits your legal right to nominative fair use — truthful reference to the Marks to identify this project. When in doubt, ask: [TRADEMARK CONTACT EMAIL].
+Nothing in this policy limits your legal right to nominative fair use — truthful reference to the Marks to identify this project. When in doubt, ask: trademarks@id-me.ai.
 
 ---
 
-*This policy is modeled on the trademark policies of the Rust Foundation, the Python Software Foundation, and the Apache Software Foundation. It is not legal advice; [LEGAL ENTITY NAME] reserves all rights in the Marks.*
+*This policy is modeled on the trademark policies of the Rust Foundation, the Python Software Foundation, and the Apache Software Foundation. It is not legal advice; SMEPro Technologies LLC reserves all rights in the Marks.*

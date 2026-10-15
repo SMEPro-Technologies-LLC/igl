@@ -19,13 +19,16 @@ function typeOK(expected, actual) {
   return expected === actual;
 }
 
-export function check(ast, { intents = INTENTS, builtins = BUILTINS } = {}) {
+export function check(ast, { intents = INTENTS, builtins = BUILTINS, inputs = [] } = {}) {
   const errors = [];
   const add = (msg, node, code) => errors.push(new IGLError(msg, {
     line: node?.line ?? 0, col: node?.col ?? 0, phase: "check", code: code || "IGL_CHECK",
   }));
 
   const bound = new Map();       // output name -> statement index that produced it
+  /* Inputs bound by the host before the program runs (an Approval envelope,
+     a staged artifact). They resolve at index -1: earlier than any statement. */
+  for (const name of inputs) bound.set(name, -1);
 
   ast.statements.forEach((st, idx) => {
     /* 1. identity */

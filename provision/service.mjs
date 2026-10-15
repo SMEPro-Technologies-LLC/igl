@@ -19,6 +19,8 @@ import { sha256, canonical } from "../src/sign.js";
 import { makeGovernedGenerate } from "./governed-ai.mjs";
 import { buildBoundaryGraph, buildFootprintGraph } from "./graph-builder.mjs";
 import { resolveDescription, slugify } from "./resolver.mjs";
+import { Registry, assertOwner } from "./registry.mjs";
+import { loadOrCreateSigner } from "./keys.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,9 +32,19 @@ const ROOT = path.join(HERE, "..");
    Local dev keeps the in-repo layout. */
 const DATA_ROOT = process.env.IGL_DATA_DIR || ROOT;
 const ARTIFACTS = path.join(DATA_ROOT, "artifacts", "provisioned");
-const PROGRAMS = path.join(DATA_ROOT, "programs", "provisioned");
-fs.mkdirSync(ARTIFACTS, { recursive: true });
-fs.mkdirSync(PROGRAMS, { recursive: true });
+const KEYS_DIR = process.env.IGL_KEYS_DIR || path.join(DATA_ROOT, "keys");
+export const registry = new Registry(ARTIFACTS);
+
+/* F-03 / F-04: one persistent governance signer per deployment. It signs
+   the grants provisioning seeds (so a replayed graph can prove who widened
+   authority) and countersigns traces. Because the SERVICE holds this key,
+   attestations it makes are class `service`, never `human`. */
+let governance = null;
+export function governanceSigner() {
+  if (!governance) governance = loadOrCreateSigner("smepro-governance-board", KEYS_DIR).signer;
+  return governance;
+}
+export const GOVERNANCE_SIGNER_NAME = "SMEPro_Governance_Board";
 
 const MODEL_ID = "Xenova/distilgpt2";
 const MODELS = { "distilgpt2-local": { version: "Xenova/distilgpt2@onnx-q8" } };
@@ -61,21 +73,25 @@ export function stableFootprint(fp) {
   };
 }
 
-export async function provisionIdentity({ description = "", kind = null, auto = false }) {
+export async function provisionIdentity({ description = "", kind = null, auto = false, owner }) {
+  assertOwner(owner);                                   // F-02: no owner, no graph
   const rt = await warmRuntime();
   const resolved = resolveDescription(description, { kind, auto });
   const slug = slugify(resolved.name);
-  const journalPath = path.join(ARTIFACTS, `${slug}.jsonl`);
+  const paths = registry.pathsFor(owner, slug);         // id-keyed, tenant-namespaced
+  const journalPath = paths.journal;
   const boot = fs.existsSync(journalPath) ? "replay" : "seed";
 
+  const signer = governanceSigner();
+  const grantors = { [signer.id]: signer.pub() };
   const journal = new FileJournal(journalPath); // refuses a tampered chain
   const chainCheck = journal.verify();
-  if (!chainCheck.ok) throw new Error(`journal for ${slug} failed chain verification — refusing to provision on top of tampered state`);
+  if (!chainCheck.ok) throw new Error(`journal for ${paths.id} failed chain verification — refusing to provision on top of tampered state`);
 
-  const buildArgs = { resolved, journal, seeded: boot === "seed", tok: rt.tok, models: MODELS, governedGenerate: rt.governedGenerate };
+  const buildArgs = { resolved, journal, seeded: boot === "seed", tok: rt.tok, models: MODELS, governedGenerate: rt.governedGenerate, signer, grantors, signerName: GOVERNANCE_SIGNER_NAME };
   const { graph, interp, program } = resolved.kind === "BOUNDARY" ? buildBoundaryGraph(buildArgs) : buildFootprintGraph(buildArgs);
 
-  const programPath = path.join(PROGRAMS, `${slug}.igl`);
+  const programPath = paths.program;
   fs.writeFileSync(programPath, program);
 
   const run = await interp.run(program);
@@ -84,19 +100,23 @@ export async function provisionIdentity({ description = "", kind = null, auto = 
   const footprintDigest = sha256(canonical(stableFootprint(fp)));
   const head = journal.verify();
 
-  // Receipt: verify the filing/attested trace straight from the chain.
+  // Receipt: verify the attested trace straight from the chain, PINNED to the
+  // key the graph bound to the signer (F-04: pinned: true or it is not attribution).
   const attested = journal.entries("trace").map((e) => e.body).find((t) => t.receipt);
-  const receiptVerification = attested ? TraceSigner.verifyTraceReceipt(attested) : null;
+  const receiptVerification = attested ? TraceSigner.verifyTraceReceipt(attested, { graph }) : null;
 
   const out = {
+    id: paths.id,
+    owner: { tenant: owner.tenant, principal: owner.principal },
     slug,
     boot,                          // "seed" on first provision, "replay" thereafter
     kind: resolved.kind,
     actor: resolved.actor,
     period: resolved.period,
-    programPath: path.relative(ROOT, programPath),
+    programPath: path.relative(DATA_ROOT, programPath),
     programSource: program,
-    journalPath: path.relative(ROOT, journalPath),
+    journalPath: path.relative(DATA_ROOT, journalPath),
+    attestation: attested ? attested.attestation : null,   // "service" for provisioning — the runtime holds the key
     journal: { length: head.length, ok: head.ok, head: head.head },
     footprintDigest,
     results: run.results.map((r) => ({
@@ -110,35 +130,32 @@ export async function provisionIdentity({ description = "", kind = null, auto = 
     receiptVerification,
     provisionedAt: new Date().toISOString(),
   };
-  fs.writeFileSync(path.join(ARTIFACTS, `${slug}.run.json`), JSON.stringify(out, null, 2));
+  fs.writeFileSync(paths.run, JSON.stringify(out, null, 2));
   return { resolved, runtime: out };
 }
 
-export function listProvisioned() {
-  return fs.readdirSync(ARTIFACTS)
-    .filter((f) => f.endsWith(".run.json"))
-    .map((f) => {
-      try { return JSON.parse(fs.readFileSync(path.join(ARTIFACTS, f), "utf8")); }
-      catch { return null; }
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.provisionedAt.localeCompare(a.provisionedAt));
-}
+/* Reads are scoped to the authenticated principal; the service principal sees all. */
+export function listProvisioned(auth) { return registry.list(auth); }
+export function getProvisioned(auth, id) { return registry.get(auth, id); }
+export function searchProvisioned(auth, q) { return registry.search(auth, q); }
 
 /* Recognition: resolve the caller's identity to THEIR graph. First contact
    seeds the graph from the stored profile (one-time boot); every contact
    after that replays the existing hash-chained journal — the graph answers
    instantly because it already exists. */
-export async function whoAmI(identity) {
+export async function whoAmI(identity, owner) {
   const { resolved, runtime } = await provisionIdentity({
     description: identity.description,
     kind: identity.kind,
+    owner,
   });
   return {
     recognized: true,
     identity: { name: identity.name, actor: identity.actor, kind: identity.kind },
+    principal: owner.principal, tenant: owner.tenant,
     firstContact: runtime.boot === "seed",
     graph: {
+      id: runtime.id,
       slug: runtime.slug,
       boot: runtime.boot,
       journal: runtime.journal,

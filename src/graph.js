@@ -36,6 +36,7 @@
    state. test/graph.test.js asserts this by shuffling. */
 
 import { IGLError } from "./lexer.js";
+import { Signer } from "./sign.js";
 
 const DAY = 86400000;
 const ts = x => (x instanceof Date ? x.getTime() : Date.parse(x));
@@ -64,15 +65,50 @@ export class GraphRuntime {
     promoteAfter = 3,            // governing-class observations before a promotion candidate is raised
     now = () => new Date().toISOString(),
     journal = null,              // hash-chained substrate; replayed on construction
+    grantors = null,             // name -> public key (base64 SPKI); when set, authority events must be signed by it
   } = {}) {
-    Object.assign(this, { dimensions, roles, halfLifeDays, promoteAfter, now, journal });
+    Object.assign(this, { dimensions, roles, halfLifeDays, promoteAfter, now, journal, grantors });
     this.events = journal ? journal.entries("graph").map(e => e.body) : [];
     this._cache = null;          // projection of the whole log
+    /* F-03: a replayed chain proves the events were not altered since they
+       were written. It does not prove they were authorised when written.
+       With a registry, every authority event in the replay is re-verified. */
+    if (this.grantors) for (const ev of this.events) this._verifyAuthority(ev, { replay: true });
+  }
+
+  /* ---- authority verification (F-03) ----
+     grant / revoke / key / keyrevoke widen or narrow what an actor may do.
+     With a grantor registry configured, each must carry an Ed25519 signature
+     by the key registered to `by`, over the event envelope (everything but
+     the signature). Without a registry the reference runtime behaves as
+     before and marks the event unverified, so a reader can tell. */
+  static AUTHORITY_KINDS = new Set(["grant", "revoke", "key", "keyrevoke"]);
+  _verifyAuthority(ev, { replay = false } = {}) {
+    if (!GraphRuntime.AUTHORITY_KINDS.has(ev.kind)) return ev;
+    if (!this.grantors) { if (!replay) ev.verified = false; return ev; }
+    const pub = this.grantors[ev.by];
+    if (!pub)
+      throw new IGLError(`${ev.kind} by ${ev.by} refused — ${ev.by} is not a registered grantor`,
+        { phase: "identity", code: "IGL_UNKNOWN_GRANTOR" });
+    const { verified, ...signed } = ev;          // `verified` is derived, never signed
+    if (!Signer.verifyGrant(signed, pub))
+      throw new IGLError(`${ev.kind} by ${ev.by} refused — signature missing or does not verify against the registered key${replay ? " (replayed from journal)" : ""}`,
+        { phase: "identity", code: "IGL_UNVERIFIED_GRANT" });
+    ev.verified = true;
+    return ev;
+  }
+  /* Build the envelope a grantor must sign. `at` is fixed here so the
+     signature covers the effective time. */
+  authorityEnvelope(kind, fields) {
+    const ev = { kind, ...fields };
+    if (!ev.at) ev.at = this.now();
+    return ev;
   }
 
   /* ---------------- append ---------------- */
   _append(ev) {
     if (!ev.at) ev.at = this.now();
+    this._verifyAuthority(ev);
     if (this.journal) this.journal.append("graph", ev);
     this.events.push(ev);
     this._cache = null;
@@ -80,15 +116,32 @@ export class GraphRuntime {
   }
 
   /* Prescriptive. The only path that can widen authority. */
-  grant(actor, dims, { by, role = null, at = null, note = null } = {}) {
+  grant(actor, dims, { by, role = null, at = null, note = null, signature = null } = {}) {
     if (!by) throw new IGLError("a grant must name its grantor", { phase: "identity", code: "IGL_UNSIGNED_GRANT" });
-    return this._append({ kind: "grant", actor, dims, role, by, note, at });
+    return this._append({ kind: "grant", actor, dims, role, by, note, at, ...(signature ? { signature } : {}) });
+  }
+  /* Convenience for a grantor that holds its own key: build the envelope,
+     sign it, append it. The signature covers actor, dims, role, by, note, at. */
+  grantSigned(signer, actor, dims, { role = null, at = null, note = null } = {}) {
+    const ev = this.authorityEnvelope("grant", { actor, dims, role, by: signer.id, note, at });
+    ev.signature = signer.signGrant(ev);
+    return this._append(ev);
+  }
+  revokeSigned(signer, actor, dims, { role = null, at = null } = {}) {
+    const ev = this.authorityEnvelope("revoke", { actor, dims, role, by: signer.id, at });
+    ev.signature = signer.signGrant(ev);
+    return this._append(ev);
+  }
+  bindKeySigned(signer, actor, publicKey, { at = null } = {}) {
+    const ev = this.authorityEnvelope("key", { actor, key: publicKey, by: signer.id, at });
+    ev.signature = signer.signGrant(ev);
+    return this._append(ev);
   }
 
   /* Revocation is explicit and takes effect at the next authorize(). */
-  revoke(actor, dims, { by, role = null, at = null } = {}) {
+  revoke(actor, dims, { by, role = null, at = null, signature = null } = {}) {
     if (!by) throw new IGLError("a revocation must name its revoker", { phase: "identity", code: "IGL_UNSIGNED_REVOKE" });
-    return this._append({ kind: "revoke", actor, dims, role, by, at });
+    return this._append({ kind: "revoke", actor, dims, role, by, at, ...(signature ? { signature } : {}) });
   }
 
   /* Descriptive. Accumulates freely; never widens authority. */
@@ -102,9 +155,9 @@ export class GraphRuntime {
      is what makes receipt attribution rotation-safe — a receipt verifies
      against the key registered AT SIGNING TIME, so rotating a key does not
      invalidate the attestations it validly made. */
-  bindKey(actor, publicKey, { by, at = null } = {}) {
+  bindKey(actor, publicKey, { by, at = null, signature = null } = {}) {
     if (!by) throw new IGLError("a key binding must name its grantor", { phase: "identity", code: "IGL_UNSIGNED_GRANT" });
-    return this._append({ kind: "key", actor, key: publicKey, by, at });
+    return this._append({ kind: "key", actor, key: publicKey, by, at, ...(signature ? { signature } : {}) });
   }
   /* Revocation carries its reason, because rotation and compromise demand
      OPPOSITE retroactive behaviour from the same event shape:
@@ -114,12 +167,12 @@ export class GraphRuntime {
                       discovery). Signatures at or after that moment are
                       suspect and must FAIL verification, however early the
                       asOf projection would otherwise place them. */
-  revokeKey(actor, publicKey, { by, at = null, reason = "rotated", effectiveFrom = null } = {}) {
+  revokeKey(actor, publicKey, { by, at = null, reason = "rotated", effectiveFrom = null, signature = null } = {}) {
     if (!by) throw new IGLError("a key revocation must name its revoker", { phase: "identity", code: "IGL_UNSIGNED_REVOKE" });
     if (reason !== "rotated" && reason !== "compromised")
       throw new IGLError(`revocation reason must be "rotated" or "compromised", got ${reason}`, { phase: "identity", code: "IGL_BAD_REVOKE_REASON" });
     if (reason === "compromised" && !effectiveFrom) effectiveFrom = at || this.now();
-    return this._append({ kind: "keyrevoke", actor, key: publicKey, by, at, reason, effectiveFrom });
+    return this._append({ kind: "keyrevoke", actor, key: publicKey, by, at, reason, effectiveFrom, ...(signature ? { signature } : {}) });
   }
 
   /* Key validity at a signing time. Deliberately NOT a projection query:
@@ -153,7 +206,7 @@ export class GraphRuntime {
   fold(trace) {
     if (!trace || !trace.identity) return null;
     const cls = trace.attestation === "human" ? "human"
-              : trace.attestation === "deterministic" ? "deterministic" : "ai";
+              : (trace.attestation === "deterministic" || trace.attestation === "service") ? "deterministic" : "ai";
     const dims = {};
     for (const [k, v] of Object.entries(trace.boundary || {})) dims[k] = Array.isArray(v) ? v : [v];
     return this.observe(trace.identity.actor, dims, { cls, traceId: trace.id, at: trace.finished || trace.at });

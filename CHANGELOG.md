@@ -4,6 +4,68 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.3.0] — 2026-10-14
+
+Security release. Closes findings F-01 to F-04 of the October 2026 audit
+(`docs/audit/SECURITY-AUDIT-2026-10.md`) and clears every open dependency
+advisory. The runtime API grows; nothing that passed before stops passing,
+but the provisioning service now refuses the unsafe defaults it used to accept.
+
+### Security
+
+- **F-01** Provisioning service binds `127.0.0.1` by default; `PROVISION_PUBLIC=1`
+  requires `PROVISION_API_KEY` or the process refuses to start. Credentials are
+  read from `Authorization: Bearer` / `X-IGL-Caller-Key` only — a key in the
+  query string is ignored. Per-principal token-bucket rate limiting and an
+  inference concurrency cap (`provision/auth.mjs`)
+- **F-02** Every caller resolves to a stable `{ tenant, principal }`; graphs are
+  stored and listed per tenant under a hashed id (`provision/registry.mjs`), so
+  callers see only their own graphs and equal display names never share a
+  journal. The service key is the only admin
+- **F-03** Authority events (`grant`, `revoke`, `bindKey`, `revokeKey`) must be
+  Ed25519-signed by a registered grantor (`DOMAIN_GRANT`); unsigned or unknown
+  signatures raise `IGL_UNKNOWN_GRANTOR` / `IGL_UNVERIFIED_GRANT`, and replay
+  re-verifies the whole journal. The provisioner's governance key persists on
+  disk (`provision/keys.mjs`, mode 0600) instead of being minted per run; the
+  company template no longer seeds a jurisdiction-wide grant
+- **F-04** Attestation classes `ai` / `service` / `human` are recorded in the
+  trace. `human` requires an `Approval` envelope (`DOMAIN_APPROVAL`) from a
+  registered public-only key, bound to the statement subject; a program cannot
+  obtain it by naming a signer (`IGL_APPROVAL_REQUIRED`, `IGL_BAD_APPROVAL`,
+  `IGL_SELF_APPROVAL`). Receipts in the service are verified pinned to the graph
+- Dependencies: `adm-zip 0.6.1`, `sharp 0.35.5`, `global-agent 4.x`,
+  `onnxruntime-node 1.30`, `@huggingface/transformers 4.3.1`;
+  `npm audit --omit=dev` reports 0 vulnerabilities and CI fails on any high
+
+### Added
+
+- `test/security.test.js` — 16 regression tests for F-01 to F-04, part of `npm test`
+- `spec/openapi.yaml` — the public OpenAPI 3.1 contract (0.2.0) for the IGL
+  Governed Identity Platform at id-me.ai, linted in CI; 0.1.0 kept alongside
+- `docs/PLATFORM.md` (runtime ↔ platform mapping, MCP → REST table),
+  `docs/adr/` (0001–0003), `docs/audit/` (the audit and its executable probes)
+- Project files: `SUPPORT.md`, `GOVERNANCE.md`, `MAINTAINERS.md`,
+  `CITATION.cff`, `.editorconfig`, `.nvmrc`, `CODEOWNERS`, Dependabot, issue
+  and pull request templates
+- Workflows: Node 20/22 test matrix with `npm audit`, contract lint, DCO check,
+  CodeQL, dependency review, OpenSSF Scorecard, tag-triggered release with
+  checksums and npm provenance
+- `GraphRuntime` API: `grantors` option, `grantSigned` / `revokeSigned` /
+  `bindKeySigned`, `authorityEnvelope`; `Signer` API: `toPem` / `fromPem` /
+  `publicOnly`, `signGrant` / `verifyGrant`, `approvalEnvelope` / `approve` /
+  `verifyApproval`; interpreter `runtimeSigner` option; `check()` accepts
+  `inputs` so bound inputs such as `@Approval` type-check
+
+### Changed
+
+- A key the *service* holds now yields attestation class `service`, not
+  `human` (one existing test updated to match)
+- MCP server reports version 0.3.0; tools are scoped by the caller's tenant
+- README, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `NOTICE`,
+  `TRADEMARK.md` realigned with the platform; placeholder contacts replaced
+  with security@ / conduct@ / trademarks@id-me.ai
+- `Dockerfile.provision` no longer copies a directory that does not exist
+
 ## [1.2.1] — 2026-08-18
 
 Dependency security release. No behavioral change.

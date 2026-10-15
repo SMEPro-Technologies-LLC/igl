@@ -1,152 +1,105 @@
 /* HTTP surface for the provisioning service. Node stdlib only — no deps.
 
-     POST /api/provision   { description, kind?, auto? } → full governed run
-     GET  /api/graphs      → every provisioned graph, newest first
-     GET  /api/graphs/:slug → one graph's runtime artifact
-     GET  /api/health      → model warm status
-     POST /mcp             → Model Context Protocol endpoint (ChatGPT Apps)
+     POST /api/provision        { description, kind?, auto?, owner? } → governed run, stored under the caller's principal
+     GET  /api/graphs           → graphs the caller may read, newest first
+     GET  /api/graphs/:id       → one graph by id, if the caller may read it
+     GET  /api/whoami           → the caller's own graph (seed on first contact, replay after)
+     GET  /api/health           → model warm status (public)
+     GET  /  or  /studio        → IGL Studio, a static UI shell (public; every API call it makes is gated)
+     POST /mcp                  → Model Context Protocol endpoint
 
-   The model loads once at boot and stays warm; every provision is a real
-   governed execution against the actor's hash-chained journal. */
+   Security posture (F-01):
+     · binds 127.0.0.1 unless PROVISION_PUBLIC=1, which also REQUIRES
+       PROVISION_API_KEY — the process refuses to start otherwise
+     · credentials in headers only (Authorization: Bearer / X-IGL-Caller-Key);
+       a key in the query string is ignored
+     · per-principal rate limit and a concurrency cap on inference
+     · CORS origins are an allow-list (PROVISION_ALLOWED_ORIGINS); CORS is not auth */
 
 import http from "node:http";
-import { readFile } from "node:fs/promises";
-import { warmRuntime, provisionIdentity, listProvisioned, whoAmI } from "./service.mjs";
+import { warmRuntime, provisionIdentity, listProvisioned, getProvisioned, whoAmI } from "./service.mjs";
 import { handleMcp } from "./mcp.mjs";
+import { readFile } from "node:fs/promises";
+import { makeGate, listenConfig, RateLimiter, Semaphore, allowedOrigins, corsHeaders as cors } from "./auth.mjs";
 /* Real caller registry is gitignored (identities.mjs); the example ships in
-   the repo so the service boots out of the box. Deployment drops its own
-   identities.mjs next to this file and it wins automatically. */
-const { resolveCaller } = await import("./identities.mjs")
-  .catch(() => import("./identities.example.mjs"));
+   the repo so the service boots out of the box. */
+const { resolveCaller } = await import("./identities.mjs").catch(() => import("./identities.example.mjs"));
 
-const PORT = Number(process.env.PROVISION_PORT || 8787);
-const DEFAULT_ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:8787",
-];
-const ALLOWED_ORIGINS = new Set(
-  (process.env.PROVISION_ALLOWED_ORIGINS
-    ? process.env.PROVISION_ALLOWED_ORIGINS.split(",")
-    : DEFAULT_ALLOWED_ORIGINS).map((o) => o.trim()).filter(Boolean),
-);
-
-function corsHeaders(req) {
-  const origin = req.headers.origin;
-  const headers = {
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,authorization,mcp-session-id",
-  };
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
-    headers["access-control-allow-origin"] = origin;
-    headers["vary"] = "Origin";
-  }
-  return headers;
+const cfg = listenConfig(process.env);            // throws on PUBLIC without a key
+const gate = makeGate({ apiKey: cfg.apiKey, resolveCaller, publicRoutes: ["/api/health", "/", "/studio"] });
+const limiter = new RateLimiter({ capacity: Number(process.env.PROVISION_RATE_BURST || 60), refillPerSec: Number(process.env.PROVISION_RATE_PER_SEC || 1) });
+const inference = new Semaphore({ max: Number(process.env.PROVISION_MAX_CONCURRENT || 2), maxQueue: Number(process.env.PROVISION_MAX_QUEUE || 8) });
+const ORIGINS = allowedOrigins();
+const corsHeaders = (req) => cors(req, ORIGINS);
+function send(req, res, status, body, extra = {}) {
+  res.writeHead(status, { "content-type": "application/json", "x-content-type-options": "nosniff", "cache-control": "no-store", ...corsHeaders(req), ...extra });
+  res.end(JSON.stringify(body));
 }
-
-function send(req, res, status, body) {
-  const data = JSON.stringify(body);
-  res.writeHead(status, {
-    "content-type": "application/json",
-    ...corsHeaders(req),
-  });
-  res.end(data);
-}
-
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let buf = "";
-    req.on("data", (c) => { buf += c; if (buf.length > 1e6) req.destroy(); });
-    req.on("end", () => { try { resolve(buf ? JSON.parse(buf) : {}); } catch (e) { reject(e); } });
+    req.on("data", (c) => { buf += c; if (buf.length > 1e6) { req.destroy(); reject(Object.assign(new Error("body too large"), { status: 413 })); } });
+    req.on("end", () => { try { resolve(buf ? JSON.parse(buf) : {}); } catch (e) { reject(Object.assign(new Error("invalid JSON body"), { status: 400 })); } });
     req.on("error", reject);
   });
 }
-
-await warmRuntime();
-
-/* Optional bearer gate — set PROVISION_API_KEY when the service is exposed
-   beyond localhost (e.g. tunnelled for ChatGPT). Health stays open so uptime
-   checks work; everything else requires the key. The MCP endpoint also
-   accepts ?key= because developer-mode connectors cannot always send custom
-   headers. Registered caller keys (identities.mjs) pass the gate the same
-   way — and carry the caller's identity graph with them. */
-const API_KEY = process.env.PROVISION_API_KEY || null;
-function callerKey(req, url) {
-  const bearer = req.headers.authorization?.startsWith("Bearer ")
-    ? req.headers.authorization.slice(7)
-    : null;
-  return bearer ?? url.searchParams.get("key");
+function ownerFor(auth, requested) {
+  if (auth.admin && requested?.tenant && requested?.principal) return { tenant: requested.tenant, principal: requested.principal };
+  if (!auth.tenant || !auth.principal) throw Object.assign(new Error("present a registered caller key or the service key"), { status: 401 });
+  return { tenant: auth.tenant, principal: auth.principal };
 }
-function authorized(req, url) {
-  if (url.pathname === "/api/health") return true;
-  if (url.pathname === "/" || url.pathname === "/studio") return true;   // UI shell only; every API call it makes is still gated
-  const key = callerKey(req, url);
-  if (!API_KEY) return true;                    // local dev: no gate
-  if (key === API_KEY) return true;             // service key
-  if (resolveCaller(key)) return true;          // registered caller identity
-  return false;
-}
+async function withInference(fn) { const release = await inference.acquire(); try { return await fn(); } finally { release(); } }
 
-const server = http.createServer(async (req, res) => {
+export const server = http.createServer(async (req, res) => {
   try {
-    const url = new URL(req.url, `http://localhost:${PORT}`);
-    if (req.method === "OPTIONS") return send(req, res, 204, {});
-    if (!authorized(req, url)) return send(req, res, 401, { error: "unauthorized" });
-    const caller = resolveCaller(callerKey(req, url));
-
-    if (req.method === "GET" && url.pathname === "/api/whoami") {
-      if (!caller) return send(req, res, 401, { error: "unrecognized caller — present a registered identity key" });
-      return send(req, res, 200, await whoAmI(caller));
-    }
-
-    if (url.pathname === "/mcp") {
-      if (req.method !== "POST") return send(req, res, 405, { error: "MCP is POST-only on this endpoint" });
-      return handleMcp(req, res, await readBody(req), caller);
+    const url = new URL(req.url, `http://${cfg.host}:${cfg.port}`);
+    if (req.method === "OPTIONS") { res.writeHead(204, corsHeaders(req)); return res.end(); }
+    const auth = gate(req, url);
+    if (!auth.ok) return send(req, res, auth.status, { error: auth.reason }, { "www-authenticate": 'Bearer realm="igl-provision"' });
+    if (!auth.anonymous) {
+      const rl = limiter.take(auth.principal, req.method === "POST" ? 5 : 1);
+      if (!rl.ok) return send(req, res, 429, { error: "rate limit exceeded" }, { "retry-after": String(rl.retryAfterSec) });
     }
 
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/studio")) {
       const html = globalThis.__IGL_STUDIO_HTML ??= await readFile(new URL("./studio.html", import.meta.url), "utf8");
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
       return res.end(html);
     }
-
-    if (req.method === "GET" && url.pathname === "/api/health") {
-      return send(req, res, 200, { ok: true, model: "Xenova/distilgpt2" });
+    if (req.method === "GET" && url.pathname === "/api/health")
+      return send(req, res, 200, { ok: true, model: "Xenova/distilgpt2", public: cfg.isPublic });
+    if (req.method === "GET" && url.pathname === "/api/whoami") {
+      if (!auth.caller) return send(req, res, 401, { error: "unrecognized caller — present a registered identity key" });
+      return send(req, res, 200, await withInference(() => whoAmI(auth.caller, ownerFor(auth))));
     }
-
-    if (req.method === "GET" && url.pathname === "/api/graphs") {
-      return send(req, res, 200, { graphs: listProvisioned() });
+    if (url.pathname === "/mcp") {
+      if (req.method !== "POST") return send(req, res, 405, { error: "MCP is POST-only on this endpoint" });
+      return withInference(async () => handleMcp(req, res, await readBody(req), auth));
     }
-
-    const m = url.pathname.match(/^\/api\/graphs\/([a-z0-9-]+)$/);
+    if (req.method === "GET" && url.pathname === "/api/graphs")
+      return send(req, res, 200, { graphs: listProvisioned(auth) });
+    const m = url.pathname.match(/^\/api\/graphs\/([a-z0-9_-]+)$/i);
     if (req.method === "GET" && m) {
-      const g = listProvisioned().find((x) => x.slug === m[1]);
-      return g ? send(req, res, 200, g) : send(req, res, 404, { error: "not provisioned" });
+      const g = getProvisioned(auth, m[1]);
+      return g ? send(req, res, 200, g) : send(req, res, 404, { error: "not found or not readable by this principal" });
     }
-
     if (req.method === "POST" && url.pathname === "/api/provision") {
       const body = await readBody(req);
-      if (!body.auto && !(body.description || "").trim())
-        return send(req, res, 400, { error: "description is required (or set auto=true)" });
-      const result = await provisionIdentity({
-        description: body.description ?? "",
-        kind: body.kind ?? null,
-        auto: !!body.auto,
-      });
+      if (!body.auto && !(body.description || "").trim()) return send(req, res, 400, { error: "description is required (or set auto=true)" });
+      const owner = ownerFor(auth, body.owner);
+      const result = await withInference(() => provisionIdentity({ description: body.description ?? "", kind: body.kind ?? null, auto: !!body.auto, owner }));
       return send(req, res, 200, result);
     }
-
     send(req, res, 404, { error: "unknown route" });
   } catch (err) {
-    send(req, res, 500, { error: String(err?.message ?? err) });
+    send(req, res, err?.status || 500, { error: String(err?.message ?? err) });
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`[provision] Identity Graph provisioning service on http://localhost:${PORT}`);
-  console.log(`[provision] POST /api/provision — model warm, journals hash-chained`);
-  console.log(`[provision] POST /mcp — MCP endpoint for ChatGPT Apps${API_KEY ? " (append ?key=$PROVISION_API_KEY)" : ""}`);
-  if (API_KEY) console.log(`[provision] bearer auth ENABLED (PROVISION_API_KEY set)`);
-});
+if (process.env.PROVISION_NO_LISTEN !== "1") {
+  await warmRuntime();
+  server.listen(cfg.port, cfg.host, () => {
+    console.log(`[provision] Identity Graph provisioning service on http://${cfg.host}:${cfg.port}${cfg.isPublic ? "" : " (loopback only — set PROVISION_PUBLIC=1 and PROVISION_API_KEY to expose)"}`);
+    console.log(`[provision] auth: ${cfg.apiKey ? "service key + registered callers" : "none configured — local operator only"}; credentials in headers only`);
+  });
+}
