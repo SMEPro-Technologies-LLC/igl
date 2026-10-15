@@ -4,6 +4,16 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.3.1] — 2026-10-14
+
+### Security
+
+- Internal errors no longer echo their message to the caller (CodeQL
+  js/stack-trace-exposure). Governed refusals (`IGL_*` codes) and 4xx errors
+  are returned verbatim; anything else is logged server-side with its stack
+  and reported as `internal error` (`clientError` in `provision/auth.mjs`,
+  used by both the HTTP and MCP surfaces; regression test added)
+
 ## [1.3.0] — 2026-10-14
 
 Security release. Closes findings F-01 to F-04 of the October 2026 audit

@@ -6,8 +6,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Signer, GraphRuntime, DEFAULT_DIMENSIONS, FileJournal, MemoryJournal, Interpreter, IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime, parse, check } from "../src/index.js";
-import { credentialFrom, makeGate, listenConfig, principalOf, RateLimiter, Semaphore } from "../provision/auth.mjs";
+import { Signer, GraphRuntime, DEFAULT_DIMENSIONS, FileJournal, Interpreter, IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime, parse, check } from "../src/index.js";
+import { credentialFrom, makeGate, listenConfig, principalOf, RateLimiter, Semaphore, clientError } from "../provision/auth.mjs";
 import { Registry, graphIdFor } from "../provision/registry.mjs";
 import { loadOrCreateSigner } from "../provision/keys.mjs";
 
@@ -163,4 +163,20 @@ test("F-04: signer keys persist across runs and are created with owner-only perm
 test("F-04: the checker accepts Approval on IOS.Attest", () => {
   assert.equal(check(parse(PROG_APPROVED), { inputs: ["Approval"] }).length, 0, "declared input binds the reference");
   assert.equal(check(parse(PROG_APPROVED)).some((e) => e.code === "IGL_UNBOUND_REF"), true, "undeclared, it is still unbound");
+});
+
+/* ───────────── error exposure (CodeQL js/stack-trace-exposure) ───────────── */
+
+test("clientError: governed refusals and 4xx pass through, internal failures are masked", () => {
+  const governed = clientError(Object.assign(new Error("Actor is not granted X"), { code: "IGL_FOOTPRINT_DENIED" }));
+  assert.equal(governed.message, "Actor is not granted X");
+  assert.equal(governed.code, "IGL_FOOTPRINT_DENIED");
+  const bad = clientError(Object.assign(new Error("invalid JSON body"), { status: 400 }));
+  assert.equal(bad.status, 400); assert.equal(bad.message, "invalid JSON body");
+  const silent = console.error; console.error = () => {};
+  try {
+    const internal = clientError(new TypeError("Cannot read properties of undefined (reading 'x')"));
+    assert.equal(internal.status, 500); assert.equal(internal.message, "internal error"); assert.equal(internal.code, null);
+    assert.ok(!internal.message.includes("Cannot read"));
+  } finally { console.error = silent; }
 });

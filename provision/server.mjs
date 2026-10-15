@@ -20,7 +20,7 @@ import http from "node:http";
 import { warmRuntime, provisionIdentity, listProvisioned, getProvisioned, whoAmI } from "./service.mjs";
 import { handleMcp } from "./mcp.mjs";
 import { readFile } from "node:fs/promises";
-import { makeGate, listenConfig, RateLimiter, Semaphore, allowedOrigins, corsHeaders as cors } from "./auth.mjs";
+import { makeGate, listenConfig, RateLimiter, Semaphore, allowedOrigins, corsHeaders as cors, clientError } from "./auth.mjs";
 /* Real caller registry is gitignored (identities.mjs); the example ships in
    the repo so the service boots out of the box. */
 const { resolveCaller } = await import("./identities.mjs").catch(() => import("./identities.example.mjs"));
@@ -92,7 +92,8 @@ export const server = http.createServer(async (req, res) => {
     }
     send(req, res, 404, { error: "unknown route" });
   } catch (err) {
-    send(req, res, err?.status || 500, { error: String(err?.message ?? err) });
+    const e = clientError(err);
+    send(req, res, e.status, e.code ? { error: e.message, code: e.code } : { error: e.message });
   }
 });
 

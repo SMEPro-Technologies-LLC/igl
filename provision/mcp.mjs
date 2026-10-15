@@ -15,7 +15,7 @@
    auth.admin (the service key). There is no query-string credential. */
 
 import { provisionIdentity, listProvisioned, getProvisioned, searchProvisioned, whoAmI } from "./service.mjs";
-import { allowedOrigins, corsHeaders } from "./auth.mjs";
+import { allowedOrigins, corsHeaders, clientError } from "./auth.mjs";
 const ORIGINS = allowedOrigins();
 
 const SERVER_INFO = { name: "igl-identity-graph-provisioning", version: "0.3.0" };
@@ -109,13 +109,13 @@ export async function handleMcp(req, res, body, auth = null) {
           const out = await callTool(name, args ?? {}, auth);
           return sendJson(req, res, rpcResult(msg.id, { content: [{ type: "text", text: JSON.stringify(out, null, 2) }], isError: false }));
         } catch (err) {
-          return sendJson(req, res, rpcResult(msg.id, { content: [{ type: "text", text: String(err?.message ?? err) }], isError: true }));
+          return sendJson(req, res, rpcResult(msg.id, { content: [{ type: "text", text: clientError(err).message }], isError: true }));
         }
       }
       default:
         return sendJson(req, res, rpcError(msg.id, -32601, `method not found: ${msg.method}`));
     }
   } catch (err) {
-    return sendJson(req, res, rpcError(msg.id, -32603, String(err?.message ?? err)));
+    return sendJson(req, res, rpcError(msg.id, -32603, clientError(err).message));
   }
 }

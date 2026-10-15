@@ -114,3 +114,17 @@ export function corsHeaders(req, origins, { exposeSession = false } = {}) {
   if (exposeSession) h["access-control-expose-headers"] = "mcp-session-id";
   return h;
 }
+
+/* What an error is allowed to tell the caller. Governed refusals (IGL_* codes)
+   and errors that carry a 4xx status are the caller's own business and are
+   returned verbatim; anything else is an internal failure, logged here with
+   its stack and reported to the caller as a generic message (CodeQL
+   js/stack-trace-exposure). */
+export function clientError(err) {
+  const code = typeof err?.code === "string" ? err.code : null;
+  const status = Number.isInteger(err?.status) ? err.status : null;
+  if ((code && code.startsWith("IGL_")) || (status && status >= 400 && status < 500))
+    return { status: status ?? 400, message: String(err?.message ?? err), code };
+  console.error("[provision] internal error:", err?.stack ?? err);
+  return { status: 500, message: "internal error", code: null };
+}
