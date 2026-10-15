@@ -21,6 +21,8 @@ The service behind `https://api.id-me.ai/v1` (production) and `https://sandbox.i
 | Webhooks | `outcomeRecorded`, `approvalRequired`, `graphUpdated`, signed with `X-IGL-Signature: t=…,v1=hmac-sha256`, three attempts |
 | Errors | `application/problem+json` with `traceId`, field-level `violations` on 422 |
 
+`POST /v1/mcp` is a Model Context Protocol endpoint (`src/mcp.js`): the seven tools documented at id-me.ai (`whoami`, `list_purposes`, `get_identity_context`, `explain_projection`, `list_obligations`, `search_graph`, `record_interaction`) run through the same handlers as their REST operations, with the same credentials, scopes and receipts.
+
 Surfaces outside the contract are listed at the top of `src/admin.js`: the token endpoint, JWKS, service metadata, sandbox self-serve signup, and administration (tenants, keys, webhooks, consents, obligations), plus `GET /admin/implemented`, which the deploy workflow reads to update the site's API reference.
 
 ## Run it locally

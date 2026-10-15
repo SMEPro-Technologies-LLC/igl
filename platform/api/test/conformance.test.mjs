@@ -352,6 +352,34 @@ test("audit: events chain verifies, filters work, interactions are recorded into
   await call("GET", "/audit/receipts/00000000-0000-0000-0000-000000000008", { expect: 404 });
 });
 
+test("MCP endpoint: the seven tools run through the same handlers and scopes", async () => {
+  const rpc = async (body, auth = key) => { const r = await fetch(BASE + "/v1/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${auth}`, "x-igl-tenant-id": tenant }, body: JSON.stringify(body) }); return { status: r.status, json: await r.json().catch(() => null) }; };
+  const init = await rpc({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
+  assert.equal(init.json.result.serverInfo.name, "igl_identity_mcp");
+  const list = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+  assert.deepEqual(list.json.result.tools.map((t) => t.name), ["whoami", "list_purposes", "get_identity_context", "explain_projection", "list_obligations", "search_graph", "record_interaction"]);
+  const me = await rpc({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "whoami", arguments: { purpose: "identity-introduction" } } });
+  assert.equal(me.json.result.isError, false); assert.equal(me.json.result.structuredContent.identityId, identityId); assert.ok(me.json.result.structuredContent.governance.signature);
+  const ex = await rpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "explain_projection", arguments: { identityId, purpose: "scientific-research" } } });
+  assert.ok(ex.json.result.structuredContent.considered.length > 0);
+  const ob = await rpc({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "list_obligations", arguments: { identityId, purpose: "regulatory-filing" } } });
+  assert.equal(ob.json.result.structuredContent.items.length, 2);
+  const sg = await rpc({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "search_graph", arguments: { q: "Rio" } } });
+  assert.ok(sg.json.result.structuredContent.items.some((i) => i.id === orgId));
+  const paths = await rpc({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "search_graph", arguments: { fromId: identityId, toId: assetId, maxHops: 4 } } });
+  assert.equal(paths.json.result.structuredContent.paths.length, 1);
+  const rec = await rpc({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "record_interaction", arguments: { identityId, purpose: "identity-introduction", outcome: "completed", model: "mcp-test" } } });
+  assert.ok(rec.json.result.structuredContent.eventHash);
+  const refused = await rpc({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "list_obligations", arguments: { identityId, purpose: "directory-lookup" } } });
+  assert.equal(refused.json.result.isError, true); assert.match(refused.json.result.content[0].text, /does not permit/);
+  const ro = await rpc({ jsonrpc: "2.0", id: 10, method: "tools/call", params: { name: "record_interaction", arguments: { purpose: "identity-introduction", outcome: "completed" } } }, token);
+  assert.equal(ro.status, 403, "a read-only token cannot record interactions through MCP either");
+  const nope = await rpc({ jsonrpc: "2.0", id: 11, method: "nope" });
+  assert.equal(nope.json.error.code, -32601);
+  const anon = await fetch(BASE + "/v1/mcp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }) });
+  assert.equal(anon.status, 401);
+});
+
 test("every operation in the contract was exercised", () => {
   const all = []; for (const [p, item] of Object.entries(spec.paths)) for (const m of ["get", "post", "patch", "put", "delete"]) if (item[m]) all.push(item[m].operationId);
   const missing = all.filter((id) => !covered.has(id));
