@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  unit:
     name: Test (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
@@ -41,3 +41,17 @@ jobs:
         run: npx --yes @redocly/cli@1 lint spec/openapi.yaml --format=github-actions
       - name: Service OpenAPI is valid JSON
         run: node -e "JSON.parse(require('fs').readFileSync('provision/openapi.json','utf8'))"
+
+  # The branch rule on main requires a check named "test". This job carries
+  # that name and passes only when the unit tests on both Node versions and
+  # the contract checks have passed.
+  test:
+    name: test
+    needs: [unit, contract]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All required jobs passed
+        run: |
+          echo "unit: ${{ needs.unit.result }}, contract: ${{ needs.contract.result }}"
+          [ "${{ needs.unit.result }}" = "success" ] && [ "${{ needs.contract.result }}" = "success" ]
