@@ -3,8 +3,8 @@ name: Deploy API
 # Deploys platform/api as two Workers on the id-me.ai zone:
 #   sandbox    -> sandbox.id-me.ai            (every push to main)
 #   production -> api.id-me.ai, auth.id-me.ai (after sandbox, same commit)
-# then records what is served in platform/api/implemented.json and commits it,
-# which makes the site's API reference show live status.
+# then starts the site deploy, which regenerates the API reference from what
+# the two hosts report they serve.
 #
 # Repository secrets:
 #   CLOUDFLARE_API_TOKEN   Workers Scripts: Edit, Workers Routes: Edit, D1: Edit, Pages: Edit, Zone: Read
@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   actions: write
 
 concurrency:
@@ -105,32 +105,12 @@ jobs:
           done; echo "::error::production did not answer"; exit 1
 
   record:
-    name: Record what is served
+    name: Publish the reference
     needs: [sandbox, production]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: main
-      - name: Merge the two deployments' operation lists into implemented.json
-        run: |
-          curl -fsS https://api.id-me.ai/admin/implemented > /tmp/prod.json
-          curl -fsS https://sandbox.id-me.ai/admin/implemented > /tmp/sandbox.json
-          python3 - <<'EOF'
-          import json
-          prod = json.load(open('/tmp/prod.json')); sb = json.load(open('/tmp/sandbox.json'))
-          out = {"deployed": True, "live": sorted(prod["live"]), "sandbox": sorted(sb["sandbox"])}
-          json.dump(out, open('platform/api/implemented.json', 'w'), indent=2); open('platform/api/implemented.json', 'a').write("\n")
-          EOF
-          pip install --quiet pyyaml
-          python3 platform/site/gen_reference.py spec/openapi.yaml platform/api/implemented.json platform/site/index.html
-      - name: Commit if changed, then redeploy the site so the reference shows what is served
+      - name: Start the site deploy, which reads what both hosts serve
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          git config user.name "igl-deploy[bot]"; git config user.email "deploy@id-me.ai"
-          git add platform/api/implemented.json platform/site/index.html
-          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
-          git commit -m "deploy: record served operations for the site reference"
-          git push
-          gh workflow run deploy-site.yml --ref main
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run deploy-site.yml --ref main

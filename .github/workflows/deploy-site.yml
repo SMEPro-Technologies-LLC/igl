@@ -1,7 +1,11 @@
 name: Deploy id-me.ai
 
 # Publishes platform/site to the Cloudflare Pages project "id-me-ai" whenever
-# main changes it. Needs two repository secrets:
+# main changes it, and whenever the API deploys (deploy-api.yml starts this
+# workflow when sandbox and production are up). Before publishing, the API
+# reference is regenerated from what the two hosts report they serve, so the
+# page's Live and Sandbox markers come from the running service, not from a
+# file somebody edited. Needs two repository secrets:
 #   CLOUDFLARE_API_TOKEN   (Cloudflare Pages: Edit, D1: Edit)
 #   CLOUDFLARE_ACCOUNT_ID  (8608c0d4577e253102798af8a09ea644)
 
@@ -39,6 +43,22 @@ jobs:
           if ! diff -q /tmp/index.before.html platform/site/index.html >/dev/null; then
             echo "::error::platform/site/index.html is out of date; run gen_reference.py and commit the result"; exit 1
           fi
+      - name: Reference shows what the API serves
+        run: |
+          python3 - <<'EOF'
+          import json, urllib.request
+          def served(host):
+              try:
+                  with urllib.request.urlopen(f"https://{host}/admin/implemented", timeout=10) as r: return json.load(r)
+              except Exception as e:
+                  print(f"::notice::{host} did not answer ({e}); the reference keeps the committed status"); return None
+          prod, sb = served("api.id-me.ai"), served("sandbox.id-me.ai")
+          if prod is None or sb is None: raise SystemExit(0)
+          out = {"deployed": True, "live": sorted(prod["live"]), "sandbox": sorted(sb["sandbox"])}
+          json.dump(out, open("platform/api/implemented.json", "w"), indent=2); open("platform/api/implemented.json", "a").write("\n")
+          print(f"production serves {len(out['live'])} operations, sandbox {len(out['sandbox'])}")
+          EOF
+          python3 platform/site/gen_reference.py spec/openapi.yaml platform/api/implemented.json platform/site/index.html
       - name: Apply intake schema (idempotent)
         run: npx --yes wrangler@4 d1 execute igl-intake --remote --file=platform/site/schema/intake.sql
         env:

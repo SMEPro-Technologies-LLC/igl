@@ -21,8 +21,8 @@ All notable changes to IGL are documented here. Format follows
   states, a per-tenant SHA-256 audit chain with append-only triggers, signed
   governance receipts, idempotency keys, rate limits, signed webhooks and
   problem+json errors. Deployed by `.github/workflows/deploy-api.yml` to
-  sandbox.id-me.ai and api.id-me.ai, which then records the served operations
-  for the site reference
+  sandbox.id-me.ai and api.id-me.ai; the site deploy then asks both hosts what
+  they serve and regenerates the API reference before publishing
 - `platform/site`: the id-me.ai source, generated API reference, Contact Sales
   intake function, interactive User Center running `provision/resolver.mjs`
 - `docs/examples/verify-audit-chain.mjs` and `docs/examples/verify-journals.mjs`

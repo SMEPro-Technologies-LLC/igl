@@ -11,7 +11,8 @@ unreachable. That is how the service and the contract stay the same thing.
 import re, sys, json
 import yaml
 
-spec = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+with open(sys.argv[1], encoding="utf-8") as f:
+    spec = yaml.safe_load(f)
 out = sys.argv[2]
 routes = []
 for path, item in spec["paths"].items():

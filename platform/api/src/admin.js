@@ -5,7 +5,8 @@
    GET  /.well-known/igl.json    service metadata: environment, contract version, key id
    POST /sandbox/signup          sandbox only: creates a tenant and a sandbox key (rate limited)
    POST /admin/tenants           platform key only: create a tenant
-   POST /admin/keys              platform key only: issue a key for a tenant
+   POST /admin/keys              platform key or igl.admin: issue a key for the tenant
+   POST /admin/keys/revoke       platform key or igl.admin: revoke a key (its own tenant; platform may revoke any)
    POST /admin/webhooks          platform key or igl.admin: register a webhook for the tenant
    POST /admin/consents          platform key or igl.admin: grant or revoke a consent record
    POST /admin/obligations       platform key or igl.admin: create or attest an obligation
@@ -101,12 +102,16 @@ export async function adminFetch({ request, env, ctx, db, url, signer, requestId
     }
     const body = await readJson(request);
     if (path === "/admin/bootstrap") {
-      /* First-run only: creates the platform tenant and one igl.platform key.
-         Requires the BOOTSTRAP_TOKEN secret in X-IGL-Bootstrap and refuses once a platform key exists. */
+      /* Creates the platform tenant and one igl.platform key. Requires the
+         BOOTSTRAP_TOKEN secret in X-IGL-Bootstrap and refuses while an active
+         platform key exists. After that key is revoked (POST /admin/keys/revoke)
+         bootstrap may run again: it reuses the platform tenant and issues a new
+         key, which is how the platform key is rotated. */
       if (!env.BOOTSTRAP_TOKEN || request.headers.get("x-igl-bootstrap") !== env.BOOTSTRAP_TOKEN) throw E.forbidden("Bootstrap token missing or wrong.", { code: "bootstrap_denied" });
       const existing = await db.prepare("SELECT id FROM api_keys WHERE scopes LIKE '%igl.platform%' AND status = 'active' LIMIT 1").first();
-      if (existing) throw E.conflict("A platform key already exists; issue further keys with it.", { code: "already_bootstrapped" });
-      const tenantId = await createTenant(db, env, { name: body.name || "Smeprotech platform", jurisdiction: "US", settings: { platform: true } });
+      if (existing) throw E.conflict("A platform key already exists; revoke it with POST /admin/keys/revoke before bootstrapping again.", { code: "already_bootstrapped" });
+      const platformTenant = await db.prepare("SELECT id FROM tenants WHERE settings LIKE '%\"platform\":true%' ORDER BY created_at ASC LIMIT 1").first();
+      const tenantId = platformTenant?.id || await createTenant(db, env, { name: body.name || "Smeprotech platform", jurisdiction: "US", settings: { platform: true } });
       const key = await issueKey(db, env, { tenantId, scopes: [...SCOPES, "igl.platform"], label: "platform bootstrap" });
       await appendAudit(db, tenantId, { eventType: "platform.bootstrapped", actor: { identityId: key.identityId, organizationId: null, roleIds: [] }, resource: { type: "tenant", id: tenantId }, action: "tenant.create", requestId, details: {} });
       return json({ tenantId, clientId: key.id, apiKey: key.secret, scopes: key.scopes }, 201);
@@ -127,6 +132,17 @@ export async function adminFetch({ request, env, ctx, db, url, signer, requestId
       const key = await issueKey(db, env, { tenantId: p.tenantId, scopes, label: body.label, identityId: body.identityId ?? null, jurisdiction: body.jurisdiction ?? null });
       await appendAudit(db, p.tenantId, { eventType: "key.issued", actor: p.actor, resource: { type: "api_key", id: key.id }, action: "key.issue", requestId, details: { scopes, label: body.label ?? null } });
       return json({ clientId: key.id, apiKey: key.secret, scopes, tenantId: p.tenantId }, 201);
+    }
+    if (path === "/admin/keys/revoke") {
+      const p = await platformOrAdmin(request, env, db, signer, url, { adminOk: true });
+      validate(body, { required: ["clientId"], fields: { clientId: { type: "string", maxLength: 64 } } });
+      const key = await db.prepare("SELECT id, tenant_id, status, scopes FROM api_keys WHERE id = ?1").bind(body.clientId).first();
+      if (!key) throw E.notFound("No key with that clientId.");
+      if (key.tenant_id !== p.tenantId && !p.scopes.includes("igl.platform")) throw E.forbidden("That key belongs to another tenant.", { code: "tenant_mismatch" });
+      if (key.status !== "active") return json({ clientId: key.id, status: key.status });
+      await db.prepare("UPDATE api_keys SET status = 'revoked' WHERE id = ?1").bind(key.id).run();
+      await appendAudit(db, key.tenant_id, { eventType: "key.revoked", actor: p.actor, resource: { type: "api_key", id: key.id }, action: "key.revoke", requestId, details: { self: key.id === p.keyId } });
+      return json({ clientId: key.id, status: "revoked" });
     }
     if (path === "/admin/webhooks") {
       const p = await platformOrAdmin(request, env, db, signer, url, { adminOk: true });

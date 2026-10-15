@@ -23,7 +23,7 @@ The service behind `https://api.id-me.ai/v1` (production) and `https://sandbox.i
 
 `POST /v1/mcp` is a Model Context Protocol endpoint (`src/mcp.js`): the seven tools documented at id-me.ai (`whoami`, `list_purposes`, `get_identity_context`, `explain_projection`, `list_obligations`, `search_graph`, `record_interaction`) run through the same handlers as their REST operations, with the same credentials, scopes and receipts.
 
-Surfaces outside the contract are listed at the top of `src/admin.js`: the token endpoint, JWKS, service metadata, sandbox self-serve signup, and administration (tenants, keys, webhooks, consents, obligations), plus `GET /admin/implemented`, which the deploy workflow reads to update the site's API reference.
+Surfaces outside the contract are listed at the top of `src/admin.js`: the token endpoint, JWKS, service metadata, sandbox self-serve signup, and administration (tenants, keys and key revocation, webhooks, consents, obligations), plus `GET /admin/implemented`, which the site deploy reads to mark operations Live and Sandbox in the API reference.
 
 ## Run it locally
 
@@ -48,7 +48,7 @@ curl -s http://127.0.0.1:8801/v1/identities/me?purpose=identity-introduction \
 
 ## Deploy
 
-`.github/workflows/deploy-api.yml` deploys on every push to `main` that touches this folder or the contract: conformance suite, then sandbox, then production, then it records what is served in `platform/api/implemented.json` so the site reference shows live status. It needs the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+`.github/workflows/deploy-api.yml` deploys on every push to `main` that touches this folder or the contract: conformance suite, then sandbox, then production, then it starts the site deploy, which asks both hosts what they serve and regenerates the API reference from the answer before publishing. The committed `implemented.json` is the generator's input for local builds; the published page always reflects the running service. It needs the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
 Worker secrets are set once per environment by a maintainer:
 
@@ -58,7 +58,7 @@ npx wrangler secret put ANTHROPIC_API_KEY --env production
 npx wrangler secret put BOOTSTRAP_TOKEN --env production     # any long random string
 ```
 
-First run on production: `POST https://api.id-me.ai/admin/bootstrap` with header `X-IGL-Bootstrap: <BOOTSTRAP_TOKEN>` and body `{"name":"Smeprotech platform"}` returns the platform tenant and the one platform key. Store it. Every customer tenant and key is then issued with `POST /admin/tenants` and `POST /admin/keys` using that key. The sandbox needs no bootstrap: `POST /sandbox/signup` is open and rate limited.
+First run on production: `POST https://api.id-me.ai/admin/bootstrap` with header `X-IGL-Bootstrap: <BOOTSTRAP_TOKEN>` and body `{"name":"Smeprotech platform"}` returns the platform tenant and the one platform key. Store it where you keep credentials and never paste it into chat, tickets or email. Every customer tenant and key is then issued with `POST /admin/tenants` and `POST /admin/keys` using that key. To rotate the platform key, revoke it with `POST /admin/keys/revoke` (body `{"clientId": "..."}`) and run the bootstrap call again: it reuses the platform tenant and issues a new key. Any key can be revoked the same way by its own tenant's admin key, or by the platform key. The sandbox needs no bootstrap: `POST /sandbox/signup` is open and rate limited.
 
 The D1 databases `igl-api-production` and `igl-api-sandbox` already exist on the account with the schema applied; their ids are in `wrangler.toml`. The hostnames `api`, `sandbox` and `auth` are Cloudflare Custom Domains, so the first deploy creates their DNS records and certificates; nothing is added to DNS by hand.
 

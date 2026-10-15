@@ -5,7 +5,7 @@ The public site for the IGL Governed Identity Platform. One page, hash-routed vi
 | File | What it is |
 |---|---|
 | `index.html` | The whole site. The API reference inside it is generated, not typed |
-| `gen_reference.py` | Regenerates the API reference from `../../spec/openapi.yaml` and `../api/implemented.json`, so the page can only claim an operation is live if the deployed service lists it |
+| `gen_reference.py` | Regenerates the API reference from `../../spec/openapi.yaml` and `../api/implemented.json`, so the page can only claim an operation is live if the deployed service lists it. The deploy workflow fetches that list from api.id-me.ai and sandbox.id-me.ai right before publishing |
 | `igl-openapi-v0.2.yaml`, `igl-openapi-v0.1.yaml` | Copies of `spec/` served for download |
 | `functions/api/contact.js` | Pages Function behind the Contact Sales form. Writes to the `igl-intake` D1 database |
 | `schema/intake.sql` | The D1 schema for that database |

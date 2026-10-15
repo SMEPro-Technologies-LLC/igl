@@ -390,6 +390,33 @@ test("MCP endpoint: the seven tools run through the same handlers and scopes", a
   assert.equal(anon.status, 401);
 });
 
+test("keys: a key can be revoked through the API and stops working at once; bootstrap rotates the platform key without a second tenant", async () => {
+  const post = (path, body, headers) => fetch(BASE + path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+  const asKey = (k) => ({ authorization: `Bearer ${k}`, "x-igl-tenant-id": tenant });
+  const issued = await (await post("/admin/keys", { scopes: ["igl.read"], label: "to be revoked" }, asKey(key))).json();
+  assert.ok(issued.apiKey.startsWith("igl_test_"));
+  assert.equal((await fetch(BASE + "/v1/capabilities", { headers: asKey(issued.apiKey) })).status, 200);
+  const rev = await post("/admin/keys/revoke", { clientId: issued.clientId }, asKey(key));
+  assert.equal(rev.status, 200); assert.equal((await rev.json()).status, "revoked");
+  assert.equal((await fetch(BASE + "/v1/capabilities", { headers: asKey(issued.apiKey) })).status, 401, "a revoked key is refused");
+  assert.equal((await post("/admin/keys/revoke", { clientId: "key_does_not_exist" }, asKey(key))).status, 404);
+  const other = await (await fetch(BASE + "/sandbox/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organization: "Other Co", email: "o@example.com" }) })).json();
+  assert.equal((await post("/admin/keys/revoke", { clientId: other.clientId }, asKey(key))).status, 403, "a tenant admin cannot revoke another tenant's key");
+
+  // Bootstrap: first run creates the platform tenant; a second run is refused; after revoking the platform key it runs again on the same tenant.
+  const boot = (h) => post("/admin/bootstrap", { name: "Test platform" }, h);
+  assert.equal((await boot({})).status, 403);
+  const first = await boot({ "x-igl-bootstrap": "test-bootstrap" });
+  assert.equal(first.status, 201); const b1 = await first.json(); assert.ok(b1.scopes.includes("igl.platform"));
+  assert.equal((await boot({ "x-igl-bootstrap": "test-bootstrap" })).status, 409);
+  const self = await post("/admin/keys/revoke", { clientId: b1.clientId }, { authorization: `Bearer ${b1.apiKey}`, "x-igl-tenant-id": b1.tenantId });
+  assert.equal(self.status, 200);
+  const second = await boot({ "x-igl-bootstrap": "test-bootstrap" });
+  assert.equal(second.status, 201); const b2 = await second.json();
+  assert.equal(b2.tenantId, b1.tenantId, "rotation reuses the platform tenant"); assert.notEqual(b2.apiKey, b1.apiKey);
+  assert.equal((await fetch(BASE + "/v1/capabilities", { headers: { authorization: `Bearer ${b1.apiKey}`, "x-igl-tenant-id": b1.tenantId } })).status, 401);
+});
+
 test("every operation in the contract was exercised", () => {
   const all = []; for (const [p, item] of Object.entries(spec.paths)) for (const m of ["get", "post", "patch", "put", "delete"]) if (item[m]) all.push(item[m].operationId);
   const missing = all.filter((id) => !covered.has(id));
