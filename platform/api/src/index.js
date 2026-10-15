@@ -67,8 +67,10 @@ export default {
         const out = await handleMcp({ request, env, ctx, db, url, principal, requestId, signer }, msg, checkScopes);
         return withCommon(out.body === null ? new Response(null, { status: out.status }) : json(out.body, out.status));
       }
+      // The base address is not an operation. A person opening it in a browser gets a short page; a program gets a JSON description.
+      if ((url.pathname === "/" || url.pathname === "/v1" || url.pathname === "/v1/") && request.method === "GET") return withCommon(landing(request, env));
       const matched = match(request.method, url.pathname);
-      if (!matched) throw E.notFound("No such operation. The contract is at https://id-me.ai/#docs.");
+      if (!matched) throw E.notFound("No such operation. The contract is at https://id-me.ai/docs/.");
       const { route, params } = matched;
 
       let principal = null;
@@ -107,6 +109,17 @@ export default {
     }
   },
 };
+
+function landing(request, env) {
+  const envName = env.IGL_ENV || "production";
+  const base = `https://${envName === "sandbox" ? "sandbox" : "api"}.id-me.ai/v1`;
+  const info = { service: "IGL Governed Identity Platform API", environment: envName, version: env.SERVICE_VERSION || "1.4.0", baseUrl: base, operations: ROUTES.length, documentation: "https://id-me.ai/docs/", reference: "https://id-me.ai/docs/#d-rest", openapi: "https://id-me.ai/igl-openapi-v0.2.yaml", health: base + "/health", wellKnown: base.replace(/\/v1$/, "") + "/.well-known/igl.json", mcp: base + "/mcp", ...(envName === "sandbox" ? { signup: base.replace(/\/v1$/, "") + "/sandbox/signup" } : { sandbox: "https://sandbox.id-me.ai/v1" }), tagline: "Governed intelligence. Before execution." };
+  if (!/text\/html/i.test(request.headers.get("accept") || "")) return json(info);
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const rows = Object.entries(info).filter(([k]) => !["service", "tagline"].includes(k)).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${/^https:/.test(String(v)) ? `<a href="${esc(v)}">${esc(v)}</a>` : esc(v)}</td></tr>`).join("");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(info.service)}, ${esc(envName)}</title><meta name="robots" content="noindex"><style>:root{color-scheme:dark}body{margin:0;background:#0a0a0c;color:#e8ecf4;font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}main{max-width:760px;margin:0 auto;padding:48px 20px}h1{font-size:22px;margin:0 0 4px}p{color:#a9b0c2;margin:0 0 24px}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #262a36;vertical-align:top;font-size:14px}th{color:#a9b0c2;font-weight:500;white-space:nowrap}a{color:#6a7bff;text-decoration:none}a:hover{text-decoration:underline}code{font-family:ui-monospace,Menlo,Consolas,monospace}.note{margin-top:24px;font-size:13px;color:#a9b0c2}</style></head><body><main><h1>${esc(info.service)}</h1><p>${esc(info.tagline)} This is the ${esc(envName)} API host. Every operation lives under <code>${esc(base)}</code> and needs a key; the human-readable documentation is at <a href="https://id-me.ai/docs/">id-me.ai/docs</a>.</p><table>${rows}</table><p class="note">Programs calling this address with <code>Accept: application/json</code> receive the same information as JSON.</p></main></body></html>`;
+  return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
+}
 
 function parseBody(raw, request) {
   const ct = request.headers.get("content-type") || "";
