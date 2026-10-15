@@ -3,7 +3,7 @@ info:
   title: IGL Governed Identity Platform API
   version: 0.2.0
   summary: Transform identity into governed intelligence.
-  description: 'Proposed API contract for Identity Governed Logic (IGL). The API exposes governed identity, authority, knowledge,
+  description: 'The API contract for Identity Governed Logic (IGL). The API exposes governed identity, authority, knowledge,
     policy, evidence, outcome, graph, query, research, agent, workflow, and audit services. It is model-agnostic: reasoning
     providers can be changed without changing the governed intelligence contract. Version 0.2 adds purpose-bounded projections:
     purpose profiles, identity projections with per-node gate explanations, obligations with attestation status, caller resolution,
@@ -12,7 +12,8 @@ info:
     name: SMEPro Technologies, LLC
     url: https://www.smeprotech.com
   license:
-    name: Proprietary
+    name: Apache-2.0
+    identifier: Apache-2.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 servers:
 - url: https://api.id-me.ai/v1
@@ -1731,7 +1732,7 @@ components:
   securitySchemes:
     oauth2:
       type: oauth2
-      description: OAuth 2.0 client credentials for workload access and authorization code for user-delegated access.
+      description: OAuth 2.0 client credentials. Exchange an API key (client_id is the key id, client_secret is the key) for a one-hour EdDSA access token with the same or narrower scope. The key itself is also accepted as the bearer credential.
       flows:
         clientCredentials:
           tokenUrl: https://auth.id-me.ai/oauth2/token
@@ -1740,13 +1741,6 @@ components:
             igl.write: Create or update governed intelligence
             igl.execute: Execute queries, agents, and workflows
             igl.admin: Manage policies, authority, and platform configuration
-        authorizationCode:
-          authorizationUrl: https://auth.id-me.ai/oauth2/authorize
-          tokenUrl: https://auth.id-me.ai/oauth2/token
-          scopes:
-            igl.read: Read governed intelligence
-            igl.write: Create or update governed intelligence
-            igl.execute: Execute queries, agents, and workflows
     apiKey:
       type: apiKey
       in: header
@@ -1767,7 +1761,7 @@ components:
       schema:
         type: string
         maxLength: 128
-      description: Required by clients when safely retrying mutation requests.
+      description: Caller-chosen key for a mutation. Repeating the request with the same key and body replays the stored response; the same key with a different body is refused with 409.
     TenantId:
       name: X-IGL-Tenant-Id
       in: header
