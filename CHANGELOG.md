@@ -4,7 +4,7 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
-## [1.2.1] — 2026-08-18
+## [1.2.1] (2026-08-18)
 
 Dependency security release. No behavioral change.
 
@@ -22,34 +22,34 @@ Dependency security release. No behavioral change.
 
 - Tokenizer vocabulary is now derived via `tokenizer.get_vocab()` (inverted
   to an id→string array) and model forward passes carry explicit
-  `attention_mask` / `position_ids` — both required by the v3 runtime API.
+  `attention_mask` / `position_ids`, both required by the v3 runtime API.
   Verified after migration: 131/131 tests, the live governed decode example
   (Hilcorp boundary commits + `IGL_FOOTPRINT_DENIED` refusal), and the
   provisioning service boot
 
-## [1.2.0] — 2026-08-18
+## [1.2.0] (2026-08-18)
 
 Clean-clone audit release. Every command in the README quick start now runs
 from a fresh clone with no paths outside the repository.
 
 ### Added
 
-- **`src/decode.js`** — the per-token governed decode primitive promoted into
+- **`src/decode.js`:** the per-token governed decode primitive, now part of
   the language core: `governedStep`, `governedDecode`,
   `governanceLogitsProcessor`, `sealDecodeTrace`, `verifyDecode`, `softmax`,
   `entropy`. FUSE is applied inside the decode loop at every step; prohibited
   tokens carry zero mass and can never be emitted. Sealed per-token traces
   recompute independently of the runtime that produced them
 - `sha256` / `canonical` are now exported from `src/sign.js`
-- `test/decode.test.js` — 7 tests covering the decode primitive (support
+- `test/decode.test.js` adds 7 tests for the decode primitive (support
   restriction, zero partition, graded ceilings, end-to-end governed decode,
   tampered-trace rejection)
 
 ### Fixed
 
 - Examples and the provisioning service imported `governedStep` and hash
-  helpers from a legacy `igl-v1/` path that was never shipped — every example
-  and `npm run provision` broke on a clean clone. All imports now resolve
+  helpers from a legacy `igl-v1/` path that was never shipped. As a result,
+  every example and `npm run provision` broke on a clean clone. All imports now resolve
   inside the repository
 - `live-identity-decode.mjs` adapted to the current `Signer` receipt API
   (`receiptForTrace` / `verifyTraceReceipt`)
@@ -60,7 +60,7 @@ from a fresh clone with no paths outside the repository.
 - 131/131 tests; all four examples run; the provision service boots and
   answers the MCP handshake
 
-## [1.1.0] — 2026-08-18
+## [1.1.0] (2026-08-18)
 
 Audit strengthening, informed by a comparative review of MCP security
 frameworks.
@@ -70,14 +70,14 @@ frameworks.
 - **Merkle inclusion proofs on the journal** (`store.js`): `merkleRoot()`,
   `inclusionProof(seq)`, and `verifyInclusion()` let an auditor verify a
   single disclosed entry against a published root **without access to the
-  rest of the chain** — privacy-preserving audit on top of the linear hash
+  rest of the chain**, adding a privacy-preserving audit on top of the linear hash
   chain
 - **Runtime attestation in receipts** (`sign.js`): every trace and head
   receipt carries `runtime`, a SHA-256 digest of the runtime's own source
   manifest, inside the signed envelope. Which governed build produced a
   receipt is settled by re-computation, not confidence
 - Receipt envelope verification now strips only the key material and
-  signature — every other field is authenticated, present or future
+  signature. Every other field, now or in the future, is authenticated.
 
 ### Compatibility
 
@@ -89,7 +89,7 @@ frameworks.
   chains, foreign-root and tampered-leaf rejection, disk round trip,
   attestation coverage, forgery rejection, pre-attestation compatibility)
 
-## [1.0.0] — 2026-08-17
+## [1.0.0] (2026-08-17)
 
 First public release.
 
@@ -98,12 +98,12 @@ First public release.
 - Lexer, parser, and static checker for the IGL language
 - Interpreter with governed execution: identity, boundary, intent, and trace
   bound into every computation
-- Identity graph runtime — BOUNDARY graphs (companies) and FOOTPRINT graphs
+- Identity graph runtime for BOUNDARY graphs (companies) and FOOTPRINT graphs
   (individuals) folded from hash-chained journal events
 - Append-only journal (`store.js`) with tamper-evident hash chaining and
   deterministic replay; refuses to load a tampered chain
 - Signed receipts (`sign.js`) with digest-bound verification
-- Governed decode bridge (`bridge.js`) — the model computes inside the
+- Governed decode bridge (`bridge.js`): the model computes inside the
   compiled footprint mask; boundary violations are refusals, not errors
 
 ### Provisioning service (`provision/`)
@@ -111,7 +111,7 @@ First public release.
 - HTTP service: provision identity graphs from natural-language descriptions
 - MCP endpoint for AI client connections (ChatGPT developer-mode connectors)
 - Caller recognition (`whoami`): the caller key binds the session to the
-  caller's own graph — first contact seeds, every contact after replays
+  caller's own graph. First contact seeds it; later contacts replay it.
 - Deterministic natural-language → attribute resolver
 - Governed AI decode via `@xenova/transformers` (distilgpt2 reference model,
   pluggable)

@@ -9,25 +9,25 @@
 In the static conception, footprint is a lookup: `F(actor) = registry[actor]`.
 It is authored, it sits there, and it is correct until someone edits it.
 
-In the recursive conception, footprint and boundary are **folds over the trace
-stream** — a human's footprint and a company's boundary are both continuously
-recomputed state, current at every moment, and richer after every turn:
+In this design, footprint and boundary are **folds over the trace stream**.
+After each turn, the system replays the trace and updates the person's footprint
+or the company's boundary:
 
 ```
 F_t(actor)   = F_{t-1} ⊕ δ(trace_t)
 B_t(company) = B_{t-1} ⊕ δ(trace_t)
 ```
 
-This makes TurnTrace the write-ahead log and the graphs materialised views over
-it. Three properties come free, and three requirements come attached.
+TurnTrace is the write-ahead log, and the graphs are views built from it. This
+provides three useful properties and requires three safeguards.
 
 **Free:** the graphs are reconstructible by replay; they are auditable without a
 separate audit table; and "current" is the fold running continuously rather than
 a batch job with a staleness window.
 
 **Attached:** the merge must be incremental and associative (§3); the past must
-be reconstructible (§4); and — the one that matters — the descriptive and the
-prescriptive must not share a channel (§2).
+be reconstructible (§4); and the descriptive and prescriptive layers must not
+share a channel (§2).
 
 ---
 
@@ -48,15 +48,14 @@ the failure that quietly dissolves the governance model.
 
 If the same fold widens both layers, the system grants permissions by habit. An
 operator who repeatedly files in a jurisdiction accumulates evidence that they
-file there; if that evidence reaches the authorising layer, the system
-eventually concludes they are allowed to — having learned it from their own
-behaviour. The permission was never granted by anyone; it was inferred from
-activity, and the activity was only possible because of some earlier permission
-that has now been silently generalised.
+file there; if that evidence reaches the authorising layer, the system may
+treat the action as allowed because it has seen it before. No one granted that
+permission. The system inferred it from activity that was possible only because
+of an earlier permission, which has now been silently generalised.
 
 `test/graph.test.js` asserts this directly: five hundred consistent observations
-of `NM-OCD` leave `authorize()` returning false, and the violation says so in
-as many words — *observed 500× but observation does not confer authority*.
+of `NM-OCD` leave `authorize()` returning false. The violation says it plainly:
+*observed 500× but observation does not confer authority*.
 
 ### 2.2 Why AI-class evidence must not promote at any volume
 
@@ -65,7 +64,7 @@ This is SPEC §9's anchoring rule applied one layer down.
 The containment invariant is: UDM computes the admissible set, AI proposes an
 element, AI can never widen the set. But if the admissibility sets are
 themselves learned from traces, and traces carry AI-class assertions, then
-inference widens the set — slowly, through the learning channel rather than
+inference widens the set, slowly, through the learning channel rather than
 through proposal. The brake becomes learnable, and over enough turns it can be
 learned away.
 
@@ -88,11 +87,11 @@ with each turn, while the governing layer changes only when evidence is anchored
 ```
 { dimension: "Jurisdiction", value: "NM-OCD", layer: "governing",
   anchored: 4, count: 4, weight: 3.9, eligible: true,
-  rationale: "4 anchored observation(s) — eligible for grant by a signer" }
+  rationale: "4 anchored observations qualify for a grant by a signer" }
 
 { dimension: "Jurisdiction", value: "LA-DNR", layer: "proposed",
   anchored: 0, count: 99, weight: 96.2, eligible: false,
-  rationale: "AI-class observation only — cannot promote at any volume; re-derive from source or attest" }
+  rationale: "AI-class observation only; cannot promote at any volume. Re-derive from source or attest." }
 ```
 
 Eligibility is not application. A human signs, or nothing moves.
@@ -112,11 +111,11 @@ a temporal comparison on `Period` are different operations:
 | Type | Containment |
 |---|---|
 | `set` | membership |
-| `lattice` | membership, or membership of any ancestor — `US-TX` covers `TX-RRC`, and not the reverse |
+| `lattice` | Membership or membership of an ancestor. For example, `US-TX` covers `TX-RRC`, but not the reverse. |
 | `custom` | a supplied `contains(granted, value)` predicate |
 
-The projection is emitted in canonical order — dimensions and values sorted — so
-two folds of the same events serialise identically. Without that the state is
+The projection sorts dimensions and values into canonical order, so
+two folds of the same events serialise identically. Without that, the state is
 set-equal but not hashable, and a footprint cannot be diffed or committed to a
 trace by digest. (This was a real bug, caught by the shuffle test.)
 
@@ -140,8 +139,8 @@ weight = count × 0.5 ^ (days_since_last / half_life)
 An actor who has not operated somewhere in three years probably does not.
 
 **Prescriptive authority does not decay.** A grant unused for five years still
-authorises. The alternative — permissions expiring by disuse — is a silent
-security event: nobody revoked anything, and yet access changed. Revocation is
+authorises. If permissions expired through disuse, access could change without
+anyone revoking it. That would be a silent security event. Revocation is
 explicit, signed, and takes effect at the next `authorize()`, which is why
 footprints are resolved live rather than cached.
 
@@ -151,15 +150,15 @@ footprints are resolved live rather than cached.
 
 Two lines, at two points in the fixed evaluation order:
 
-**Step 2b, before any compute step runs** — `boundary ⊆ granted footprint`, or
-`IGL_FOOTPRINT_DENIED`. An unauthorised statement never reaches a model call and
+**Step 2b, before any compute step runs:** check that `boundary ⊆ granted footprint`.
+Otherwise return `IGL_FOOTPRINT_DENIED`. An unauthorised statement never reaches a model call and
 never writes a trace.
 
-**Step 9b, after the trace is durable** — `identity.fold(trace)`. The committed
+**Step 9b, after the trace is durable:** call `identity.fold(trace)`. The committed
 trace folds straight back into the graph, and its own attestation class decides
 which layer it can reach. This is the loop closing: execute → trace → fold →
 richer graph → next statement reasons over more.
 
-What the loop can never do is widen its own authority. That is the whole design:
+The loop cannot grant itself new authority. Only signed grants can authorize an action:
 
-> The graph learns from everything and is authorised by almost nothing.
+> The graph records observations, but only signed grants authorize actions.

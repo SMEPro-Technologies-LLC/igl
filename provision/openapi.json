@@ -29,7 +29,7 @@
       "post": {
         "operationId": "provisionIdentity",
         "summary": "Provision an Identity Graph from a natural-language description of a company or individual",
-        "description": "Deterministically resolves attributes, folds the identity graph into a hash-chained journal (one-time boot; repeat calls replay the existing chain idempotently), generates the executable IGL program, and executes it with the model inside the compiled decode mask. For an individual, the second statement deliberately asserts an observed-but-never-granted action and is refused with IGL_FOOTPRINT_DENIED — that refusal is the governance proof, not an error.",
+        "description": "Create an Identity Graph from a description of a company or individual. The service resolves attributes, records them in a hash-chained journal, generates an IGL program, and runs it with model output constrained by the graph. For individuals, the program also includes an observed action that was never granted. The runtime blocks it with IGL_FOOTPRINT_DENIED to demonstrate the authorization check.",
         "requestBody": {
           "required": true,
           "content": {

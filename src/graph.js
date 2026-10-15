@@ -1,4 +1,4 @@
-/* Identity graph as a fold over the trace stream — IGL v0.2
+/* Identity graph as a fold over the trace stream, IGL v0.2
 
    Boundary and footprint are not registry lookups. They are materialised
    views over an append-only event log, recomputed continuously:
@@ -8,9 +8,9 @@
    Three properties this file is responsible for, in order of importance:
 
    1. OBSERVATION NEVER GRANTS AUTHORITY.
-      The fold maintains two layers. `granted` is prescriptive — what an actor
-      MAY do — and moves only on an explicit, signed grant or revoke.
-      `observed` is descriptive — what an actor DOES — and accumulates freely
+      The fold maintains two layers. `granted` is prescriptive: what an actor
+      MAY do, and moves only on an explicit, signed grant or revoke.
+      `observed` is descriptive: what an actor does. It accumulates freely
       from traces. authorize() reads `granted` and nothing else. No volume of
       observation, however consistent, can widen authority; it can only raise
       a promotion candidate for a human to act on.
@@ -42,9 +42,9 @@ const ts = x => (x instanceof Date ? x.getTime() : Date.parse(x));
 
 /* ---------------- dimensions ----------------
    Each governed dimension declares how containment is decided.
-     set      — plain membership
-     lattice  — membership, or membership of any ancestor (US-TX covers TX-RRC)
-     custom   — a contains(grantedValue, boundaryValue) predicate            */
+     set: plain membership
+     lattice: membership or membership of any ancestor (US-TX covers TX-RRC)
+     custom: a contains(grantedValue, boundaryValue) predicate               */
 export const DEFAULT_DIMENSIONS = {
   Jurisdiction: {
     type: "lattice",
@@ -99,7 +99,7 @@ export class GraphRuntime {
   /* ---- signing keys as journal events ----
      Keys travel the same substrate as grants: bound by a named grantor,
      revoked explicitly, replayed with the chain, reconstructible asOf. This
-     is what makes receipt attribution rotation-safe — a receipt verifies
+     is what makes receipt attribution rotation-safe: a receipt verifies
      against the key registered AT SIGNING TIME, so rotating a key does not
      invalidate the attestations it validly made. */
   bindKey(actor, publicKey, { by, at = null } = {}) {
@@ -108,9 +108,9 @@ export class GraphRuntime {
   }
   /* Revocation carries its reason, because rotation and compromise demand
      OPPOSITE retroactive behaviour from the same event shape:
-       rotated      — prospective. Signatures before the revocation stay
+       rotated: prospective. Signatures before the revocation stay
                       valid; the key simply makes no new ones.
-       compromised  — retroactive from `effectiveFrom` (often earlier than
+       compromised: retroactive from `effectiveFrom` (often earlier than
                       discovery). Signatures at or after that moment are
                       suspect and must FAIL verification, however early the
                       asOf projection would otherwise place them. */
@@ -124,8 +124,8 @@ export class GraphRuntime {
 
   /* Key validity at a signing time. Deliberately NOT a projection query:
      a compromise recorded at discovery time must reach BACKWARD to its
-     effectiveFrom, so the scan reads the full log regardless of asOf —
-     the one place where reconstructing "what was known then" is exactly
+     effectiveFrom, so the scan reads the full log regardless of asOf.
+     Reconstructing "what was known then" is exactly
      the wrong question, because the answer we need is "what is true now
      about then". */
   keyStatus(actor, publicKey, { asOf = null } = {}) {
@@ -171,7 +171,7 @@ export class GraphRuntime {
     };
     const dimMap = (m, d) => { if (!m.has(d)) m.set(d, new Map()); return m.get(d); };
 
-    /* Fold in TIME order, not insertion order — grant/revoke and key/revoke
+    /* Fold in TIME order, not insertion order: grant/revoke and key/revoke
        are order-sensitive, and a backdated bind appended after a revocation
        must not resurrect what the revocation killed. Ties break by append
        sequence, so the fold stays deterministic. */
@@ -232,8 +232,8 @@ export class GraphRuntime {
   }
 
   /* ---------------- footprint ---------------- */
-  /* The projection is emitted in canonical order — dimensions and values
-     sorted — so two folds of the same events serialise identically regardless
+  /* The projection sorts dimensions and values into canonical order. Two folds
+     of the same events then serialise identically regardless
      of arrival order. Without this the state is set-equal but not hashable,
      and a footprint cannot be diffed or committed to a trace by digest. */
   footprint(actor, { asOf = null } = {}) {
@@ -296,7 +296,7 @@ export class GraphRuntime {
           violations.push({
             dimension: d, value: one,
             reason: fp.granted[d] ? `granted ${d}: ${fp.granted[d].join(", ")} does not cover ${one}` : `no ${d} grant on this footprint`,
-            /* say so explicitly — this is exactly the inference the system must refuse to make */
+            /* say so explicitly: this is exactly the inference the system must refuse to make */
             note: observed ? `observed ${observed.count}× but observation does not confer authority` : undefined,
           });
         }
@@ -321,9 +321,9 @@ export class GraphRuntime {
             anchored: e.anchored, count: e.count, weight: e.weight, lastSeen: e.last,
             eligible,
             rationale: layer === "proposed"
-              ? "AI-class observation only — cannot promote at any volume; re-derive from source or attest"
+              ? "AI-class observation only; cannot promote at any volume. Re-derive from source or attest."
               : eligible
-                ? `${e.anchored} anchored observation(s) — eligible for grant by a signer`
+                ? `${e.anchored} anchored observation(s) qualify for a grant by a signer`
                 : `${e.anchored} of ${this.promoteAfter} anchored observations required`,
           });
         }
@@ -339,7 +339,7 @@ export class GraphRuntime {
     if (!fp) throw new IGLError(`actor ${actor} is not in the identity graph`, { phase: "identity", code: "IGL_UNKNOWN_ACTOR" });
     const role = actorPath.length > 1 ? actorPath[actorPath.length - 1] : (this.roles[actor] || [])[0];
     /* fail-closed: an asserted role must be HELD. An actor with no recorded
-       roles holds no roles — the empty set is not a wildcard. */
+       roles holds no roles; the empty set is not a wildcard. */
     if (role && !fp.roles.includes(role))
       throw new IGLError(`${actor} does not hold role ${role}`, { phase: "identity", code: "IGL_ROLE_DENIED" });
     return { id: actorPath.join(":"), actor, role, footprint: fp };

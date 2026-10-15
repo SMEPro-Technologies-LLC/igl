@@ -1,4 +1,4 @@
-/* IGL runtimes — v0.2
+/* IGL runtimes, v0.2
 
    Four runtimes, deliberately separate:
      IdentityRuntime  actors, roles, footprints
@@ -91,10 +91,10 @@ export class AIRuntime {
 
   /* Governed extraction: γ constrains the call, α lifts the result back onto
      the admissible set, quantities are read from source. The model never
-     asserts a governed value directly — it selects within a set UDM computed
+     asserts a governed value directly, it selects within a set UDM computed
      and points at bytes this runtime reads. */
   async extract(args, ctx) {
-    if (!this.bridge) throw new IGLError("AI.Extract requires a bridge — no translation layer is configured",
+    if (!this.bridge) throw new IGLError("AI.Extract requires a bridge; no translation layer is configured",
       { phase: "ai", code: "IGL_NO_BRIDGE" });
     const pinned = this.models[args.Model];
     if (!pinned) throw new IGLError(`model ${args.Model} is not registered`, { phase: "ai", code: "IGL_UNKNOWN_MODEL" });
@@ -154,7 +154,7 @@ export class AIRuntime {
   async run(fn, args, ctx) {
     const model = args.Model;
     const pinned = this.models[model];
-    if (!pinned) throw new IGLError(`model ${model} is not registered — an unregistered model cannot be governed`, { phase: "ai", code: "IGL_UNKNOWN_MODEL" });
+    if (!pinned) throw new IGLError(`model ${model} is not registered; unregistered models cannot be governed`, { phase: "ai", code: "IGL_UNKNOWN_MODEL" });
     const call = {
       fn, task: args.Task ?? null, model, modelVersion: pinned.version,
       temperature: args.Temperature ?? 0, seed: args.Seed ?? null,
@@ -176,7 +176,7 @@ export class AIRuntime {
     };
     if (confidence < minConf) {
       assertion.belowThreshold = true;
-      assertion.note = `confidence ${confidence.toFixed(2)} below required ${minConf} — held for human review rather than asserted`;
+      assertion.note = `confidence ${confidence.toFixed(2)} below required ${minConf}, held for human review rather than asserted`;
     }
     return assertion;
   }

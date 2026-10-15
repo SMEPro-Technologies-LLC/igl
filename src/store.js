@@ -1,4 +1,4 @@
-/* Persistence — the event substrate, hash-chained.
+/* Persistence, the event substrate, hash-chained.
 
    GraphRuntime folds over events; IOSRuntime accumulates traces. Both were
    in-memory arrays, which means the receipt regime ended at the process
@@ -7,12 +7,12 @@
        digest_i = sha256( digest_{i-1} + canonical({type, body}) )
 
    Anyone holding the journal can re-verify the chain without trusting the
-   process that wrote it — which is what a receipt is.
+   process that wrote it, which is what a receipt is.
 
    Three implementations, one interface:
      MemoryJournal  tests, ephemeral rooms
      FileJournal    JSONL on disk; durable on append; replayable; verifiable
-     D1Journal      write-behind for Cloudflare D1 — append() chains
+     D1Journal      write-behind for Cloudflare D1, append() chains
                     synchronously, flush() awaits the INSERTs; the interpreter
                     awaits flush inside two-phase commit, so trace durability
                     still gates output release on async backends. */
@@ -47,7 +47,7 @@ export class MemoryJournal {
   verify() {
     let prev = GENESIS;
     for (const e of this.list) {
-      if (e.prev !== prev) return { ok: false, at: e.seq, reason: "chain break — prev digest mismatch" };
+      if (e.prev !== prev) return { ok: false, at: e.seq, reason: "chain break: previous digest mismatch" };
       const expect = sha256(prev + canonical({ type: e.type, body: e.body }));
       if (e.digest !== expect) return { ok: false, at: e.seq, reason: "body does not reproduce its digest" };
       prev = e.digest;
@@ -55,10 +55,10 @@ export class MemoryJournal {
     return { ok: true, length: this.list.length, head: prev };
   }
 
-  /* ---- Merkle inclusion proofs — privacy-preserving audit ----
+  /* ---- Merkle inclusion proofs, privacy-preserving audit ----
      The linear chain proves integrity, but verifying ONE entry requires the
      WHOLE chain. A Merkle root over the entry digests lets an auditor hold
-     only a published root and verify a single disclosed entry against it —
+     only a published root and verify a single disclosed entry against it,
      every other entry stays undisclosed. Odd nodes promote unpaired, so the
      root computation and the proof walk agree by construction. */
   static _merkleRoot(leaves) {
@@ -113,19 +113,18 @@ export class FileJournal extends MemoryJournal {
         if (!line.trim()) continue;
         this.list.push(JSON.parse(line));
       }
-      /* Tamper-evidence is load-bearing, not available-on-request: a doctored
-         journal must refuse to LOAD, because GraphRuntime folds authority out
-         of this list — a tampered grant would otherwise be live until someone
-         happened to ask. */
+      /* Tamper evidence is required when loading the journal. GraphRuntime
+         folds authority from this list, so a tampered grant would otherwise
+         remain active until someone checked the chain. */
       const v = this.verify();
       if (!v.ok)
-        throw new Error(`journal ${path} fails verification at seq ${v.at} — ${v.reason}; refusing to load a tampered chain`);
+        throw new Error(`journal ${path} fails verification at seq ${v.at}, ${v.reason}; refusing to load a tampered chain`);
     }
   }
   persist(entry) { appendFileSync(this.path, JSON.stringify(entry) + "\n"); }
 }
 
-/* Cloudflare D1 adapter. `exec(sql, params)` is the seam — in a Worker:
+/* Cloudflare D1 adapter. `exec(sql, params)` is the seam, in a Worker:
 
      exec: async (sql, params) => {
        const stmt = env.DB.prepare(sql).bind(...params);
@@ -143,11 +142,10 @@ export class FileJournal extends MemoryJournal {
      // or
      await env.DB.exec(D1_SCHEMA);   // exec() accepts multi-statement SQL
 
-   Never split D1_SCHEMA on ";" — the trigger bodies contain semicolons.
+   Never split D1_SCHEMA on ";", the trigger bodies contain semicolons.
 
-   Append-only is ENFORCED, not assumed: the chain makes tampering detectable,
-   but the triggers close the gap between "we would notice" and "it cannot
-   happen through the API" — UPDATE and DELETE abort at the engine. */
+   Append-only is enforced, not assumed. The chain makes tampering detectable,
+   and the triggers prevent UPDATE and DELETE at the database engine. */
 export const D1_SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS igl_journal (
   seq INTEGER PRIMARY KEY, type TEXT NOT NULL, body TEXT NOT NULL,
@@ -173,15 +171,15 @@ export class D1Journal extends MemoryJournal {
          authority is folded out of it */
       const v = this.verify();
       if (!v.ok)
-        throw new Error(`replayed journal fails verification at seq ${v.at} — ${v.reason}; refusing to load a tampered chain`);
+        throw new Error(`replayed journal fails verification at seq ${v.at}, ${v.reason}; refusing to load a tampered chain`);
     }
   }
   persist(entry) { this.pending.push(entry); }
 
   /* One flush = head-CAS + one multi-row INSERT.
 
-     CONCURRENCY, honestly stated: the SELECT and the INSERT are two calls, so
-     the CAS alone is TOCTOU — two writers can both read the same head and
+     CONCURRENCY, honestly stated: SELECT and INSERT are separate calls, so
+     the CAS alone has a race. Two writers can both read the same head and
      both pass. The guard that actually holds is the schema: `seq INTEGER
      PRIMARY KEY` and `digest UNIQUE` make the loser's batched INSERT fail
      atomically (one statement: all rows or none). The CAS is the fast path
@@ -196,7 +194,7 @@ export class D1Journal extends MemoryJournal {
     const head = await this.exec("SELECT digest FROM igl_journal ORDER BY seq DESC LIMIT 1", []);
     const durable = head?.results?.length ? head.results[0].digest : GENESIS;
     if (durable !== first.prev)
-      throw new Error(`journal head moved — durable head ${durable.slice(0, 12)}… does not match pending prev ${first.prev.slice(0, 12)}…; a concurrent writer advanced the chain (losing writer must re-chain, not half-commit)`);
+      throw new Error(`journal head moved: durable head ${durable.slice(0, 12)}… does not match pending prev ${first.prev.slice(0, 12)}…; a concurrent writer advanced the chain (losing writer must re-chain, not half-commit)`);
     const batch = this.pending;
     const values = batch.map(() => "(?, ?, ?, ?, ?)").join(", ");
     const params = batch.flatMap(e => [e.seq, e.type, canonical(e.body), e.prev, e.digest]);
@@ -204,7 +202,7 @@ export class D1Journal extends MemoryJournal {
       await this.exec(`INSERT INTO igl_journal (seq, type, body, prev, digest) VALUES ${values}`, params);
     } catch (e) {
       if (/UNIQUE|PRIMARY KEY|constraint/i.test(String(e.message || e)))
-        throw new Error(`journal head moved — lost the append race at the constraint (seq/digest collision); re-chain against the new head and retry. Underlying: ${e.message}`);
+        throw new Error(`journal head moved: lost the append race at the constraint (seq/digest collision); re-chain against the new head and retry. Underlying: ${e.message}`);
       throw e;
     }
     this.pending = [];                            /* dequeue only after the batch is durably down */

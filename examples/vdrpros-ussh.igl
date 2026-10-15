@@ -1,12 +1,12 @@
 %igl 0.2
 
 # =====================================================================
-# USSH / USSP discovery production — Hobson & Bradley
+# USSH / USSP discovery production: Hobson & Bradley
 # 89 volumes, ~20,200 documents, 62,616 files, Bates USSH000001–095565
 #
 # Every stage is identity-bound and boundary-scoped to the matter, and
-# every stage leaves a trace. The two stages that leave the building —
-# the privilege log and the findings memo — carry a signer, so they
+# every stage leaves a trace. The two stages that leave the building,
+# the privilege log and the findings memo, carry a signer, so they
 # will not compile without IOS.Attest.
 # =====================================================================
 
@@ -35,7 +35,7 @@ ID[Hobson:Counsel | Matter:2026-CV-04417]
 # 2. Integrity audit against the produced structure.
 # The Bates gaps between volumes (4625→4717, 32063→36852, 55265→55350)
 # and the misfiled load files (USSH042.opt inside USSH052, UHSSP004.dat)
-# are deterministic findings — they are computed, never inferred.
+# are deterministic findings. They are computed, never inferred.
 # ---------------------------------------------------------------------
 ID[Hobson:Paralegal | Matter:2026-CV-04417]
   :: Intent[Assess_Production_Integrity]
@@ -54,7 +54,7 @@ ID[Hobson:Paralegal | Matter:2026-CV-04417]
 # 3. Privilege screen and log.
 # Attested: a privilege call is a legal judgement, so the log does not
 # leave the room without a signer. Context is restricted to attested
-# traces — prior AI privilege calls are not precedent for new ones.
+# traces, prior AI privilege calls are not precedent for new ones.
 # ---------------------------------------------------------------------
 ID[Hobson:Counsel | Matter:2026-CV-04417]
   :: Intent[Produce_Privilege_Log]

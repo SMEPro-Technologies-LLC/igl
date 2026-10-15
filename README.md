@@ -26,26 +26,31 @@ For work sent through IGL, the runtime mediates calls between the caller and the
 
 ## Quick start
 
+Requires Node.js 20 or later and npm.
+
 ```bash
 git clone https://github.com/SMEPro-Technologies-LLC/igl.git
 cd igl
 npm ci
-npm test            # 131 tests — bridge, decode, extract, graph, igl, sign, store
+npm test            # 131 tests: bridge, decode, extract, graph, igl, sign, store
 ```
 
-Run a governed program end to end (model decode inside the compiled footprint mask):
+Run the live example program. It downloads the reference model on first run, so
+an internet connection is required the first time.
 
 ```bash
 node examples/run-igl-language-live.mjs
 ```
 
-Start the provisioning service (HTTP on :8787, MCP at `POST /mcp`):
+Start the provisioning service at `http://localhost:8787`. The MCP endpoint is
+available at `POST /mcp`.
 
 ```bash
 npm run provision
 ```
 
-When exposing the provisioning service to a browser client, set `PROVISION_ALLOWED_ORIGINS` (comma-separated) to explicitly allow trusted Origins for CORS responses.
+When a browser client connects from another origin, set `PROVISION_ALLOWED_ORIGINS`
+to a comma-separated list of trusted origins.
 
 Provision an identity graph from a plain-language description:
 
@@ -83,8 +88,8 @@ Authority is assigned by how knowledge entered the graph, never by what a payloa
 | Layer | Meaning | Can become authority? |
 |---|---|---|
 | `granted` | Signed, prescriptive grant (e.g. by a CISO office) | It **is** authority |
-| `observed: governing` | Deterministic tooling attestation, anchored and replayable | Promotion candidate — not yet authority |
-| `observed: proposed` | AI-class observation | **Can never promote** — a model's say-so is not ground truth |
+| `observed: governing` | Deterministic tooling attestation, anchored and replayable | Promotion candidate, not authority yet |
+| `observed: proposed` | AI-class observation | **Can never promote:** a model's say-so is not ground truth |
 
 The decode automaton is compiled from the granted set only. At trace level, the weakest provenance link governs.
 
@@ -110,4 +115,5 @@ Shipped in 1.0.0 is the Node.js reference runtime above. Planned and **not yet i
 
 ---
 
-*Where the industry is shipping the engines, IGL is the law the engines run under.*
+IGL provides a runtime for checking and recording model-assisted work against
+declared identity, boundaries, and intent.

@@ -1,4 +1,4 @@
-# IGL — Identity-Governed Language
+# IGL: Identity-Governed Language
 
 **Version 0.2** · supersedes 0.1 · reference implementation in `../src`
 
@@ -8,8 +8,8 @@
 
 IGL is a domain-specific language in which every computation is bound to an
 identity, governed by a declared boundary, assisted by pinned models, and
-preserved as a replayable trace — so that intelligence accumulates where it is
-anchored and decays where it is not.
+preserved as a replayable trace. The trace lets the system build on anchored
+information and reduce the influence of unanchored information.
 
 The change from v0.1 is the second clause of that sentence. v0.1 said
 "intelligence becomes recursive instead of disposable." Recursion alone is not a
@@ -78,7 +78,7 @@ passing one where the other is required is a static type error.
 
 Subsystem names `UDM`, `AI`, `IOS` are reserved in call position only.
 
-(`Boundary` was reserved in v0.1 with no production. Removed — see CRITIQUE §A4.)
+(`Boundary` was reserved in v0.1 but had no production. It was removed; see CRITIQUE §A4.)
 
 ### 3.4 Operators
 
@@ -140,7 +140,7 @@ Intents are registered, not open. The registry declares, per intent: permitted
 roles, required boundary keys, permitted parameters and their value domains,
 declared outputs and their types, and whether human attestation is required.
 
-### 4.4 Context — trace selection
+### 4.4 Context: trace selection
 
 ```ebnf
 ContextBlock ::= "Context" "[" ContextItem ("," ContextItem)* "]"
@@ -208,8 +208,8 @@ that did not happen.
 
 | Namespace | Character | Role |
 |---|---|---|
-| `UDM.*` | deterministic | governed structure, codes, constraints — the brake |
-| `AI.*` | probabilistic | inference and completion — pinned, seeded, bounded |
+| `UDM.*` | deterministic | Governed structure, codes, and constraints (the brake) |
+| `AI.*` | probabilistic | Inference and completion, pinned, seeded, and bounded |
 | `IOS.*` | orchestration | trace capture, attestation, staging |
 
 A reader can always see, at a call site, which parts of a program are governed
@@ -302,7 +302,7 @@ normalised parameters and the compute shape. Re-execution with the same key
 returns the prior trace and output with status `idempotent`, unless forced. For
 filings and productions, the alternative is a duplicate submission to a regulator.
 
-### 8.3 Two-phase commit — the fail-closed rule
+### 8.3 Two-phase commit: the fail-closed rule
 
 Outputs are materialised to a staging area. The trace is written **first**. Only
 a durable trace releases the output. A trace write failure discards the staged
@@ -310,7 +310,7 @@ outputs and raises `IGL_TRACE_FAILED`.
 
 v0.1 said "if IOS cannot trace → fail the computation" but did not say what
 happens to work already performed. Without step ordering, a failed trace leaves a
-materialised output with no record — precisely the condition the rule exists to
+materialised output with no record, which is precisely the condition the rule exists to
 prevent.
 
 ### 8.4 Attestation gate
@@ -371,8 +371,8 @@ blast radius of any single wrong inference to a finite subtree.
 UDM enforces *structure*. It can reject an invalid agency code or a violated
 numerical constraint. It cannot detect an inference that is structurally
 impeccable and factually wrong. Without §9.2 and §9.3, such an inference is
-stored, loaded at the next turn as established precedent, agreed with — models
-are strongly disposed to agree with their context — and re-asserted, now with two
+stored, loaded at the next turn as established precedent, agreed with, models
+are strongly disposed to agree with their context, and re-asserted, now with two
 supporting traces. That is a positive feedback loop with no damping term.
 
 With decay and the depth cap, an unanchored error fades from the corpus instead

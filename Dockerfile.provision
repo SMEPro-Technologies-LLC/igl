@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # ═══════════════════════════════════════════════════════════════════════════
-# IGL Runtime — Identity Graph provisioning service (provision/server.mjs).
+# IGL Runtime, Identity Graph provisioning service (provision/server.mjs).
 #
 # The numerical computation capability behind the IOS+ MCP gateway.
 # Build context is the igl repo root:

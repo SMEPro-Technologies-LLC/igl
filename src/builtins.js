@@ -82,7 +82,7 @@ export const BUILTINS = {
   ], { deterministic: true, produces: "staged" }),
 };
 
-/* Slot registry — the governed surface AI.Extract may fill.
+/* Slot registry, the governed surface AI.Extract may fill.
    `admissible` may be a literal set or a resolver over the live boundary, so a
    scope-dependent set (which forms exist at this agency, this period) is
    computed by UDM rather than hardcoded. `kind: "span"` means the value is

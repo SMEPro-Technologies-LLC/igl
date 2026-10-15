@@ -1,6 +1,6 @@
 # Security Policy
 
-IGL is a governance and audit language. A vulnerability in IGL is not just a software bug — it can undermine the integrity of identity, boundary, intent, or trace guarantees that downstream systems rely on. We treat security reports with corresponding seriousness.
+IGL is a governance and audit language. A vulnerability can undermine its guarantees for identity, boundaries, intent, and trace, so we treat security reports seriously.
 
 ## Reporting a vulnerability
 
@@ -39,7 +39,7 @@ Issues in examples, docs, or the playground are welcome but lower priority.
 
 | Version | Supported |
 |---|---|
-| 1.x (latest minor) | Yes — security fixes |
+| 1.x (latest minor) | Yes, security fixes |
 | Older minors | Critical fixes only, at maintainer discretion |
 
 ## Verification guidance for users

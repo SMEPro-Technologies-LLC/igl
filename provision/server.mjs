@@ -1,4 +1,4 @@
-/* HTTP surface for the provisioning service. Node stdlib only — no deps.
+/* HTTP surface for the provisioning service. Node stdlib only, no deps.
 
      POST /api/provision   { description, kind?, auto? } → full governed run
      GET  /api/graphs      → every provisioned graph, newest first
@@ -66,12 +66,12 @@ function readBody(req) {
 
 await warmRuntime();
 
-/* Optional bearer gate — set PROVISION_API_KEY when the service is exposed
+/* Optional bearer gate, set PROVISION_API_KEY when the service is exposed
    beyond localhost (e.g. tunnelled for ChatGPT). Health stays open so uptime
    checks work; everything else requires the key. The MCP endpoint also
    accepts ?key= because developer-mode connectors cannot always send custom
    headers. Registered caller keys (identities.mjs) pass the gate the same
-   way — and carry the caller's identity graph with them. */
+   way, and carry the caller's identity graph with them. */
 const API_KEY = process.env.PROVISION_API_KEY || null;
 function callerKey(req, url) {
   const bearer = req.headers.authorization?.startsWith("Bearer ")
@@ -97,7 +97,7 @@ const server = http.createServer(async (req, res) => {
     const caller = resolveCaller(callerKey(req, url));
 
     if (req.method === "GET" && url.pathname === "/api/whoami") {
-      if (!caller) return send(req, res, 401, { error: "unrecognized caller — present a registered identity key" });
+      if (!caller) return send(req, res, 401, { error: "unrecognized caller: present a registered identity key" });
       return send(req, res, 200, await whoAmI(caller));
     }
 
@@ -146,7 +146,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[provision] Identity Graph provisioning service on http://localhost:${PORT}`);
-  console.log(`[provision] POST /api/provision — model warm, journals hash-chained`);
-  console.log(`[provision] POST /mcp — MCP endpoint for ChatGPT Apps${API_KEY ? " (append ?key=$PROVISION_API_KEY)" : ""}`);
+  console.log(`[provision] POST /api/provision; model ready; journals hash-chained`);
+  console.log(`[provision] POST /mcp: MCP endpoint for ChatGPT Apps${API_KEY ? " (append ?key=$PROVISION_API_KEY)" : ""}`);
   if (API_KEY) console.log(`[provision] bearer auth ENABLED (PROVISION_API_KEY set)`);
 });

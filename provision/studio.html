@@ -84,7 +84,7 @@
   <h1>Provision your Identity Graph
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/><circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/><path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/></svg>
   </h1>
-  <p class="sub">Describe a company (a <b>boundary</b>) or an individual (a <b>footprint</b>). The service resolves its attributes, creates an identity graph and hash-chained journal, then generates and runs an IGL program. The runtime checks the graph before it calls the model and limits the model's output to allowed values. Results include the program, each statement's result, the journal head, and receipt verification.</p>
+  <p class="sub">Describe a company (a <b>boundary</b>) or an individual (a <b>footprint</b>). The service creates an identity graph and tamper-evident journal, then generates and runs an IGL program. Before calling the model, the runtime checks each requested action against the graph and limits the model's output to allowed values. Results show the program, each statement's result, journal status, and receipt status.</p>
   <div class="prompt"><div class="prompt-in">
     <textarea id="desc" placeholder="Example: Ridgeline Energy, LLC is a Texas oil and gas operator. Or: Jordan Avery is a DFIR coordinator in Houston, Texas."></textarea>
     <div class="prompt-row">
@@ -108,18 +108,18 @@
 
 <div class="view" id="view-graphs">
   <h1>My Graphs</h1>
-  <p class="sub">Every provisioned Identity Graph on this service, newest first. Seed means first provision; replay means the existing hash-chained journal answered idempotently.</p>
+  <p class="sub">Identity Graphs provisioned on this service, newest first. Seed means the graph was created for the first time. Replay means the service reused its existing journal for the same request.</p>
   <div class="card"><div id="glist" class="empty">Loading...</div></div>
 </div>
 
 <div class="view" id="view-settings">
   <h1>Service settings</h1>
-  <p class="sub">Served from the provisioning service itself, the studio talks to its own origin and needs no setup. Point it elsewhere only if the service runs on another host or behind a tunnel. The key is held in memory for this tab only.</p>
+  <p class="sub">This studio uses the provisioning service that serves it. Enter a different URL only if the service runs on another host or behind a tunnel. The API key stays in memory in this tab and is not saved.</p>
   <div class="card">
     <h3>Connection</h3>
     <label style="font-size:12.5px;color:var(--muted)">Service base URL (blank = this origin)</label>
     <input class="cfg mono" id="cfgBase" placeholder="http://localhost:8787">
-    <label style="font-size:12.5px;color:var(--muted);display:block;margin-top:12px">Bearer key (only if PROVISION_API_KEY is set)</label>
+    <label style="font-size:12.5px;color:var(--muted);display:block;margin-top:12px">API key (only if PROVISION_API_KEY is set)</label>
     <input class="cfg mono" id="cfgKey" type="password" placeholder="optional">
     <div style="margin-top:12px"><button class="btn small primary" onclick="applyCfg()">Apply and re-check</button></div>
     <div class="flash" id="cfgFlash"></div>

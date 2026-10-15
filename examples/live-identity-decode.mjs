@@ -1,17 +1,17 @@
-/* LIVE governed decode — two real identity-graph runs through the IGL bridge.
+/* LIVE governed decode, two real identity-graph runs through the IGL bridge.
 
-   Run 1 (Boundary):  Hilcorp Energy — company. The graph's prescriptive grant
+   Run 1 (Boundary):  Hilcorp Energy, company. The graph's prescriptive grant
                       lattice defines the boundary; the bridge's prefix automaton
                       drives the model's per-token mask so only boundary-covered
                       values can ever be emitted.
 
-   Run 2 (Footprint): Jordan Avery — individual DFIR Coordinator. The
+   Run 2 (Footprint): Jordan Avery, individual DFIR Coordinator. The
                       footprint fold (granted vs observed layers) decides what is
                       reachable; an AI-observed-but-never-granted action is shown
                       refused by authorize() AND unreachable in the decode.
 
    Model: Xenova/distilgpt2, real forward pass per step (network download on
-   first run). Sampler: argmax (deterministic — the trace is recomputable).
+   first run). Sampler: argmax (deterministic, the trace is recomputable).
    Each step's mask comes from Bridge.maskNext over the bridge automaton; the
    mask is applied as FUSE support restriction (w ∈ {0,1}) using the src/decode.js
    governedStep math. Every run seals a hash-chained trace and an Ed25519-signed
@@ -41,7 +41,7 @@ const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
 const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
 const VOCAB = []; // id -> string
 for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
-console.log(`[live] model ready — vocab ${VOCAB.length}`);
+console.log(`[live] model ready (vocab: ${VOCAB.length})`);
 
 const signer = Signer.generate("igl-live-demo"); // demo key, generated per run; production keys come from KMS
 
@@ -128,17 +128,17 @@ function sealReceipt({ kind, actor, role, footprint, boundary, envelope, gen, ex
 }
 
 /* ================================================================
-   RUN 1 — Hilcorp Energy · Company · BOUNDARY
+   RUN 1, Hilcorp Energy · Company · BOUNDARY
    ================================================================ */
 async function runHilcorp() {
   const graph = new GraphRuntime();
   const ACTOR = "Hilcorp Energy";
 
-  // Prescriptive grants — the ONLY thing that widens authority.
+  // Prescriptive grants, the ONLY thing that widens authority.
   graph.grant(ACTOR, { Jurisdiction: ["US-TX", "US-NM", "US-LA"], Commodity: ["Oil", "Gas", "NGL"] },
     { by: "SMEPro Governance Board", role: "operator" });
 
-  // Descriptive observations — including an AI-class sighting in a NON-granted
+  // Descriptive observations, including an AI-class sighting in a NON-granted
   // jurisdiction. It accumulates in `proposed` and can never widen authority.
   graph.observe(ACTOR, { Jurisdiction: ["US-TX"], Commodity: ["Gas"] }, { cls: "deterministic" });
   graph.observe(ACTOR, { Jurisdiction: ["US-CA"] }, { cls: "ai" });
@@ -171,7 +171,7 @@ async function runHilcorp() {
     label: "hilcorp-boundary",
   });
 
-  // α — lift the emitted text back into governed structure.
+  // α, lift the emitted text back into governed structure.
   const lifted = bridge.project(gen.text.trim(), { admissible, dimension: "Jurisdiction", kind: "enum" });
 
   const receipt = sealReceipt({
@@ -182,7 +182,7 @@ async function runHilcorp() {
   const verification = Signer.verifyTraceReceipt(receipt);
 
   return {
-    run: "Identity Graph — Company (Boundary)",
+    run: "Identity Graph: Company (Boundary)",
     actor: ACTOR,
     footprint,
     authorizeCovered: { boundary: okBoundary, ok: authzOk.ok },
@@ -197,14 +197,14 @@ async function runHilcorp() {
 }
 
 /* ================================================================
-   RUN 2 — Jordan Avery · Individual · FOOTPRINT
+   RUN 2, Jordan Avery · Individual · FOOTPRINT
    ================================================================ */
 async function runAvery() {
   const dimensions = { ...DEFAULT_DIMENSIONS, Action: { type: "set" } };
   const graph = new GraphRuntime({ dimensions });
   const ACTOR = "Jordan Avery";
 
-  // Granted footprint — signed, prescriptive.
+  // Granted footprint, signed, prescriptive.
   graph.grant(ACTOR,
     { Action: ["triage-alert", "acquire-disk-image", "preserve-evidence", "draft-incident-report"] },
     { by: "CISO Office", role: "DFIR Coordinator" });
@@ -219,7 +219,7 @@ async function runAvery() {
 
   const okBoundary = { Action: ["draft-incident-report"] };
   const observedOnly = { Action: ["capture-volatile-memory"] };  // governing-class, not yet granted
-  const aiOnly = { Action: ["restore-production-systems"] };     // AI-class — can never promote
+  const aiOnly = { Action: ["restore-production-systems"] };     // AI-class observations can never promote
   const authzOk = graph.authorize(ACTOR, okBoundary);
   const authzObserved = graph.authorize(ACTOR, observedOnly);
   const authzAi = graph.authorize(ACTOR, aiOnly);
@@ -255,7 +255,7 @@ async function runAvery() {
   const verification = Signer.verifyTraceReceipt(receipt);
 
   return {
-    run: "Identity Graph — Individual (Footprint)",
+    run: "Identity Graph: Individual (Footprint)",
     actor: ACTOR,
     footprint,
     authorizeGranted: { boundary: okBoundary, ok: authzOk.ok },

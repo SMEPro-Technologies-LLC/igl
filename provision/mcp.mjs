@@ -1,13 +1,13 @@
-/* MCP (Model Context Protocol) endpoint for the provisioning service —
+/* MCP (Model Context Protocol) endpoint for the provisioning service,
    this is what ChatGPT's "Apps" model connects to. Streamable-HTTP flavour:
    JSON-RPC 2.0 over POST /mcp, stateless, no SSE session required.
 
    Tools:
-     check_health       read-only — service + model status
-     list_graphs        read-only — every provisioned graph, newest first
-     get_graph          read-only — one graph by slug
-     search / fetch     read-only — the pair read-only ChatGPT connectors expect
-     provision_identity write     — resolve → fold → generate .igl → governed run
+     check_health       read-only, service + model status
+     list_graphs        read-only, every provisioned graph, newest first
+     get_graph          read-only, one graph by slug
+     search / fetch     read-only, the pair read-only ChatGPT connectors expect
+     provision_identity write    , resolve → fold → generate .igl → governed run
 
    Auth: when PROVISION_API_KEY is set, the MCP endpoint accepts it as either
    an Authorization bearer header or a ?key= query parameter (developer-mode
@@ -76,14 +76,14 @@ const TOOLS = [
   {
     name: "identity_graph_whoami",
     description:
-      "Recognize the caller. Returns the caller's own Identity Graph — their FOOTPRINT (individual) or BOUNDARY (company) — with journal chain status, footprint digest, and latest governed results. First contact seeds the graph from the registered profile; every contact after that replays the existing hash-chained journal instantly. Call this FIRST in every conversation to bind the session to the caller's identity graph before any other tool.",
+      "Returns the caller's registered Identity Graph, including its footprint (individual) or boundary (company), journal status, footprint digest, and latest governed results. Use this tool first in a conversation to identify the caller before calling other tools. The first contact seeds the graph from the registered profile; later contacts replay the existing journal.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
   },
   {
     name: "provision_identity",
     description:
-      "Provision an Identity Graph from a natural-language description of a company or individual. Deterministically resolves attributes, folds the identity graph into a hash-chained journal (one-time boot; repeat calls replay idempotently), generates the executable IGL program, and runs it with the model inside the compiled governance mask. For individuals, the second statement deliberately asserts an observed-but-never-granted action and is refused with IGL_FOOTPRINT_DENIED — that refusal is the governance proof, NOT an error.",
+      "Create an Identity Graph from a description of a company or individual. The service resolves attributes, records them in a hash-chained journal, generates an IGL program, and runs it with model output constrained by the graph. For individuals, the program also includes an observed action that was never granted. The runtime blocks it with IGL_FOOTPRINT_DENIED to demonstrate the authorization check.",
     inputSchema: {
       type: "object",
       properties: {
@@ -105,7 +105,7 @@ function summarize(graph) {
 async function callTool(name, args, caller) {
   switch (name) {
     case "identity_graph_whoami": {
-      if (!caller) throw new Error("unrecognized caller — this session is not bound to a registered identity key");
+      if (!caller) throw new Error("unrecognized caller: this session is not bound to a registered identity key");
       const { whoAmI } = await import("./service.mjs");
       return whoAmI(caller);
     }

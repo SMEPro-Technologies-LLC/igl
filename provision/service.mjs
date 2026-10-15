@@ -1,9 +1,9 @@
-/* Provisioning service — the intelligence orchestration path behind the
+/* Provisioning service, the intelligence orchestration path behind the
    studio console's Provision button.
 
    description ──► deterministic attribute resolution (pre-inference)
                 ──► graph fold (grants/observations append to the actor's
-                    hash-chained FileJournal — one-time boot, replay after)
+                    hash-chained FileJournal, one-time boot, replay after)
                 ──► orchestration GENERATES the .igl program (IGL is the
                     native language emitted from the computed matrix)
                 ──► governed execution with the real model inside the
@@ -46,11 +46,11 @@ export async function warmRuntime(log = console.log) {
   const tok = { encode: (s) => tokenizer.encode(s) };
   const governedGenerate = makeGovernedGenerate({ tokenizer, model });
   runtime = { tokenizer, model, tok, governedGenerate, vocabSize: tokenizer.get_vocab().size };
-  log(`[provision] model ready — vocab ${runtime.vocabSize}`);
+  log(`[provision] model ready (vocab: ${runtime.vocabSize})`);
   return runtime;
 }
 
-/* Authority-relevant state only — weights decay with wall-clock and `last`
+/* Authority-relevant state only, weights decay with wall-clock and `last`
    is an event timestamp; neither changes what an actor may do. */
 export function stableFootprint(fp) {
   const strip = (layer) =>
@@ -70,7 +70,7 @@ export async function provisionIdentity({ description = "", kind = null, auto = 
 
   const journal = new FileJournal(journalPath); // refuses a tampered chain
   const chainCheck = journal.verify();
-  if (!chainCheck.ok) throw new Error(`journal for ${slug} failed chain verification — refusing to provision on top of tampered state`);
+  if (!chainCheck.ok) throw new Error(`journal for ${slug} failed chain verification; refusing to provision on top of tampered state`);
 
   const buildArgs = { resolved, journal, seeded: boot === "seed", tok: rt.tok, models: MODELS, governedGenerate: rt.governedGenerate };
   const { graph, interp, program } = resolved.kind === "BOUNDARY" ? buildBoundaryGraph(buildArgs) : buildFootprintGraph(buildArgs);
@@ -127,7 +127,7 @@ export function listProvisioned() {
 
 /* Recognition: resolve the caller's identity to THEIR graph. First contact
    seeds the graph from the stored profile (one-time boot); every contact
-   after that replays the existing hash-chained journal — the graph answers
+   after that replays the existing hash-chained journal, the graph answers
    instantly because it already exists. */
 export async function whoAmI(identity) {
   const { resolved, runtime } = await provisionIdentity({

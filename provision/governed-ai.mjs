@@ -1,11 +1,11 @@
-/* The governed decode core — extracted from examples/run-igl-persistent.mjs so
+/* The governed decode core, extracted from examples/run-igl-persistent.mjs so
    provisioning and any future service share ONE implementation of the sampler
    hook.
 
    Natural alignment, mechanically: the model's native computation is softmax
    over logits. The bridge compiles the granted footprint into a prefix
    automaton over the model's OWN tokenizer vocabulary, and governedStep
-   applies z′ = z + ln(wᵢ) — additive in logit space means multiplicative in
+   applies z′ = z + ln(wᵢ), additive in logit space means multiplicative in
    probability space, i.e. p′ᵢ ∝ pᵢ·wᵢ. Governance is not a filter after the
    fact; it is the same arithmetic the model is bound by natively, evaluated
    at the same step, over the same vocabulary. */
@@ -74,7 +74,7 @@ export class GovernedAI extends AIRuntime {
       if (!def) throw new Error(`slot ${name} is not in the governed slot registry`);
       const admissible = fp.granted[def.dimension] || [];
       if (!admissible.length)
-        throw new Error(`slot ${name}: the granted footprint of ${ctx.identity.actor} covers no value for ${def.dimension} — failing closed`);
+        throw new Error(`slot ${name}: the granted footprint of ${ctx.identity.actor} covers no value for ${def.dimension}; execution fails closed`);
       specs.push({ name, kind: def.kind, dimension: def.dimension, admissible });
     }
     const envelope = this.bridge.gamma(ctx.boundary, specs, { model: args.Model, seed: args.Seed ?? null });
