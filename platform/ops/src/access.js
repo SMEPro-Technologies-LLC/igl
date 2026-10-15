@@ -7,8 +7,10 @@
    2. Built-in sign-in. When OPS_ADMIN_PASSWORD is set as a Worker secret, the
       console shows its own sign-in page. The username is OPS_ADMIN_USER
       (default "admin"). A successful sign-in sets a signed, HttpOnly session
-      cookie good for twelve hours. Five failed attempts from one address lock
-      that address out for fifteen minutes.
+      cookie good for twelve hours. Five failed attempts from one address
+      inside fifteen minutes lock that address out for fifteen minutes; the
+      counter lives in the INTAKE database so it holds across every Worker
+      instance.
 
    With neither configured the Worker answers 503 to everyone (fail closed).
    OPS_DEV=1 disables all checks for local development only. */
@@ -18,8 +20,8 @@ const enc = new TextEncoder();
 const SESSION_COOKIE = "igl_ops";
 const SESSION_HOURS = 12;
 const MAX_FAILURES = 5;
+const WINDOW_MS = 15 * 60 * 1000;
 const LOCK_MS = 15 * 60 * 1000;
-const failures = new Map();   // ip -> { n, until }
 
 function b64urlToBuf(s) { return Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64"); }
 const b64url = (buf) => Buffer.from(buf).toString("base64url");
@@ -78,26 +80,45 @@ function constantTimeEqual(a, b) {
 
 const clientIp = (request) => request.headers.get("cf-connecting-ip") || "local";
 
-export function lockedOut(request) {
-  const f = failures.get(clientIp(request));
-  if (!f) return 0;
-  if (f.until && f.until > Date.now()) return Math.ceil((f.until - Date.now()) / 60000);
-  if (f.until && f.until <= Date.now()) failures.delete(clientIp(request));
-  return 0;
+/* Minutes left on a lockout for this address, 0 when none. */
+export async function lockedOut(request, env) {
+  if (!env.INTAKE) return 0;
+  const row = await env.INTAKE.prepare("SELECT locked_until FROM ops_sign_in_attempts WHERE address = ?1").bind(clientIp(request)).first();
+  const until = Number(row?.locked_until || 0);
+  return until > Date.now() ? Math.ceil((until - Date.now()) / 60000) : 0;
+}
+
+/* One statement per failure, so concurrent attempts from the same address
+   count correctly whichever Worker instance handles them. */
+async function recordFailure(env, ip) {
+  const now = Date.now();
+  const row = await env.INTAKE.prepare(`
+    INSERT INTO ops_sign_in_attempts (address, failures, locked_until, updated_at) VALUES (?1, 1, 0, ?2)
+    ON CONFLICT(address) DO UPDATE SET
+      failures = CASE WHEN locked_until > ?2 THEN failures
+                      WHEN updated_at < ?2 - ?3 THEN 1
+                      ELSE failures + 1 END,
+      locked_until = CASE WHEN locked_until > ?2 THEN locked_until
+                          WHEN (CASE WHEN updated_at < ?2 - ?3 THEN 1 ELSE failures + 1 END) >= ?4 THEN ?2 + ?5
+                          ELSE 0 END,
+      updated_at = ?2
+    RETURNING failures, locked_until`).bind(ip, now, WINDOW_MS, MAX_FAILURES, LOCK_MS).first();
+  return Number(row?.locked_until || 0) > now;
 }
 
 export async function checkLogin(request, env, username, password) {
+  if (!env.INTAKE) return { ok: false, unavailable: true };   // no shared store, no sign-in (fail closed)
   const ip = clientIp(request);
-  if (lockedOut(request)) return { ok: false, locked: true };
+  if (await lockedOut(request, env)) return { ok: false, locked: true };
   const userOk = constantTimeEqual(username || "", env.OPS_ADMIN_USER || "admin");
   const passOk = constantTimeEqual(password || "", env.OPS_ADMIN_PASSWORD || "");
-  if (userOk && passOk) { failures.delete(ip); return { ok: true, email: env.OPS_ADMIN_USER || "admin" }; }
-  const f = failures.get(ip) || { n: 0, until: 0 };
-  f.n += 1;
-  if (f.n >= MAX_FAILURES) { f.until = Date.now() + LOCK_MS; f.n = 0; }
-  failures.set(ip, f);
+  if (userOk && passOk) {
+    await env.INTAKE.prepare("DELETE FROM ops_sign_in_attempts WHERE address = ?1").bind(ip).run();
+    return { ok: true, email: env.OPS_ADMIN_USER || "admin" };
+  }
+  const locked = await recordFailure(env, ip);
   await new Promise((r) => setTimeout(r, 600));   // slow every failure down
-  return { ok: false, locked: f.until > Date.now() };
+  return { ok: false, locked };
 }
 
 export async function issueSession(env, user) {

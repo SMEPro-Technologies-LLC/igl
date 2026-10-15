@@ -26,3 +26,14 @@ CREATE TABLE IF NOT EXISTS inquiries (
 );
 CREATE INDEX IF NOT EXISTS inquiries_received ON inquiries (received_at DESC);
 CREATE INDEX IF NOT EXISTS inquiries_status ON inquiries (status);
+
+-- Sign-in attempts for the operator console (ops.id-me.ai). One row per
+-- address; five failures inside fifteen minutes lock the address for fifteen
+-- minutes. Kept here, in shared storage, so the lockout holds across every
+-- Worker instance.
+CREATE TABLE IF NOT EXISTS ops_sign_in_attempts (
+  address       TEXT PRIMARY KEY,
+  failures      INTEGER NOT NULL DEFAULT 0,
+  locked_until  INTEGER NOT NULL DEFAULT 0,   -- epoch milliseconds
+  updated_at    INTEGER NOT NULL
+);

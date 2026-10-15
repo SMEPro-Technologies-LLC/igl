@@ -22,15 +22,16 @@ export default {
     // Built-in sign-in pages (only when configured and Access is not in front)
     if (url.pathname === "/login" && builtinConfigured(env) && !(env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD)) {
       if (request.method === "GET") {
-        const m = lockedOut(request);
+        const m = await lockedOut(request, env);
         return html(LOGIN.replace("__ERROR__", m ? `Too many attempts. Try again in ${m} minute${m === 1 ? "" : "s"}.` : ""));
       }
       if (request.method === "POST") {
         const form = await request.formData().catch(() => null);
         const r = await checkLogin(request, env, form?.get("username"), form?.get("password"));
         if (r.ok) return redirect("/", { "set-cookie": sessionCookie(await issueSession(env, r.email)) });
-        const m = lockedOut(request);
-        return html(LOGIN.replace("__ERROR__", r.locked || m ? `Too many attempts. Try again in ${m || 15} minutes.` : "That username and password do not match."), 401);
+        if (r.unavailable) return html(LOGIN.replace("__ERROR__", "Sign-in is unavailable: the console has no INTAKE database binding."), 503);
+        const m = r.locked ? await lockedOut(request, env) : 0;
+        return html(LOGIN.replace("__ERROR__", r.locked ? `Too many attempts. Try again in ${m || 15} minutes.` : "That username and password do not match."), 401);
       }
     }
     if (url.pathname === "/logout" && request.method === "POST") return redirect("/login", { "set-cookie": clearSessionCookie() });
