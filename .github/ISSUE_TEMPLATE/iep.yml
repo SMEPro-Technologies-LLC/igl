@@ -1,0 +1,54 @@
+name: IGL Enhancement Proposal (IEP)
+description: Propose a change to the language, the trace schema, provenance rules, or the platform contract
+title: "IEP: "
+labels: [iep, needs-discussion]
+body:
+  - type: markdown
+    attributes:
+      value: IEPs stay open for comment for at least seven days and are accepted by maintainer consensus. Proposals that weaken identity, boundary, intent or trace guarantees, or let a payload set its own provenance, are declined.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One paragraph. What changes and why.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface affected
+      multiple: true
+      options: [Language syntax, Language semantics, Trace / journal schema, Provenance taxonomy, Platform contract (spec/openapi.yaml), MCP tools, Provisioning service]
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+    validations:
+      required: true
+  - type: textarea
+    id: design
+    attributes:
+      label: Detailed design
+      description: Grammar, schema or OpenAPI diff; examples; error behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: guarantees
+    attributes:
+      label: Effect on the four guarantees and the provenance rule
+      description: State explicitly that none is weakened, and how you know.
+    validations:
+      required: true
+  - type: textarea
+    id: compat
+    attributes:
+      label: Compatibility
+      description: Existing programs, journals, receipts and clients. Contract changes must say minor (additive) or major (new /v{n}).
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/SMEPro-Technologies-LLC/igl/security/advisories/new
+    about: Report privately. Never open a public issue for a vulnerability.
+  - name: Platform support (accounts, keys, tenants)
+    url: https://id-me.ai/#console
+    about: Hosted-platform questions go through the Developer Console.
+  - name: Questions and ideas
+    url: https://github.com/SMEPro-Technologies-LLC/igl/discussions
+    about: Discussions is the place for questions that are not bugs or proposals.

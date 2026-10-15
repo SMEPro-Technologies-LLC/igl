@@ -1,0 +1,46 @@
+name: Bug report
+description: Something in the runtime, provisioning service or contract behaves incorrectly
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: For security vulnerabilities use private reporting (see SECURITY.md), not this form.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `node -p "require('./package.json').version"` or the release tag; contract version if applicable
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Language core (src/), Journal / receipts, Governed decode, Provisioning service / MCP, Platform contract (spec/), Docs, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Program, command or request that shows the problem. A failing test is ideal.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour (include error codes such as IGL_FOOTPRINT_DENIED verbatim)
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: Node 22.x, macOS 15 / Ubuntu 24.04
