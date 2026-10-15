@@ -84,7 +84,7 @@
   <h1>Provision your Identity Graph
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/><circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/><path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/></svg>
   </h1>
-  <p class="sub">Describe a company (a <b>boundary</b>) or an individual (a <b>footprint</b>). The service resolves the attributes deterministically, folds the graph into a hash-chained journal, generates the executable IGL program, and runs it with the model decoding inside the compiled governance mask. Every provision returns the program, the per-statement results, the journal head, and receipt verification.</p>
+  <p class="sub">Describe a company (a <b>boundary</b>) or an individual (a <b>footprint</b>). The service resolves its attributes, creates an identity graph and hash-chained journal, then generates and runs an IGL program. The runtime checks the graph before it calls the model and limits the model's output to allowed values. Results include the program, each statement's result, the journal head, and receipt verification.</p>
   <div class="prompt"><div class="prompt-in">
     <textarea id="desc" placeholder="Example: Ridgeline Energy, LLC is a Texas oil and gas operator. Or: Jordan Avery is a DFIR coordinator in Houston, Texas."></textarea>
     <div class="prompt-row">

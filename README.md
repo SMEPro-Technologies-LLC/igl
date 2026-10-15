@@ -1,25 +1,25 @@
-# IGL — Identity Governed Logic
+# IGL: Identity Governed Logic
 
-**Intelligence has to identify itself, declare its boundaries, and state its intent before it thinks. Not after. Not when something goes wrong. Before.**
+IGL is a Node.js language and runtime for running computations under a declared identity, action boundary, and intent. It checks requests before execution and records permitted work in a tamper-evident journal.
 
-IGL is a coding language and runtime built around one rule: governance is not a policy document taped to the side of the machine. It is the syntax. Every IGL program binds four things into the computation itself:
+Every IGL program binds four things to each computation:
 
-- **Identity** — you always know who or what is acting
-- **Boundaries** — what it may and may not do, declared up front and enforced while it runs
-- **Intent** — the reason for the action, on the record
-- **Trace** — a hash-chained, append-only journal of every step taken, so "what happened" is never a debate
+- **Identity:** who or what is acting
+- **Boundaries:** what it may and may not do, checked while the program runs
+- **Intent:** the reason for the action
+- **Trace:** an append-only journal that records each step and links entries with hashes
 
-An actor that hasn't declared its identity can't execute. An action outside the declared boundary doesn't get a warning — it doesn't run.
+Programs without a declared identity cannot run. The runtime blocks actions outside the declared boundary before model work starts.
 
-This holds for work routed through an IGL runtime: the runtime sits between the caller and the model, makes the calls, and can refuse, scope, and log them. That is the enforcement mechanism, and it is the one this repository implements.
+For work sent through IGL, the runtime mediates calls between the caller and the model, checks each request against its declared boundaries, and records the result. This repository implements that enforcement mechanism.
 
 ## What's in this repo
 
 | Path | Contents |
 |---|---|
-| `src/` | Language core — lexer, parser, static checker, interpreter, identity-graph runtime, hash-chained journal (`store.js`), signed receipts (`sign.js`), governed decode bridge (`bridge.js`), per-token governed decode (`decode.js`) |
-| `provision/` | Provisioning service — HTTP + MCP endpoint, natural-language attribute resolver, caller recognition (`whoami`), governed AI decode, OpenAPI spec, CLI, Dockerfile |
-| `programs/` | Reference IGL programs — a company BOUNDARY graph and an individual FOOTPRINT graph |
+| `src/` | Language core: lexer, parser, static checker, interpreter, identity-graph runtime, hash-chained journal (`store.js`), signed receipts (`sign.js`), governed decode bridge (`bridge.js`), and per-token governed decode (`decode.js`) |
+| `provision/` | Provisioning service: HTTP and MCP endpoints, attribute resolver, caller recognition (`whoami`), governed AI decode, OpenAPI specification, CLI, and Dockerfile |
+| `programs/` | Reference IGL programs: a company BOUNDARY graph and an individual FOOTPRINT graph |
 | `test/` | 131-test suite: bridge, decode, extract, graph, igl, sign, store |
 | `docs/` | Language specification and architecture notes |
 | `examples/` | Runnable end-to-end flows, including journal persistence and replay |
@@ -55,7 +55,7 @@ node provision/cli.mjs "Example Energy, LLC is a Texas oil and gas operator"
 
 ## What a program looks like
 
-From `programs/jordan-avery-dfir-footprint.igl` — an individual FOOTPRINT graph:
+From `programs/jordan-avery-dfir-footprint.igl`, an individual FOOTPRINT graph:
 
 ```igl
 ID[Jordan_Avery:DFIR_Coordinator | Action:draft-incident-report]
@@ -67,14 +67,14 @@ ID[Jordan_Avery:DFIR_Coordinator | Action:draft-incident-report]
      ]
 ```
 
-The same file contains a second statement asserting `Action:restore-production-systems` — an action the graph has *observed* five times but never *granted*. The runtime refuses it at the authorization phase with `IGL_FOOTPRINT_DENIED`, before any model work is paid for. Observation is not authority.
+The same file contains a second statement requesting `Action:restore-production-systems`. The graph has *observed* this action five times but never *granted* it. The runtime blocks it during authorization with `IGL_FOOTPRINT_DENIED`, before calling the model. Observation alone does not grant authority.
 
 ## The four guarantees
 
 1. **No identity, no execution.** The runtime refuses unidentified work.
 2. **Out-of-boundary actions don't run.** Boundary violations are errors at check time and at run time, not warnings.
 3. **Intent is part of the record.** Every trace carries the declared purpose it was executing.
-4. **The trace is tamper-evident — and selectively disclosable.** Journal entries are SHA-256 hash-chained; a chain that was altered after capture fails verification and refuses to load. The chain proves integrity and ordering of what was captured — completeness of capture is a property of the capture layer, which is why grants and observations enter only through attested routes (see below). On top of the chain, Merkle inclusion proofs let an auditor verify a single disclosed entry against a published root **without seeing the rest of the journal**, and every signed receipt carries the digest of the runtime build that produced it — which runtime signed a receipt is settled by re-computation, not confidence.
+4. **The trace is tamper-evident and supports selective disclosure.** Journal entries are linked with SHA-256 hashes. Verification fails if an entry changes after capture. This proves the integrity and order of recorded entries, but not that every event was captured. Grants and observations therefore enter only through attested routes (see below). Merkle inclusion proofs let an auditor verify one disclosed entry against a published root **without seeing the rest of the journal**. Signed receipts also include a digest of the runtime build, which anyone can recompute to identify the build that signed the receipt.
 
 ## Governance model
 
@@ -98,10 +98,10 @@ Shipped in 1.0.0 is the Node.js reference runtime above. Planned and **not yet i
 
 ## License and IP
 
-- Code in this repository is licensed under **Apache License 2.0** — see [LICENSE](./LICENSE).
-- **IGL**, the IGL logo, and "Identity Governed Logic" are trademarks of SMEPro Technologies LLC — see [TRADEMARK.md](./TRADEMARK.md). The license covers the code, not the name.
+- Code in this repository is licensed under **Apache License 2.0**. See [LICENSE](./LICENSE).
+- **IGL**, the IGL logo, and "Identity Governed Logic" are trademarks of SMEPro Technologies LLC. See [TRADEMARK.md](./TRADEMARK.md). The license covers the code, not the name.
 - Certain governance mechanisms are the subject of pending patent applications. Apache 2.0's patent grant applies as stated in the license.
-- Contributions require a DCO sign-off — see [CONTRIBUTING.md](./CONTRIBUTING.md).
+- Contributions require a DCO sign-off. See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Links
 

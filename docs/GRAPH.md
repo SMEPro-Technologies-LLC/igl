@@ -77,10 +77,9 @@ So the promotion rule is by class, never by count:
 δ_human         → observed.governing     attested by a named signer
 ```
 
-Ten thousand consistent AI inferences remain a proposal. One attested fact
-governs. The graph still gets measurably smarter every turn — the proposed layer
-is where the value accrues — but the governing layer advances only at the speed
-of anchoring. Fast where it is safe, deliberately slow where it is not.
+Ten thousand consistent AI inferences remain proposals. One attested fact can
+enter the governing layer. The proposed layer accumulates candidate observations
+with each turn, while the governing layer changes only when evidence is anchored.
 
 ### 2.3 Promotion is surfaced, never applied
 
