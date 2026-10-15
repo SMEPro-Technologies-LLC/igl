@@ -41,7 +41,7 @@ jobs:
           npm pack
           sha256sum *.tgz spec/openapi.yaml > SHA256SUMS
       - name: GitHub release (notes from CHANGELOG)
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             *.tgz
