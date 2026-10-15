@@ -1680,9 +1680,14 @@ curl -X POST https://sandbox.id-me.ai/v1/query \
             <div class="plabel" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap"><span>Request</span>
               <span style="display:flex; gap:6px"><button class="btn sm" type="button" data-fmt="curl" aria-pressed="true">curl</button><button class="btn sm" type="button" data-fmt="fetch" aria-pressed="false">fetch</button><button class="btn sm" type="button" data-fmt="python" aria-pressed="false">python</button><button class="btn sm primary" type="button" id="op-copy">Copy</button></span></div>
             <pre class="block" id="op-out"></pre>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px"><button class="btn sm primary" type="button" id="op-send">Send request</button><span class="note" id="op-send-status"></span></div>
+          </div>
+          <div class="panel" id="op-live-wrap" hidden>
+            <div class="plabel" style="display:flex; justify-content:space-between; gap:8px"><span>Response</span><span id="op-live-meta" class="mono-sm"></span></div>
+            <pre class="block" id="op-live"></pre>
           </div>
           <div class="panel">
-            <div class="plabel">Responses</div>
+            <div class="plabel">Responses in the contract</div>
             <div id="op-resp"></div>
           </div>
         </div>
@@ -1693,6 +1698,7 @@ curl -X POST https://sandbox.id-me.ai/v1/query \
     <div class="pane" id="pane-sandbox" role="tabpanel" aria-labelledby="tab-sandbox" hidden>
       <div class="sandbox">
         <div class="panel" style="display:grid; gap:14px; align-content:start">
+          <div><div class="plabel">Runs against</div><select id="sb-source" class="sel-in"><option value="example">Example graph in this page</option><option value="live">Your sandbox tenant, through the service</option></select><div class="note" id="sb-source-note">The example graph shows the gate rules without a key. Switch to your tenant after creating a sandbox key under Environment; every projection is then served and receipted by the service.</div></div>
           <div><div class="plabel">Identity</div><select id="sb-identity" class="sel-in"></select></div>
           <div><div class="plabel">Purpose profile</div><select id="sb-purpose" class="sel-in"></select><div class="note" id="sb-purpose-note"></div></div>
           <div><div class="plabel">Caller jurisdiction</div><select id="sb-juris" class="sel-in"><option value="US-TX">US-TX</option><option value="US-NM">US-NM</option><option value="EU-DE">EU-DE</option><option value="CA-ON">CA-ON</option></select><div class="note">Where the projection will be served. The cross-border policy gates nodes whose jurisdiction may not transfer here.</div></div>
@@ -1726,12 +1732,22 @@ curl -X POST https://sandbox.id-me.ai/v1/query \
           <label>Auth<select id="env-auth" class="sel-in"><option value="bearer">OAuth 2.0 bearer token</option><option value="apikey">X-IGL-API-Key</option></select></label>
           <label>Credential<input id="env-cred" type="password" placeholder="paste a token or key; stored only in this browser, never sent by this page" autocomplete="off"></label>
           <label>Default purpose<input id="env-purpose" placeholder="identity-introduction"></label>
-          <div style="display:flex; gap:8px; flex-wrap:wrap"><button class="btn sm primary" type="button" id="env-save">Save in this browser</button><button class="btn sm" type="button" id="env-clear">Clear</button></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap"><button class="btn sm primary" type="button" id="env-save">Save in this browser</button><button class="btn sm" type="button" id="env-clear">Clear</button><button class="btn sm" type="button" id="env-check">Check connection</button></div>
           <p class="note" id="env-status"></p>
+        </div>
+        <div class="panel form">
+          <h3 style="margin-bottom:4px">Get a sandbox key</h3>
+          <p class="note" style="margin:0 0 10px">Creates a tenant of your own on sandbox.id-me.ai with a key that has every scope, plus an identity for you so <code class="i">GET /identities/me</code> works at once. Sandbox keys start with <code class="i">igl_test_</code> and never touch production data.</p>
+          <label>Organization<input id="su-org" placeholder="Your company or project" autocomplete="organization"></label>
+          <label>Email<input id="su-email" type="email" placeholder="you@company.com" autocomplete="email"></label>
+          <label>Jurisdiction<input id="su-juris" placeholder="US-TX" value="US"></label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap"><button class="btn sm primary" type="button" id="su-go">Create sandbox tenant and key</button></div>
+          <p class="note" id="su-status"></p>
+          <pre class="block" id="su-out" hidden></pre>
         </div>
         <div class="panel">
           <h3>What this console does and does not do</h3>
-          <p>It reads the published OpenAPI v0.2 contract and builds requests, bodies, and response shapes from it, so what you copy is exactly what the contract requires: tenant header, idempotency key on mutations, scopes, and schema-correct examples.</p>
+          <p>It reads the published OpenAPI v0.2 contract and builds requests, bodies and response shapes from it, so what you send or copy is exactly what the contract requires: tenant header, idempotency key on mutations, scopes, and schema-correct examples. Send request runs the composed request against the selected environment with the credential from this browser and shows the live response.</p>
           <p style="margin-top:10px">Requests go to the environment selected under Environment.</p>
           <p style="margin-top:10px">The spec files: <a href="igl-openapi-v0.2.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">v0.2</a> and <a href="igl-openapi-v0.1.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">v0.1</a>, both identical to <code class="i">spec/</code> in the repository.</p>
         </div>
@@ -2285,12 +2301,67 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
   try { Object.assign(env, JSON.parse(localStorage.getItem("igl-env") || "{}")); if (/igl\.example/.test(env.server || "")) env.server = SPEC.servers[1].url; } catch (e) {}
   SPEC.servers.forEach(sv => { const o = document.createElement("option"); o.value = sv.url; o.textContent = sv.description + ", " + sv.url; $("#env-server").append(o); });
   const envFields = { server: "#env-server", tenant: "#env-tenant", auth: "#env-auth", cred: "#env-cred", purpose: "#env-purpose" };
-  function envLoad() { for (const k in envFields) $(envFields[k]).value = env[k] || ""; }
+  function envLoad() {
+    const sel = $("#env-server");
+    if (env.server && !Array.from(sel.options).some(o => o.value === env.server)) { const o = document.createElement("option"); o.value = env.server; o.textContent = "Self-hosted, " + env.server; sel.append(o); }
+    for (const k in envFields) $(envFields[k]).value = env[k] || "";
+  }
   function envRead() { for (const k in envFields) env[k] = $(envFields[k]).value.trim(); }
   envLoad();
   $("#env-save").addEventListener("click", () => { envRead(); try { localStorage.setItem("igl-env", JSON.stringify(env)); $("#env-status").textContent = "Saved in this browser only."; } catch (e) { $("#env-status").textContent = "This browser refused storage; values apply for this visit."; } render(); });
   $("#env-clear").addEventListener("click", () => { try { localStorage.removeItem("igl-env"); } catch (e) {} env.cred = ""; env.tenant = ""; envLoad(); $("#env-status").textContent = "Cleared."; render(); });
   $$("#pane-env input, #pane-env select").forEach(i => i.addEventListener("input", () => { envRead(); render(); }));
+
+  /* ---------- live service: connection check, sandbox signup, sending requests ---------- */
+  const serviceRoot = () => env.server.replace(/\/v1\/?$/, "");
+  async function checkConnection() {
+    const st = $("#env-status"); st.textContent = "Checking " + env.server;
+    try {
+      const r = await fetch(serviceRoot() + "/.well-known/igl.json", { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      st.textContent = `Connected: ${j.environment}, contract ${j.contract}, service ${j.version}, ${j.operations} operations, signer ${j.signer}.`;
+      return j;
+    } catch (e) { st.textContent = "No service answered at " + env.server + " (" + e.message + "). The sandbox and production hosts come up when the deploy workflow runs."; return null; }
+  }
+  $("#env-check").addEventListener("click", checkConnection);
+  $("#su-go").addEventListener("click", async () => {
+    const org = $("#su-org").value.trim(), email = $("#su-email").value.trim(), juris = $("#su-juris").value.trim() || "US";
+    const st = $("#su-status");
+    if (!org || !/.+@.+\..+/.test(email)) { st.textContent = "Organization and a valid email are required."; return; }
+    const base = SPEC.servers.find(s => /sandbox/.test(s.url)).url.replace(/\/v1\/?$/, "");
+    st.textContent = "Creating your sandbox tenant"; $("#su-go").disabled = true;
+    try {
+      const r = await fetch(base + "/sandbox/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organization: org, email, jurisdiction: juris }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail || j.error || ("HTTP " + r.status));
+      env.server = SPEC.servers.find(s => /sandbox/.test(s.url)).url; env.tenant = j.tenantId; env.auth = "bearer"; env.cred = j.apiKey; envLoad();
+      try { localStorage.setItem("igl-env", JSON.stringify(env)); } catch (e) {}
+      $("#su-out").hidden = false; $("#su-out").textContent = JSON.stringify({ tenantId: j.tenantId, identityId: j.identityId, clientId: j.clientId, apiKey: j.apiKey, scopes: j.scopes }, null, 2);
+      st.textContent = "Done. The key is shown once below and is now the credential in this browser's Environment. Store it somewhere safe.";
+      render();
+    } catch (e) { st.textContent = "Signup failed: " + e.message; }
+    finally { $("#su-go").disabled = false; }
+  });
+  async function sendCurrent() {
+    const c = composed(); const st = $("#op-send-status"); const wrap = $("#op-live-wrap");
+    if (!c.bodyOk) { st.textContent = "Fix the request body first."; return; }
+    if (/\{[a-zA-Z]+\}/.test(c.url)) { st.textContent = "Fill in the path parameters first."; return; }
+    if (scopesOf(current.op) !== "public" && !env.cred) { st.textContent = "No credential. Get a sandbox key under Environment, or paste one."; return; }
+    const headers = { ...c.headers }; if (env.tenant) headers["X-IGL-Tenant-Id"] = env.tenant; headers["X-Request-Id"] = "console-" + Date.now().toString(36);
+    st.textContent = "Sending"; $("#op-send").disabled = true; const t0 = performance.now();
+    try {
+      const r = await fetch(c.url, { method: c.method, headers, body: c.body !== null ? JSON.stringify(c.body) : undefined });
+      const text = await r.text(); let shown = text; try { shown = JSON.stringify(JSON.parse(text), null, 2); } catch (e) {}
+      wrap.hidden = false; $("#op-live").textContent = shown || "(empty body)";
+      $("#op-live-meta").textContent = `${r.status} ${r.statusText}, ${Math.round(performance.now() - t0)} ms, ${r.headers.get("content-type") || ""}${r.headers.get("x-request-id") ? ", request " + r.headers.get("x-request-id") : ""}`;
+      st.textContent = r.ok ? "Response below." : "The service answered with an error; the problem document below says why.";
+    } catch (e) {
+      wrap.hidden = false; $("#op-live").textContent = ""; $("#op-live-meta").textContent = "";
+      st.textContent = "Could not reach " + env.server + " (" + e.message + "). If the host is not deployed yet nothing can answer; if it is, the browser may have blocked the request (CORS allows id-me.ai).";
+    } finally { $("#op-send").disabled = false; }
+  }
+  $("#op-send").addEventListener("click", sendCurrent);
 
   /* ---------- example generation from schema ---------- */
   const PH = { uuid: UUID, "date-time": "2026-10-14T14:02:11Z", date: "2026-10-14", uri: "https://example.com/doc", "uri-reference": "/docs/filing-q3.pdf" };
@@ -2529,10 +2600,74 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
     const outcome = !admitted.length ? "refused" : truncated ? "proceeded_on_truncated" : "completed";
     $("#sb-record").textContent = JSON.stringify({ identityId: UUID, purpose: sb.purpose, outcome, reason: !admitted.length ? "no consent covers this purpose" : truncated ? "node budget bound before traversal finished; answered on partial context" : null, projectionReceiptId: proj.governance.receiptId, model: "claude" }, null, 2);
   }
-  $("#sb-identity").addEventListener("change", e => { sb.identity = e.target.value; renderConsents(); runSandbox(); });
-  $("#sb-purpose").addEventListener("change", e => { sb.purpose = e.target.value; runSandbox(); });
-  $("#sb-juris").addEventListener("change", e => { sb.juris = e.target.value; runSandbox(); });
-  $("#sb-budget").addEventListener("input", e => { sb.budget = +e.target.value; runSandbox(); });
+  /* ---------- live mode: the same panels, served by the deployed service ---------- */
+  const live = { on: false, identities: [], purposes: [] };
+  const api = async (path, opts = {}) => {
+    const r = await fetch(env.server.replace(/\/$/, "") + path, { ...opts, headers: { "authorization": "Bearer " + env.cred, "x-igl-tenant-id": env.tenant, "content-type": "application/json", ...(opts.headers || {}) } });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.detail || j.title || ("HTTP " + r.status)); return j;
+  };
+  async function enterLive() {
+    const note = $("#sb-source-note");
+    if (!env.cred || !env.tenant) { note.textContent = "No sandbox key in this browser yet. Create one under Environment, then switch again."; $("#sb-source").value = "example"; live.on = false; return; }
+    note.textContent = "Loading your tenant";
+    try {
+      const [ids, ps] = await Promise.all([api("/identities?limit=50"), api("/purposes")]);
+      live.identities = ids.items; live.purposes = ps.items; live.on = true;
+      $("#sb-identity").replaceChildren(); for (const i of live.identities) { const o = document.createElement("option"); o.value = i.id; o.textContent = `${i.displayName} (${i.type})`; $("#sb-identity").append(o); }
+      $("#sb-purpose").replaceChildren(); for (const p of live.purposes) { const o = document.createElement("option"); o.value = p.id; o.textContent = p.id; $("#sb-purpose").append(o); }
+      sb.identity = live.identities[0]?.id; sb.purpose = live.purposes.find(p => p.default)?.id || live.purposes[0]?.id;
+      note.textContent = `Live: ${live.identities.length} identities and ${live.purposes.length} purpose profiles in tenant ${env.tenant.slice(0, 8)}. Consent checkboxes grant and revoke real records through the admin surface.`;
+      await renderConsentsLive(); await runSandboxLive();
+    } catch (e) { note.textContent = "Could not load the tenant: " + e.message; $("#sb-source").value = "example"; live.on = false; }
+  }
+  function leaveLive() {
+    live.on = false; $("#sb-identity").replaceChildren(); $("#sb-purpose").replaceChildren();
+    for (const k in IDENTITIES) { const o = document.createElement("option"); o.value = k; o.textContent = IDENTITIES[k].label; $("#sb-identity").append(o); }
+    for (const k in PURPOSES) { const o = document.createElement("option"); o.value = k; o.textContent = k; $("#sb-purpose").append(o); }
+    sb.identity = "maria"; sb.purpose = "identity-introduction"; $("#sb-source-note").textContent = "The example graph shows the gate rules without a key."; renderConsents(); runSandbox();
+  }
+  async function renderConsentsLive() {
+    const root = $("#sb-consents"); root.replaceChildren();
+    const c = await api(`/identities/${sb.identity}/consents?limit=50`);
+    const active = new Set(c.items.filter(x => x.status === "active").map(x => x.purpose));
+    for (const p of live.purposes) {
+      const l = document.createElement("label"); const i = document.createElement("input"); i.type = "checkbox"; i.checked = active.has(p.id);
+      i.addEventListener("change", async () => { try { await fetch(serviceRoot() + "/admin/consents", { headers: { "authorization": "Bearer " + env.cred, "x-igl-tenant-id": env.tenant, "content-type": "application/json" }, method: "POST", body: JSON.stringify({ identityId: sb.identity, purpose: p.id, action: i.checked ? "grant" : "revoke", scope: "granted in the console" }) }).then(async r => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || ("HTTP " + r.status)); }); } catch (e) { $("#sb-source-note").textContent = "Consent change failed: " + e.message; i.checked = !i.checked; } await runSandboxLive(); });
+      l.append(i, Object.assign(document.createElement("b"), { textContent: p.id })); root.append(l);
+    }
+  }
+  async function runSandboxLive() {
+    const P = live.purposes.find(p => p.id === sb.purpose) || {};
+    $("#sb-purpose-note").textContent = `${P.description || ""} Permits: ${(P.permits || []).join(", ")}. Ceiling: ${P.sensitivityCeiling || "internal"}.`;
+    $("#sb-budget-v").textContent = sb.budget + " nodes";
+    const q = `?purpose=${encodeURIComponent(sb.purpose)}&nodeBudget=${sb.budget}`;
+    let proj, ex, obl = null;
+    try {
+      [proj, ex] = await Promise.all([api(`/identities/${sb.identity}/projection${q}`), api(`/identities/${sb.identity}/projection/explain${q}`)]);
+      if ((P.permits || []).includes("Obligation")) { try { obl = await api(`/identities/${sb.identity}/obligations?purpose=${encodeURIComponent(sb.purpose)}`); } catch (e) { obl = { error: e.message }; } }
+    } catch (e) { $("#sb-source-note").textContent = "Projection failed: " + e.message; return; }
+    const nodes = $("#sb-nodes"); nodes.replaceChildren();
+    if (!proj.nodes.length) nodes.append(Object.assign(document.createElement("span"), { className: "empty", textContent: proj.emptyWarning || "No nodes admitted." }));
+    for (const n of proj.nodes) { const sp = document.createElement("span"); sp.innerHTML = `<i>${n.type}</i>${n.label}`; nodes.append(sp); }
+    const flags = []; if (proj.truncated) flags.push('<span class="tag warn">truncated: true</span>'); if (proj.emptyWarning) flags.push('<span class="tag warn">emptyWarning</span>'); flags.push(`<span class="tag">${proj.nodes.length} admitted, ${Object.values(proj.withheld || {}).reduce((a, b) => a + b, 0)} withheld</span>`); flags.push(`<span class="tag ok">receipt ${proj.governance.receiptId.slice(0, 8)}, signed by ${proj.governance.signer}</span>`);
+    $("#sb-flags").innerHTML = flags.join(" ");
+    $("#sb-json").textContent = JSON.stringify(proj, null, 2);
+    const tb = $("#sb-explain"); tb.replaceChildren();
+    const cell = r => `<td class="g-${r.result === "pass" ? "pass" : r.result === "fail" ? "fail" : "skip"}">${r.result}${r.reason ? `<span class="g-why">${r.reason}</span>` : ""}</td>`;
+    for (const c of ex.considered) { const tr = document.createElement("tr"); tr.innerHTML = `<td>${c.node.label}</td><td>${c.node.type}</td>` + c.gates.map(cell).join("") + `<td class="${c.admitted ? "g-pass" : "g-fail"}">${c.admitted ? "admitted" : "withheld"}</td>`; tb.append(tr); }
+    const ob = $("#sb-oblig"); ob.replaceChildren();
+    if (!obl) ob.append(Object.assign(document.createElement("div"), { className: "note", textContent: `Obligation nodes are not permitted by ${sb.purpose}.` }));
+    else if (obl.error) ob.append(Object.assign(document.createElement("div"), { className: "note", textContent: obl.error }));
+    else if (!obl.items.length) ob.append(Object.assign(document.createElement("div"), { className: "note", textContent: "No obligations recorded for this identity. Administrators add them with POST /admin/obligations." }));
+    else for (const o of obl.items) { const d = document.createElement("div"); d.className = "ob"; d.innerHTML = `<div>${o.title}<div class="m2">${o.obligee || o.regulation || ""}${o.attestedBy ? ", attested" : ", proposed, nobody has attested it"}</div></div><div class="num"><span class="tag ${o.status === "attested" ? "ok" : "warn"}">${o.status}</span> ${o.dueDate}</div>`; ob.append(d); }
+    const outcome = !proj.nodes.length ? "refused" : proj.truncated ? "proceeded_on_truncated" : "completed";
+    $("#sb-record").textContent = JSON.stringify({ identityId: sb.identity, purpose: sb.purpose, outcome, reason: proj.emptyWarning || (proj.truncated ? "node budget reached" : null), projectionReceiptId: proj.governance.receiptId, model: "console" }, null, 2);
+  }
+  $("#sb-source").addEventListener("change", e => { if (e.target.value === "live") enterLive(); else leaveLive(); });
+  $("#sb-identity").addEventListener("change", e => { sb.identity = e.target.value; if (live.on) { renderConsentsLive().then(runSandboxLive); } else { renderConsents(); runSandbox(); } });
+  $("#sb-purpose").addEventListener("change", e => { sb.purpose = e.target.value; live.on ? runSandboxLive() : runSandbox(); });
+  $("#sb-juris").addEventListener("change", e => { sb.juris = e.target.value; if (!live.on) runSandbox(); });
+  $("#sb-budget").addEventListener("input", e => { sb.budget = +e.target.value; live.on ? runSandboxLive() : runSandbox(); });
   renderConsents(); runSandbox();
 })();
 </script>
