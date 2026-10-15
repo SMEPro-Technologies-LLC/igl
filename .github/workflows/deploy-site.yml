@@ -64,7 +64,7 @@ jobs:
       - name: Static pages for search engines (how-it-works, docs, enterprise), the sitemap, and the served copy of the contract
         run: |
           python3 platform/site/gen_pages.py platform/site/index.html platform/site
-          cp spec/openapi.yaml platform/site/igl-openapi-v0.2.yaml
+          cp spec/openapi.yaml platform/site/igl-openapi.yaml
       - name: Apply intake schema (idempotent)
         run: npx --yes wrangler@4.151.0 d1 execute igl-intake --remote --file=platform/site/schema/intake.sql
         env:
