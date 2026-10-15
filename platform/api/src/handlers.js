@@ -41,11 +41,25 @@ async function getPurpose(db, tenantId, purposeId) {
   if (!row) throw E.unprocessable(`Unknown purpose ${purposeId}. GET /purposes lists the profiles this tenant has.`, { code: "unknown_purpose" });
   return rowToPurpose(row);
 }
-async function decide(db, signer, tenantId, principal, action, resource, context = {}) {
+async function decide(db, signer, tenantId, principal, action, resource, context = {}, { requestId = null, refuseOnEscalate = false } = {}) {
   const policies = await activePolicies(db, tenantId);
   const decision = evaluate(policies, { actor: principal.actor, action, resource, context: { ...context, jurisdiction: principal.jurisdiction || principal.tenantJurisdiction } });
   await storeDecision(db, tenantId, decision);
-  return { decision, policies };
+  /* A deny, or an escalate on a path that cannot park the work, is refused
+     here and now. The refusal gets the same record a success gets: a signed
+     receipt and an entry in the tenant's hash chain, written BEFORE the 403
+     leaves, so there is no refusal without a durable, verifiable trace. */
+  const refused = decision.effect === "deny" || (refuseOnEscalate && decision.effect === "escalate");
+  let receipt = null;
+  if (refused) {
+    receipt = await issueReceipt(db, signer, tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id) });
+    await appendAudit(db, tenantId, { eventType: `authority.${decision.effect === "deny" ? "denied" : "escalated"}`, actor: principal.actor, resource, action, requestId, decisionId: decision.decisionId, details: { effect: decision.effect, reasonCodes: decision.reasonCodes, policiesMatched: decision.policiesMatched, receiptId: receipt.receiptId } });
+  }
+  return { decision, policies, receipt };
+}
+/* The 403 names the decision and the receipt, so the caller can fetch the signed record of its own refusal. */
+function refusal(detail, code, decision, receipt) {
+  return E.forbidden(detail, { code, decisionId: decision.decisionId, receiptId: receipt?.receiptId ?? null, reasonCodes: decision.reasonCodes });
 }
 function projectionResponse(identity, purpose, p, receipt) {
   return { identityId: identity.id, purpose: purpose.id, nodes: p.admitted, edges: p.edges, truncated: p.truncated, emptyWarning: p.emptyWarning, withheld: p.withheld, governance: receipt, createdAt: nowIso() };
@@ -57,8 +71,8 @@ async function serveProjection(h, identity, { explain = false } = {}) {
   const purpose = await getPurpose(db, principal.tenantId, purposeId);
   const nodeBudget = Math.min(Math.max(Number(url.searchParams.get("nodeBudget") || principal.tenantSettings.nodeBudget || 50), 1), 500);
   const maxDepth = Math.min(Math.max(Number(url.searchParams.get("maxDepth") || 1), 0), 4);
-  const { decision, policies } = await decide(db, signer, principal.tenantId, principal, "projection.read", { type: "identity", id: identity.id }, { purpose: purpose.id });
-  if (decision.effect === "deny") throw E.forbidden("A policy denies projecting this identity for this purpose.", { code: "policy_denied" });
+  const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, "projection.read", { type: "identity", id: identity.id }, { purpose: purpose.id }, { requestId });
+  if (decision.effect === "deny") throw refusal("A policy denies projecting this identity for this purpose.", "policy_denied", decision, refusalReceipt);
   const p = await project(db, principal.tenantId, { identity, purpose, principal, nodeBudget, maxDepth, explain });
   if (explain) return { status: 200, body: { identityId: identity.id, purpose: purpose.id, considered: p.considered, truncated: p.truncated } };
   const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((x) => x.id), evidenceIds: [], output: p.admitted });
@@ -430,9 +444,9 @@ export const handlers = {
     validate(body, { required: ["instruction"], fields: { instruction: { type: "string", maxLength: 8000 }, input: { type: "object" }, resourceScope: { type: "array" }, requireApproval: { type: "boolean" } } });
     const actor = checkActor(body.actor) || principal.actor;
     const run = await createRun(db, principal.tenantId, "agent", { agentId: agent.id, instruction: body.instruction, input: body.input || {}, resourceScope: body.resourceScope || [], actor });
-    const { decision, policies } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "agent.invoke", { type: "agent", id: agent.id }, { capabilities: agent.capabilities });
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "agent.invoke", { type: "agent", id: agent.id }, { capabilities: agent.capabilities }, { requestId });
     await appendAudit(db, principal.tenantId, { eventType: "agent.invoked", actor, resource: { type: "agent", id: agent.id }, action: "agent.invoke", requestId, decisionId: decision.decisionId, details: { runId: run.id, effect: decision.effect } });
-    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId } }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
+    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId, decisionId: decision.decisionId, receiptId: refusalReceipt.receiptId }, governance: refusalReceipt }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
     if (body.requireApproval || decision.effect !== "allow") {
       await db.prepare("UPDATE runs SET status = 'awaiting_approval', governance = ?1 WHERE id = ?2").bind(JSON.stringify(await issueReceipt(db, signer, principal.tenantId, { actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id) })), run.id).run();
       await emit(db, ctx, principal.tenantId, "approvalRequired", { runId: run.id, requirements: decision.requiredApprovals });
@@ -464,9 +478,9 @@ export const handlers = {
     validate(body || {}, { fields: { input: { type: "object" }, dryRun: { type: "boolean" } } });
     const actor = checkActor(body?.actor) || principal.actor;
     const run = await createRun(db, principal.tenantId, "workflow", { workflowId: wf.id, input: body?.input || {}, dryRun: !!body?.dryRun, actor });
-    const { decision, policies } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "workflow.run", { type: "workflow", id: wf.id });
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "workflow.run", { type: "workflow", id: wf.id }, {}, { requestId });
     await appendAudit(db, principal.tenantId, { eventType: "workflow.run_requested", actor, resource: { type: "workflow", id: wf.id }, action: "workflow.run", requestId, decisionId: decision.decisionId, details: { runId: run.id, dryRun: !!body?.dryRun, effect: decision.effect } });
-    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId } }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
+    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId, decisionId: decision.decisionId, receiptId: refusalReceipt.receiptId }, governance: refusalReceipt }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
     ctx.waitUntil(executeWorkflowRun(h, run.id, wf, actor, body || {}, decision, policies));
     return { status: 202, body: await loadRun(db, principal.tenantId, run.id) };
   },
@@ -536,9 +550,9 @@ async function intelligence(h, kind, async) {
   (body.filters || []).forEach((f, i) => validate(f, { required: ["field", "operator", "value"], fields: { field: { type: "string" }, operator: { type: "string", enum: ["eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte", "contains", "exists", "between"] } } }, `filters[${i}]`));
   const actor = checkActor(body.actor) || principal.actor;
   if (body.purpose) await getPurpose(db, principal.tenantId, body.purpose);
-  const { decision, policies } = await decide(db, signer, principal.tenantId, { ...principal, actor }, `intelligence.${kind}`, { type: "intelligence", id: kind }, { purpose: body.purpose ?? null, scope: body.scope || {} });
-  if (decision.effect === "deny") throw E.forbidden("A policy denies this intelligence request.", { code: "policy_denied" });
-  if (decision.effect === "escalate") throw E.forbidden("A policy requires escalation before this request can run.", { code: "policy_escalate" });
+  const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, { ...principal, actor }, `intelligence.${kind}`, { type: "intelligence", id: kind }, { purpose: body.purpose ?? null, scope: body.scope || {} }, { requestId, refuseOnEscalate: true });
+  if (decision.effect === "deny") throw refusal("A policy denies this intelligence request.", "policy_denied", decision, refusalReceipt);
+  if (decision.effect === "escalate") throw refusal("A policy requires escalation before this request can run.", "policy_escalate", decision, refusalReceipt);
   if (!async) {
     const result = await runIntelligence(db, env, principal.tenantId, kind, body);
     const receipt = await issueReceipt(db, signer, principal.tenantId, { actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), evidenceIds: result.findings.map((f) => f.id), output: { answer: result.answer, citations: result.citations.map((c) => c.sourceId) } });

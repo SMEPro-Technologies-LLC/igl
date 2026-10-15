@@ -3,9 +3,11 @@
 import { sha256 } from "./crypto.js";
 
 export class ApiError extends Error {
-  constructor(status, title, detail, { code = null, violations = null, headers = {} } = {}) {
+  constructor(status, title, detail, { code = null, violations = null, headers = {}, ...extra } = {}) {
     super(detail || title);
     this.status = status; this.title = title; this.detail = detail; this.code = code; this.violations = violations; this.headers = headers;
+    /* extra problem members (decisionId, receiptId, reasonCodes on a refusal) travel with the error */
+    this.extra = extra;
   }
 }
 
@@ -30,6 +32,7 @@ export function problem(err, traceId, instance) {
     traceId,
   };
   if (err.violations) body.violations = err.violations;
+  if (err.extra) for (const [k, v] of Object.entries(err.extra)) if (v !== undefined) body[k] = v;
   return new Response(JSON.stringify(body), {
     status, headers: { "content-type": "application/problem+json", "cache-control": "no-store", "x-request-id": traceId, ...(err.headers || {}) },
   });

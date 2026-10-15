@@ -256,6 +256,14 @@ CREATE TABLE IF NOT EXISTS audit_events (
   event_hash    TEXT NOT NULL UNIQUE,
   PRIMARY KEY (tenant_id, seq)
 );
+-- A policy is immutable once written: a decision cites it by id and by a hash
+-- of its rule, and both must still describe the policy that fired. A change
+-- is a new policy row with a new version; retirement is a new row too.
+CREATE TRIGGER IF NOT EXISTS policies_no_update BEFORE UPDATE ON policies
+  BEGIN SELECT RAISE(ABORT, 'policies are immutable; create a new version'); END;
+CREATE TRIGGER IF NOT EXISTS policies_no_delete BEFORE DELETE ON policies
+  BEGIN SELECT RAISE(ABORT, 'policies are immutable; create a new version'); END;
+
 CREATE TRIGGER IF NOT EXISTS audit_events_no_update BEFORE UPDATE ON audit_events
   BEGIN SELECT RAISE(ABORT, 'audit_events is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS audit_events_no_delete BEFORE DELETE ON audit_events

@@ -278,6 +278,34 @@ test("intelligence: governed refusals happen before any model call", async () =>
   await call("POST", "/policies", { body: { name: "no investigations", version: "1", effect: "deny", status: "active", rule: { actions: ["intelligence.investigate"] } }, expect: 201 });
   const denied = await call("POST", "/investigate", { body: { question: "Who did what?" }, expect: 403 });
   assert.equal(denied.json.type, "https://id-me.ai/problems/policy_denied");
+
+  /* The refusal record, as an auditor would check it: which rule fired, on
+     which identity and which object, under which policy version as it stood,
+     signed so a third party can check it was not reconstructed later. */
+  assert.ok(denied.json.decisionId && denied.json.receiptId, "the 403 names its decision and its receipt");
+  assert.deepEqual(denied.json.reasonCodes, ["deny:no investigations"]);
+  const rcpt = await call("GET", `/audit/receipts/${denied.json.receiptId}`, { expect: 200 });
+  const d = rcpt.json.authorityDecision;
+  assert.equal(d.effect, "deny"); assert.equal(d.decisionId, denied.json.decisionId);
+  assert.equal(d.subject.action, "intelligence.investigate"); assert.equal(d.subject.resourceType, "intelligence"); assert.equal(d.subject.identityId, identityId);
+  assert.equal(d.policiesMatched.length, 1);
+  const fired = d.policiesMatched[0];
+  assert.equal(fired.name, "no investigations"); assert.equal(fired.version, "1"); assert.equal(fired.effect, "deny");
+  const pol = await call("GET", `/policies/${fired.id}`, { expect: 200 });
+  const canon = (x) => Array.isArray(x) ? "[" + x.map(canon).join(",") + "]" : (x && typeof x === "object") ? "{" + Object.keys(x).sort().map((k) => JSON.stringify(k) + ":" + canon(x[k])).join(",") + "}" : JSON.stringify(x === undefined ? null : x);
+  const expectHash = createHash("sha256").update(canon({ effect: pol.json.effect, scope: pol.json.scope || {}, rule: pol.json.rule || {}, effectiveFrom: pol.json.effectiveFrom ?? null, effectiveTo: pol.json.effectiveTo ?? null })).digest("hex");
+  assert.equal(fired.ruleHash, expectHash, "the decision carries a hash of the rule exactly as it stood, recomputable from the policy");
+  const { signer, alg, publicKey, signature, ...receiptBody } = rcpt.json;
+  const pub = createPublicKey({ key: Buffer.from(publicKey, "base64"), format: "der", type: "spki" });
+  assert.ok(edVerify(null, Buffer.from("IGL-RECEIPT-v0.2:" + canon(receiptBody)), pub, Buffer.from(signature, "base64")), "the refusal receipt verifies with the published key");
+  const ev = await call("GET", `/audit/events?eventType=authority.denied`, { expect: 200 });
+  const chained = ev.json.items.find((e) => e.decisionId === denied.json.decisionId);
+  assert.ok(chained, "the refusal is in the tenant's hash chain");
+  assert.equal(chained.details.receiptId, denied.json.receiptId);
+  assert.equal(chained.details.policiesMatched[0].ruleHash, expectHash);
+  assert.ok(receiptBody.auditHead && typeof receiptBody.auditHead.seq === "number", "the receipt anchors the chain head at issue time");
+  const anchored = (await call("GET", `/audit/events?limit=200`, { expect: 200 })).json.items.find((e) => e.eventHash === receiptBody.auditHead.eventHash);
+  assert.ok(anchored, "the anchored head is a real event; a chain that does not reproduce it was rewritten");
   await call("POST", "/query", { body: { question: "" }, expect: 422 });
   await call("POST", "/query", { body: { question: "x", filters: [{ field: "a", operator: "nope", value: 1 }] }, expect: 422 });
   const caps = await call("GET", "/capabilities", { expect: 200 });
