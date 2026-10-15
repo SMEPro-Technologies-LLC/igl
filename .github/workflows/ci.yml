@@ -24,7 +24,11 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - name: Test suite (bridge, decode, extract, graph, igl, sign, store)
+      - name: Lint (ESLint)
+        run: npm run lint
+      - name: Type check (tsc over the JavaScript)
+        run: npm run typecheck
+      - name: Test suite (bridge, decode, extract, graph, igl, sign, store, security, resolver, audit)
         run: npm test
       - name: Audit (production dependencies)
         run: npm audit --omit=dev --audit-level=high
