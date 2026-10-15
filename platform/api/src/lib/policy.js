@@ -16,8 +16,11 @@
    types, scope and conditions match contributes; deny wins over escalate,
    escalate over conditional, conditional over allow. With no matching policy
    the answer is deny with reason code no_policy, except for the built-in
-   read actions and the intelligence operations (which only ever read
-   admitted records), so a fresh tenant can use its own graph. Anything
+   read actions, the intelligence operations (which only ever read
+   admitted records) and the subject controls (a person's pause, forget,
+   reset and export over their own record), so a fresh tenant can use its
+   own graph and a person can exercise their controls without a policy
+   first permitting it; a policy can still deny or escalate any of them. Anything
    that acts (agent.invoke, workflow.run, and every custom action) fails
    closed until a policy allows it. */
 
@@ -31,7 +34,7 @@ import { sha256, canonical } from "./crypto.js";
 export function policyRuleHash(p) { return sha256(canonical({ effect: p.effect, scope: p.scope || {}, rule: p.rule || {}, effectiveFrom: p.effectiveFrom ?? null, effectiveTo: p.effectiveTo ?? null })); }
 
 const RANK = { deny: 4, escalate: 3, conditional: 2, allow: 1 };
-const DEFAULT_ALLOW = new Set(["identity.read", "projection.read", "graph.read", "knowledge.read", "audit.read", "intelligence.query", "intelligence.research", "intelligence.crosswalk", "intelligence.investigate"]);
+const DEFAULT_ALLOW = new Set(["identity.read", "projection.read", "graph.read", "knowledge.read", "audit.read", "intelligence.query", "intelligence.research", "intelligence.crosswalk", "intelligence.investigate", "subject.pause", "subject.resume", "subject.forget", "subject.reset", "subject.export"]);
 
 function glob(pattern, value) {
   if (pattern === "*" || pattern === value) return true;

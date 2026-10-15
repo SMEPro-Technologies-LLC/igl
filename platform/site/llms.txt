@@ -5,13 +5,13 @@
 ## Start here
 - [Home](https://id-me.ai/): the product, a sixty-second sandbox call, and what is live
 - [How it works](https://id-me.ai/how-it-works/): identity, boundary, intent and trace, checked before execution
-- [API reference](https://id-me.ai/docs/): all 46 operations, schemas, webhooks and the seven MCP tools
+- [API reference](https://id-me.ai/docs/): all 51 operations, schemas, webhooks and the seven MCP tools
 - [Enterprise](https://id-me.ai/enterprise/): what a production deployment includes
 
 ## Reference
 - [Wiki](https://github.com/SMEPro-Technologies-LLC/igl/wiki): quickstarts, concepts, receipts and audit, security model, FAQ, glossary
 - [Source](https://github.com/SMEPro-Technologies-LLC/igl): the runtime, the OpenAPI 3.1 contract, the platform service, this site
-- [OpenAPI contract](https://id-me.ai/igl-openapi-v0.2.yaml)
+- [OpenAPI contract](https://id-me.ai/igl-openapi.yaml)
 - [Brand assets](https://github.com/SMEPro-Technologies-LLC/igl/wiki/Brand-Assets)
 
 ## Live endpoints

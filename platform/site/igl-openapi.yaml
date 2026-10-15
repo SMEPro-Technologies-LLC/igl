@@ -1,0 +1,4002 @@
+openapi: 3.1.0
+info:
+  title: IGL Governed Identity Platform API
+  version: 0.3.0
+  summary: Transform identity into governed intelligence.
+  description: 'The API contract for Identity Governed Logic (IGL). The API exposes governed identity, authority, knowledge,
+    policy, evidence, outcome, graph, query, research, agent, workflow, and audit services. It is model-agnostic: reasoning
+    providers can be changed without changing the governed intelligence contract. Version 0.2 adds purpose-bounded projections:
+    purpose profiles, identity projections with per-node gate explanations, obligations with attestation status, caller resolution,
+    consent records, and interaction records, so applications and model callers share one governance model. Version 0.3 adds
+    the Subject service: the controls a person holds over what is learned about them, as governed operations with signed
+    receipts. Learning can be paused and resumed, any learned record can be forgotten (the record is emptied in place and the
+    chain keeps the act and a hash, never the content), the learned graph can be reset, and the whole record can be exported
+    with a fingerprint and the lineage of chain events that produced it.'
+  contact:
+    name: SMEPro Technologies, LLC
+    url: https://www.smeprotech.com
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+- url: https://api.id-me.ai/v1
+  description: Production
+- url: https://sandbox.id-me.ai/v1
+  description: Sandbox
+tags:
+- name: Identity
+  description: Resolve identities, context, and relationships.
+- name: Projection
+  description: 'Purpose-bounded projections of an identity: what a caller may see, why, and what was withheld.'
+- name: Subject
+  description: 'The controls a person holds over what is learned about them: pause, forget, reset, export. Every one is a governed action with a signed receipt and a chain entry.'
+- name: Authority
+  description: Evaluate access, roles, delegations, and decision authority.
+- name: Knowledge
+  description: Create and retrieve governed entities and facts.
+- name: Policy
+  description: Create policies and evaluate governed actions.
+- name: Evidence
+  description: Capture provenance, citations, corroboration, and findings.
+- name: Outcomes
+  description: Record decisions, actions, measurements, and feedback.
+- name: Graph
+  description: Traverse and manage governed graph relationships.
+- name: Intelligence
+  description: Run governed queries, research, crosswalks, and investigations.
+- name: Agents
+  description: Register and invoke governed agents.
+- name: Workflows
+  description: Define and run governed workflows.
+- name: Audit
+  description: Retrieve immutable activity and runtime receipts.
+- name: System
+  description: Service health and capability discovery.
+security:
+- oauth2:
+  - igl.read
+paths:
+  /health:
+    get:
+      summary: Check service health
+      operationId: getHealth
+      tags:
+      - System
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+      security: []
+  /capabilities:
+    get:
+      summary: Discover platform capabilities
+      operationId: getCapabilities
+      tags:
+      - System
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      parameters: &id019
+      - &id001
+        $ref: '#/components/parameters/TenantId'
+      - &id002
+        $ref: '#/components/parameters/RequestId'
+  /identities:
+    get:
+      summary: List or search identities
+      operationId: listIdentities
+      tags:
+      - Identity
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      parameters:
+      - *id001
+      - *id002
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: type
+        in: query
+        schema:
+          $ref: '#/components/schemas/IdentityType'
+    post:
+      summary: Create an identity
+      operationId: createIdentity
+      tags:
+      - Identity
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '400': &id003
+          $ref: '#/components/responses/BadRequest'
+        '401': &id004
+          $ref: '#/components/responses/Unauthorized'
+        '403': &id005
+          $ref: '#/components/responses/Forbidden'
+        '409': &id006
+          $ref: '#/components/responses/Conflict'
+        '422': &id007
+          $ref: '#/components/responses/Unprocessable'
+        '429': &id008
+          $ref: '#/components/responses/TooManyRequests'
+      parameters: &id020
+      - *id001
+      - *id002
+      - &id009
+        $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityCreate'
+      security:
+      - oauth2:
+        - igl.write
+      - apiKey: []
+  /identities/me:
+    get:
+      summary: Resolve the calling identity under a purpose
+      operationId: whoami
+      tags:
+      - Identity
+      - Projection
+      description: The REST equivalent of the MCP whoami tool. Returns the caller's own projection bounded by the purpose
+        profile.
+      parameters:
+      - &id010
+        $ref: '#/components/parameters/TenantId'
+      - &id011
+        $ref: '#/components/parameters/RequestId'
+      - &id013
+        name: purpose
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Purpose profile id, from GET /purposes. The projection is bounded by what this profile permits.
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projection'
+              example:
+                identityId: b9d4507a-36ce-4d1b-970d-d85797141ff7
+                purpose: identity-introduction
+                nodes:
+                - id: b9d4507a-36ce-4d1b-970d-d85797141ff7
+                  type: Person
+                  label: Maria Santos
+                  status: certified
+                - id: 6b1d3e2a-5a51-4b0c-9a7e-0a2c0e3f9c11
+                  type: Role
+                  label: Compliance Lead
+                  status: certified
+                - id: e7bcde63-4ccd-4594-aa64-6de1cce72ae8
+                  type: Organization
+                  label: Rio Diablo Operating
+                  status: certified
+                - id: 3d2c1b0a-9f8e-4d7c-b6a5-4e3d2c1b0a99
+                  type: Jurisdiction
+                  label: US-TX
+                  status: certified
+                edges: []
+                truncated: false
+                withheld:
+                  Credential: 2
+                  Obligation: 3
+                  Facility: 1
+                governance:
+                  receiptId: 0c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f
+                  actor:
+                    identityId: b9d4507a-36ce-4d1b-970d-d85797141ff7
+                  authorityDecision:
+                    decisionId: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+                    effect: allow
+                    evaluatedAt: '2026-10-14T14:02:11Z'
+                  policiesEvaluated: []
+                  createdAt: '2026-10-14T14:02:11Z'
+                createdAt: '2026-10-14T14:02:11Z'
+        '401': &id012
+          $ref: '#/components/responses/Unauthorized'
+        '422': &id015
+          $ref: '#/components/responses/Unprocessable'
+  /identities/{identityId}:
+    get:
+      summary: Get an identity
+      operationId: getIdentity
+      tags:
+      - Identity
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: identityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      summary: Update identity attributes
+      operationId: updateIdentity
+      tags:
+      - Identity
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - *id009
+      - name: identityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              additionalProperties: true
+      security:
+      - oauth2:
+        - igl.write
+      - apiKey: []
+  /identities/{identityId}/context:
+    post:
+      summary: Append governed identity context
+      operationId: appendIdentityContext
+      tags:
+      - Identity
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters:
+      - *id001
+      - *id002
+      - *id009
+      - name: identityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityContextAppend'
+      security:
+      - oauth2:
+        - igl.write
+  /identities/{identityId}/relationships:
+    get:
+      summary: List identity relationships
+      operationId: listIdentityRelationships
+      tags:
+      - Identity
+      - Graph
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipPage'
+      parameters:
+      - *id001
+      - *id002
+      - name: identityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: type
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /purposes:
+    get:
+      summary: List purpose profiles
+      operationId: listPurposes
+      tags:
+      - Projection
+      description: What each purpose profile permits. Ask for the purpose that matches the task, not the widest one available.
+      parameters:
+      - *id010
+      - *id011
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurposePage'
+        '401': *id012
+  /purposes/{purposeId}:
+    get:
+      summary: Get a purpose profile
+      operationId: getPurpose
+      tags:
+      - Projection
+      parameters:
+      - *id010
+      - *id011
+      - name: purposeId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purpose'
+        '404': &id014
+          $ref: '#/components/responses/NotFound'
+  /identities/{identityId}/projection:
+    get:
+      summary: Project an identity under a purpose
+      operationId: getIdentityProjection
+      tags:
+      - Projection
+      description: 'A deliberately partial view of the identity graph: bounded by the purpose profile, the consent record
+        and the cross-border transfer policy. Absence of a node is not evidence the fact is false.'
+      parameters:
+      - *id010
+      - *id011
+      - &id016
+        name: identityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - *id013
+      - &id017
+        name: nodeBudget
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 250
+        description: 'Maximum nodes admitted before traversal stops; the response reports truncated: true when reached.'
+      - &id018
+        name: maxDepth
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 6
+          default: 3
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Projection'
+        '404': *id014
+        '422': *id015
+  /identities/{identityId}/projection/explain:
+    get:
+      summary: Explain a projection, node by node
+      operationId: explainIdentityProjection
+      tags:
+      - Projection
+      description: 'Every node considered, with the four gates it passed or failed: node type, sensitivity, consent, jurisdiction.
+        The first failure is the reason a node was withheld.'
+      parameters:
+      - *id010
+      - *id011
+      - *id016
+      - *id013
+      - *id017
+      - *id018
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionExplanation'
+        '404': *id014
+  /identities/{identityId}/obligations:
+    get:
+      summary: List obligations in scope for an identity
+      operationId: listObligations
+      tags:
+      - Projection
+      - Outcomes
+      description: What the person owes to whom by when. status attested means a human reviewed it; proposed means the system
+        computed it and nobody has checked. Never present a proposed obligation as a confirmed date.
+      parameters:
+      - *id010
+      - *id011
+      - *id016
+      - *id013
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - attested
+          - proposed
+      - name: dueBefore
+        in: query
+        schema:
+          type: string
+          format: date
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObligationPage'
+        '404': *id014
+        '422': *id015
+  /identities/{identityId}/consents:
+    get:
+      summary: List consent records for an identity
+      operationId: listConsents
+      tags:
+      - Projection
+      - Authority
+      description: Read-only. Consent is granted and revoked in the control plane, never through this API.
+      parameters:
+      - *id010
+      - *id011
+      - *id016
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentPage'
+        '404': *id014
+  /identities/{identityId}/learning:
+    get:
+      summary: Read whether learning about an identity is paused
+      operationId: getLearningState
+      tags:
+      - Subject
+      description: While learning is paused, nothing new is recorded about the identity (no context, facts or relationships); what is
+        already known is still served under its purposes.
+      parameters:
+      - *id010
+      - *id011
+      - *id016
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningState'
+        '404': *id014
+    post:
+      summary: Pause or resume learning about an identity
+      operationId: setLearningState
+      tags:
+      - Subject
+      description: A governed action. The change is evaluated against policy, recorded in the tenant's audit chain and receipted.
+        While paused, writes that would add to the identity's record are refused with 409 learning_paused.
+      parameters:
+      - *id010
+      - *id011
+      - *id009
+      - *id016
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LearningStateChange'
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningState'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '404': *id014
+        '422': *id007
+        '429': *id008
+      security:
+      - oauth2:
+        - igl.write
+  /identities/{identityId}/forget:
+    post:
+      summary: Forget learned records about an identity
+      operationId: forgetRecords
+      tags:
+      - Subject
+      description: Each target (a fact, a relationship or a context entry) is emptied in place and marked forgotten. It leaves every
+        projection, search, path and intelligence context at once. The audit chain records the act, the target ids and a SHA-256 of
+        each record as it was, never the content, so the forgetting is itself verifiable without undoing it. Receipted.
+      parameters:
+      - *id010
+      - *id011
+      - *id009
+      - *id016
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgetRequest'
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgetResult'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '404': *id014
+        '422': *id007
+        '429': *id008
+      security:
+      - oauth2:
+        - igl.write
+  /identities/{identityId}/reset:
+    post:
+      summary: Reset the learned graph of an identity
+      operationId: resetLearned
+      tags:
+      - Subject
+      description: Forgets every learned record about the identity in one governed action (all facts where it is subject or object, all
+        relationships it is part of, every context entry). The identity itself, its declared attributes, its obligations and its consent
+        records remain; they were declared, not learned. The caller must repeat the identity id in the body as confirmation.
+      parameters:
+      - *id010
+      - *id011
+      - *id009
+      - *id016
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetRequest'
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgetResult'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '404': *id014
+        '422': *id007
+        '429': *id008
+      security:
+      - oauth2:
+        - igl.write
+  /identities/{identityId}/export:
+    get:
+      summary: Export the whole record of an identity
+      operationId: exportIdentity
+      tags:
+      - Subject
+      - Audit
+      description: 'Everything the tenant holds about the identity, in one signed document a person or an auditor can keep: the
+        identity, its context, facts, relationships, obligations, consents and tombstones, a fingerprint over all of it, and the lineage
+        (every audit chain event about the identity with its sequence and hash). The governance receipt signs the fingerprint and
+        names the chain head at export time.'
+      parameters:
+      - *id010
+      - *id011
+      - *id016
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityExport'
+        '403': *id005
+        '404': *id014
+  /authority/evaluate:
+    post:
+      summary: Evaluate authority for an action
+      operationId: evaluateAuthority
+      tags:
+      - Authority
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorityDecision'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorityEvaluateRequest'
+      security:
+      - oauth2:
+        - igl.execute
+  /knowledge/entities:
+    post:
+      summary: Create a governed knowledge entity
+      operationId: createKnowledgeEntity
+      tags:
+      - Knowledge
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeEntity'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeEntityCreate'
+      security:
+      - oauth2:
+        - igl.write
+  /knowledge/entities/{entityId}:
+    get:
+      summary: Get a knowledge entity
+      operationId: getKnowledgeEntity
+      tags:
+      - Knowledge
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeEntity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: entityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /knowledge/facts:
+    get:
+      summary: Search governed facts
+      operationId: listFacts
+      tags:
+      - Knowledge
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FactPage'
+      parameters:
+      - *id001
+      - *id002
+      - name: subjectId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: predicate
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      summary: Create a governed fact
+      operationId: createFact
+      tags:
+      - Knowledge
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fact'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FactCreate'
+      security:
+      - oauth2:
+        - igl.write
+  /policies:
+    post:
+      summary: Create a policy
+      operationId: createPolicy
+      tags:
+      - Policy
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyCreate'
+      security:
+      - oauth2:
+        - igl.admin
+  /policies/{policyId}:
+    get:
+      summary: Get a policy
+      operationId: getPolicy
+      tags:
+      - Policy
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: policyId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /policies/evaluate:
+    post:
+      summary: Evaluate active policies
+      operationId: evaluatePolicies
+      tags:
+      - Policy
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorityDecision'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyEvaluateRequest'
+      security:
+      - oauth2:
+        - igl.execute
+  /evidence:
+    get:
+      summary: List evidence
+      operationId: listEvidence
+      tags:
+      - Evidence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidencePage'
+      parameters:
+      - *id001
+      - *id002
+      - name: status
+        in: query
+        schema:
+          type: string
+      - name: kind
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+    post:
+      summary: Create evidence or a finding
+      operationId: createEvidence
+      tags:
+      - Evidence
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evidence'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvidenceCreate'
+      security:
+      - oauth2:
+        - igl.write
+  /evidence/{evidenceId}:
+    get:
+      summary: Get evidence
+      operationId: getEvidence
+      tags:
+      - Evidence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evidence'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: evidenceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /evidence/{evidenceId}/corroborate:
+    post:
+      summary: Corroborate or contradict evidence
+      operationId: corroborateEvidence
+      tags:
+      - Evidence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evidence'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters:
+      - *id001
+      - *id002
+      - *id009
+      - name: evidenceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorroborateRequest'
+      security:
+      - oauth2:
+        - igl.write
+  /outcomes:
+    post:
+      summary: Record an outcome
+      operationId: createOutcome
+      tags:
+      - Outcomes
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Outcome'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutcomeCreate'
+      security:
+      - oauth2:
+        - igl.write
+  /outcomes/{outcomeId}:
+    get:
+      summary: Get an outcome
+      operationId: getOutcome
+      tags:
+      - Outcomes
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Outcome'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: outcomeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /outcomes/{outcomeId}/measurements:
+    post:
+      summary: Append an outcome measurement
+      operationId: measureOutcome
+      tags:
+      - Outcomes
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Outcome'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters:
+      - *id001
+      - *id002
+      - *id009
+      - name: outcomeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutcomeMeasureRequest'
+      security:
+      - oauth2:
+        - igl.write
+  /graph/relationships:
+    post:
+      summary: Create a graph relationship
+      operationId: createRelationship
+      tags:
+      - Graph
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Relationship'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelationshipCreate'
+      security:
+      - oauth2:
+        - igl.write
+  /graph/paths:
+    post:
+      summary: Find governed multi-hop paths
+      operationId: findGraphPaths
+      tags:
+      - Graph
+      responses:
+        '200':
+          description: Matching graph paths
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GraphPath'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GraphPathRequest'
+      security:
+      - oauth2:
+        - igl.read
+  /graph/entities/{entityId}/neighbors:
+    get:
+      summary: Get neighboring entities
+      operationId: getGraphNeighbors
+      tags:
+      - Graph
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipPage'
+      parameters:
+      - *id001
+      - *id002
+      - name: entityId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: depth
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 3
+          default: 1
+  /query:
+    post:
+      summary: Run a governed intelligence query
+      operationId: runQuery
+      tags:
+      - Intelligence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntelligenceResponse'
+        '202':
+          description: Accepted for asynchronous execution
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntelligenceRequest'
+            example:
+              question: Which obligations are due for this asset in the next 30 days, who owns them, and what evidence is
+                required?
+              actor:
+                identityId: b9d4507a-36ce-4d1b-970d-d85797141ff7
+                organizationId: e7bcde63-4ccd-4594-aa64-6de1cce72ae8
+                roleIds:
+                - 07e7a6c8-30aa-4a22-85ba-61c3f024e401
+              scope:
+                assetId: 95dcad56-20a5-4b65-b8e7-6bb3e91510a2
+              filters:
+              - field: dueDate
+                operator: between
+                value:
+                - '2026-10-06'
+                - '2026-11-05'
+              maxHops: 4
+              requireCitations: true
+              minimumConfidence: 0.8
+      security:
+      - oauth2:
+        - igl.execute
+  /research:
+    post:
+      summary: Run governed research
+      operationId: runResearch
+      tags:
+      - Intelligence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntelligenceResponse'
+        '202':
+          description: Accepted for asynchronous execution
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntelligenceRequest'
+      security:
+      - oauth2:
+        - igl.execute
+  /crosswalk:
+    post:
+      summary: Run a multi-hop crosswalk
+      operationId: runCrosswalk
+      tags:
+      - Intelligence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntelligenceResponse'
+        '202':
+          description: Accepted for asynchronous execution
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntelligenceRequest'
+            example:
+              question: Map the relationships among sites, products, manufacturers, witnesses, experts, and treaters.
+              scope:
+                matterIndependent: true
+                domains:
+                - toxic-tort
+                - silica
+              filters:
+              - field: relationship.status
+                operator: in
+                value:
+                - proposed
+                - certified
+              maxHops: 6
+              asOf: '2026-10-06T00:00:00Z'
+              requireCitations: true
+              minimumConfidence: 0.65
+      security:
+      - oauth2:
+        - igl.execute
+  /investigate:
+    post:
+      summary: Run a governed investigation
+      operationId: runInvestigation
+      tags:
+      - Intelligence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntelligenceResponse'
+        '202':
+          description: Accepted for asynchronous execution
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id019
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntelligenceRequest'
+      security:
+      - oauth2:
+        - igl.execute
+  /agents:
+    post:
+      summary: Register a governed agent
+      operationId: createAgent
+      tags:
+      - Agents
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreate'
+      security:
+      - oauth2:
+        - igl.admin
+  /agents/{agentId}:
+    get:
+      summary: Get an agent
+      operationId: getAgent
+      tags:
+      - Agents
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /agents/{agentId}/invocations:
+    post:
+      summary: Invoke a governed agent
+      operationId: invokeAgent
+      tags:
+      - Agents
+      responses:
+        '202':
+          description: Invocation accepted
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters:
+      - *id001
+      - *id002
+      - *id009
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentInvokeRequest'
+      security:
+      - oauth2:
+        - igl.execute
+  /workflows:
+    post:
+      summary: Create a governed workflow
+      operationId: createWorkflow
+      tags:
+      - Workflows
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters: *id020
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreate'
+      security:
+      - oauth2:
+        - igl.admin
+  /workflows/{workflowId}/runs:
+    post:
+      summary: Run a governed workflow
+      operationId: runWorkflow
+      tags:
+      - Workflows
+      responses:
+        '202':
+          description: Workflow run accepted
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400': *id003
+        '401': *id004
+        '403': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+      parameters:
+      - *id001
+      - *id002
+      - *id009
+      - name: workflowId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowRunRequest'
+      security:
+      - oauth2:
+        - igl.execute
+  /runs/{runId}:
+    get:
+      summary: Get execution status and results
+      operationId: getRun
+      tags:
+      - Agents
+      - Workflows
+      - Intelligence
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /audit/events:
+    get:
+      summary: Search audit events
+      operationId: listAuditEvents
+      tags:
+      - Audit
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventPage'
+      parameters:
+      - *id001
+      - *id002
+      - name: actorId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: resourceId
+        in: query
+        schema:
+          type: string
+      - name: eventType
+        in: query
+        schema:
+          type: string
+      - name: from
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      security:
+      - oauth2:
+        - igl.read
+  /audit/receipts/{receiptId}:
+    get:
+      summary: Get a governance receipt
+      operationId: getGovernanceReceipt
+      tags:
+      - Audit
+      responses:
+        '200':
+          description: Success
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovernanceReceipt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - *id001
+      - *id002
+      - name: receiptId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /audit/interactions:
+    post:
+      summary: Record what a caller did with a projection
+      operationId: recordInteraction
+      tags:
+      - Audit
+      - Projection
+      description: The REST equivalent of the MCP record_interaction tool. Metadata only; the conversation is not captured.
+        Call it especially when the caller refused, or proceeded on a truncated projection.
+      parameters:
+      - *id010
+      - *id011
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InteractionRecordCreate'
+      responses:
+        '201':
+          description: Created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401': *id012
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422': *id015
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      security:
+      - oauth2:
+        - igl.write
+webhooks:
+  outcomeRecorded:
+    post:
+      summary: An outcome was recorded or materially updated
+      operationId: onOutcomeRecorded
+      tags:
+      - Outcomes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Outcome'
+      responses:
+        '200':
+          description: Webhook accepted
+        '202':
+          description: Webhook accepted for processing
+  approvalRequired:
+    post:
+      summary: A governed execution requires human approval
+      operationId: onApprovalRequired
+      tags:
+      - Authority
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - runId
+              - requirements
+              properties:
+                runId:
+                  type: string
+                  format: uuid
+                requirements:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ApprovalRequirement'
+      responses:
+        '200':
+          description: Webhook accepted
+        '202':
+          description: Webhook accepted for processing
+  graphUpdated:
+    post:
+      summary: A certified graph entity or relationship changed
+      operationId: onGraphUpdated
+      tags:
+      - Graph
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - eventType
+              - resource
+              properties:
+                eventType:
+                  type: string
+                resource:
+                  $ref: '#/components/schemas/ResourceRef'
+                occurredAt:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Webhook accepted
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: OAuth 2.0 client credentials. Exchange an API key (client_id is the key id, client_secret is the key) for a one-hour EdDSA access token with the same or narrower scope. The key itself is also accepted as the bearer credential.
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.id-me.ai/oauth2/token
+          scopes:
+            igl.read: Read governed intelligence
+            igl.write: Create or update governed intelligence
+            igl.execute: Execute queries, agents, and workflows
+            igl.admin: Manage policies, authority, and platform configuration
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-IGL-API-Key
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+      description: Caller-provided correlation identifier.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+      description: Caller-chosen key for a mutation. Repeating the request with the same key and body replays the stored response; the same key with a different body is refused with 409.
+    TenantId:
+      name: X-IGL-Tenant-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Governed tenant boundary.
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+  headers:
+    XRequestId:
+      description: Correlation identifier for the request.
+      schema:
+        type: string
+  schemas:
+    Problem:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        traceId:
+          type: string
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+    Violation:
+      type: object
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+    PageInfo:
+      type: object
+      required:
+      - hasMore
+      properties:
+        nextCursor:
+          type:
+          - string
+          - 'null'
+        hasMore:
+          type: boolean
+    ActorRef:
+      type: object
+      required:
+      - identityId
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        organizationId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    SourceRef:
+      type: object
+      required:
+      - sourceId
+      - sourceType
+      properties:
+        sourceId:
+          type: string
+        sourceType:
+          type: string
+          enum:
+          - document
+          - database
+          - api
+          - web
+          - email
+          - transcript
+          - human
+          - system
+          - other
+        uri:
+          type:
+          - string
+          - 'null'
+          format: uri-reference
+        title:
+          type:
+          - string
+          - 'null'
+        retrievedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        contentHash:
+          type:
+          - string
+          - 'null'
+        locator:
+          type:
+          - string
+          - 'null'
+          description: Page, line, paragraph, timestamp, row, or other pinpoint locator.
+    Provenance:
+      type: object
+      required:
+      - createdAt
+      - createdBy
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/ActorRef'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+        model:
+          type:
+          - string
+          - 'null'
+        workflowRunId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        policyDecisionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    IdentityType:
+      type: string
+      enum:
+      - person
+      - organization
+      - system
+      - agent
+      - asset
+      - place
+      - document
+      - program
+      - course
+      - product
+      - other
+    Identity:
+      type: object
+      required:
+      - id
+      - type
+      - displayName
+      - status
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/IdentityType'
+        displayName:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        externalIds:
+          type: object
+          additionalProperties:
+            type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum:
+          - active
+          - inactive
+          - merged
+          - restricted
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        provenance:
+          $ref: '#/components/schemas/Provenance'
+    IdentityCreate:
+      type: object
+      required:
+      - type
+      - displayName
+      properties:
+        type:
+          $ref: '#/components/schemas/IdentityType'
+        displayName:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        externalIds:
+          type: object
+          additionalProperties:
+            type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        source:
+          $ref: '#/components/schemas/SourceRef'
+    IdentityContextAppend:
+      type: object
+      required:
+      - kind
+      - value
+      properties:
+        kind:
+          type: string
+          enum:
+          - interest
+          - goal
+          - project
+          - relationship
+          - expertise
+          - preference
+          - constraint
+          - observation
+          - other
+        value: {}
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        source:
+          $ref: '#/components/schemas/SourceRef'
+    Relationship:
+      type: object
+      required:
+      - id
+      - fromId
+      - type
+      - toId
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        fromId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        toId:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum:
+          - directed
+          - undirected
+          default: directed
+        attributes:
+          type: object
+          additionalProperties: true
+        effectiveFrom:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effectiveTo:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        status:
+          type: string
+          enum:
+          - proposed
+          - certified
+          - rejected
+          - superseded
+        provenance:
+          $ref: '#/components/schemas/Provenance'
+    RelationshipCreate:
+      type: object
+      required:
+      - fromId
+      - type
+      - toId
+      properties:
+        fromId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        toId:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum:
+          - directed
+          - undirected
+          default: directed
+        attributes:
+          type: object
+          additionalProperties: true
+        effectiveFrom:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effectiveTo:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        status:
+          type: string
+          enum:
+          - proposed
+          - certified
+          default: proposed
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+    AuthorityDecision:
+      type: object
+      required:
+      - decisionId
+      - effect
+      - evaluatedAt
+      properties:
+        decisionId:
+          type: string
+          format: uuid
+        effect:
+          type: string
+          enum:
+          - allow
+          - deny
+          - conditional
+          - escalate
+        reasonCodes:
+          type: array
+          items:
+            type: string
+        requiredApprovals:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApprovalRequirement'
+        obligations:
+          type: array
+          items:
+            type: string
+        evaluatedAt:
+          type: string
+          format: date-time
+        policyDecisionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    ApprovalRequirement:
+      type: object
+      required:
+      - authorityType
+      properties:
+        authorityType:
+          type: string
+        roleId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        identityId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        count:
+          type: integer
+          minimum: 1
+          default: 1
+    AuthorityEvaluateRequest:
+      type: object
+      required:
+      - actor
+      - action
+      - resource
+      properties:
+        actor:
+          $ref: '#/components/schemas/ActorRef'
+        action:
+          type: string
+        resource:
+          $ref: '#/components/schemas/ResourceRef'
+        context:
+          type: object
+          additionalProperties: true
+    ResourceRef:
+      type: object
+      required:
+      - type
+      - id
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+        attributes:
+          type: object
+          additionalProperties: true
+    KnowledgeEntity:
+      allOf:
+      - $ref: '#/components/schemas/Identity'
+      - type: object
+        properties:
+          schemaType:
+            type: string
+          summary:
+            type:
+            - string
+            - 'null'
+    KnowledgeEntityCreate:
+      allOf:
+      - $ref: '#/components/schemas/IdentityCreate'
+      - type: object
+        required:
+        - schemaType
+        properties:
+          schemaType:
+            type: string
+          summary:
+            type:
+            - string
+            - 'null'
+    Fact:
+      type: object
+      required:
+      - id
+      - subjectId
+      - predicate
+      - object
+      - status
+      - confidence
+      properties:
+        id:
+          type: string
+          format: uuid
+        subjectId:
+          type: string
+          format: uuid
+        predicate:
+          type: string
+        object: {}
+        qualifiers:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum:
+          - seed
+          - proposed
+          - certified
+          - rejected
+          - superseded
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        validFrom:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        validTo:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        provenance:
+          $ref: '#/components/schemas/Provenance'
+    FactCreate:
+      type: object
+      required:
+      - subjectId
+      - predicate
+      - object
+      properties:
+        subjectId:
+          type: string
+          format: uuid
+        predicate:
+          type: string
+        object: {}
+        qualifiers:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum:
+          - seed
+          - proposed
+          - certified
+          default: seed
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        validFrom:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        validTo:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+    Policy:
+      type: object
+      required:
+      - id
+      - name
+      - version
+      - effect
+      - status
+      - rule
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        effect:
+          type: string
+          enum:
+          - allow
+          - deny
+          - conditional
+          - escalate
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - retired
+        scope:
+          type: object
+          additionalProperties: true
+        rule:
+          type: object
+          additionalProperties: true
+          description: Vendor-neutral policy expression object.
+        effectiveFrom:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effectiveTo:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    PolicyCreate:
+      type: object
+      required:
+      - name
+      - version
+      - effect
+      - rule
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        effect:
+          type: string
+          enum:
+          - allow
+          - deny
+          - conditional
+          - escalate
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          default: draft
+        scope:
+          type: object
+          additionalProperties: true
+        rule:
+          type: object
+          additionalProperties: true
+        effectiveFrom:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effectiveTo:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    PolicyEvaluateRequest:
+      type: object
+      required:
+      - actor
+      - action
+      - resource
+      properties:
+        actor:
+          $ref: '#/components/schemas/ActorRef'
+        action:
+          type: string
+        resource:
+          $ref: '#/components/schemas/ResourceRef'
+        facts:
+          type: object
+          additionalProperties: true
+        requestedOutcome:
+          type:
+          - string
+          - 'null'
+    Evidence:
+      type: object
+      required:
+      - id
+      - kind
+      - claim
+      - sources
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - finding
+          - citation
+          - document
+          - observation
+          - testimony
+          - measurement
+          - other
+        claim:
+          type: string
+        sources:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SourceRef'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        status:
+          type: string
+          enum:
+          - seed
+          - proposed
+          - certified
+          - disputed
+          - rejected
+          - superseded
+        corroborationCount:
+          type: integer
+          minimum: 0
+        contradictionCount:
+          type: integer
+          minimum: 0
+        attributes:
+          type: object
+          additionalProperties: true
+        provenance:
+          $ref: '#/components/schemas/Provenance'
+    EvidenceCreate:
+      type: object
+      required:
+      - kind
+      - claim
+      - sources
+      properties:
+        kind:
+          type: string
+          enum:
+          - finding
+          - citation
+          - document
+          - observation
+          - testimony
+          - measurement
+          - other
+        claim:
+          type: string
+        sources:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SourceRef'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        status:
+          type: string
+          enum:
+          - seed
+          - proposed
+          - certified
+          default: proposed
+        attributes:
+          type: object
+          additionalProperties: true
+    CorroborateRequest:
+      type: object
+      required:
+      - supportingEvidenceIds
+      properties:
+        supportingEvidenceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        contradictingEvidenceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        method:
+          type: string
+          enum:
+          - manual
+          - rule
+          - model
+          - hybrid
+        notes:
+          type:
+          - string
+          - 'null'
+    Outcome:
+      type: object
+      required:
+      - id
+      - subjectId
+      - type
+      - status
+      - occurredAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        subjectId:
+          type: string
+          format: uuid
+        decisionId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        type:
+          type: string
+        status:
+          type: string
+          enum:
+          - expected
+          - observed
+          - validated
+          - disputed
+          - superseded
+        value: {}
+        metrics:
+          type: object
+          additionalProperties:
+            type:
+            - number
+            - string
+            - boolean
+        occurredAt:
+          type: string
+          format: date-time
+        provenance:
+          $ref: '#/components/schemas/Provenance'
+    OutcomeCreate:
+      type: object
+      required:
+      - subjectId
+      - type
+      - value
+      - occurredAt
+      properties:
+        subjectId:
+          type: string
+          format: uuid
+        decisionId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        type:
+          type: string
+        status:
+          type: string
+          enum:
+          - expected
+          - observed
+          - validated
+          default: observed
+        value: {}
+        metrics:
+          type: object
+          additionalProperties:
+            type:
+            - number
+            - string
+            - boolean
+        occurredAt:
+          type: string
+          format: date-time
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+    OutcomeMeasureRequest:
+      type: object
+      required:
+      - metric
+      - value
+      - measuredAt
+      properties:
+        metric:
+          type: string
+        value:
+          type:
+          - number
+          - string
+          - boolean
+        unit:
+          type:
+          - string
+          - 'null'
+        measuredAt:
+          type: string
+          format: date-time
+        source:
+          $ref: '#/components/schemas/SourceRef'
+    GraphPathRequest:
+      type: object
+      required:
+      - fromId
+      - toId
+      properties:
+        fromId:
+          type: string
+          format: uuid
+        toId:
+          type: string
+          format: uuid
+        maxHops:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 4
+        relationshipTypes:
+          type: array
+          items:
+            type: string
+        asOf:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        minimumConfidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0
+    GraphPath:
+      type: object
+      required:
+      - nodes
+      - edges
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identity'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Relationship'
+        score:
+          type: number
+    IntelligenceRequest:
+      type: object
+      required:
+      - question
+      properties:
+        question:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ActorRef'
+        scope:
+          type: object
+          additionalProperties: true
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/Filter'
+        maxHops:
+          type: integer
+          minimum: 0
+          maximum: 12
+          default: 4
+        asOf:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        requireCitations:
+          type: boolean
+          default: true
+        minimumConfidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.5
+        modelPreference:
+          type:
+          - string
+          - 'null'
+          description: Optional routing preference; governance may override.
+        purpose:
+          type:
+          - string
+          - 'null'
+          description: 'Purpose profile id bounding every identity projection the run may read. Omitted: the key''s default
+            purpose.'
+    Filter:
+      type: object
+      required:
+      - field
+      - operator
+      - value
+      properties:
+        field:
+          type: string
+        operator:
+          type: string
+          enum:
+          - eq
+          - ne
+          - in
+          - not_in
+          - gt
+          - gte
+          - lt
+          - lte
+          - contains
+          - exists
+          - between
+        value: {}
+    IntelligenceResponse:
+      type: object
+      required:
+      - requestId
+      - answer
+      - citations
+      - governance
+      - createdAt
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        answer:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identity'
+        paths:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphPath'
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+        governance:
+          $ref: '#/components/schemas/GovernanceReceipt'
+        createdAt:
+          type: string
+          format: date-time
+    GovernanceReceipt:
+      type: object
+      required:
+      - receiptId
+      - actor
+      - authorityDecision
+      - policiesEvaluated
+      - createdAt
+      properties:
+        receiptId:
+          type: string
+          format: uuid
+        actor:
+          $ref: '#/components/schemas/ActorRef'
+        authorityDecision:
+          $ref: '#/components/schemas/AuthorityDecision'
+        policiesEvaluated:
+          type: array
+          items:
+            type: string
+            format: uuid
+        evidenceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        outputHash:
+          type:
+          - string
+          - 'null'
+        createdAt:
+          type: string
+          format: date-time
+    Agent:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      - capabilities
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - suspended
+          - retired
+        capabilities:
+          type: array
+          items:
+            type: string
+        allowedTools:
+          type: array
+          items:
+            type: string
+        policyIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        modelRouting:
+          type: object
+          additionalProperties: true
+    AgentCreate:
+      type: object
+      required:
+      - name
+      - capabilities
+      properties:
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        capabilities:
+          type: array
+          items:
+            type: string
+        allowedTools:
+          type: array
+          items:
+            type: string
+        policyIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        modelRouting:
+          type: object
+          additionalProperties: true
+    AgentInvokeRequest:
+      type: object
+      required:
+      - instruction
+      properties:
+        instruction:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ActorRef'
+        input:
+          type: object
+          additionalProperties: true
+        resourceScope:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceRef'
+        requireApproval:
+          type: boolean
+          default: false
+    Run:
+      type: object
+      required:
+      - id
+      - type
+      - status
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - agent
+          - workflow
+          - research
+          - investigation
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - awaiting_approval
+          - succeeded
+          - failed
+          - cancelled
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        completedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        output: {}
+        error:
+          oneOf:
+          - $ref: '#/components/schemas/Problem'
+          - type: 'null'
+        governance:
+          oneOf:
+          - $ref: '#/components/schemas/GovernanceReceipt'
+          - type: 'null'
+    Workflow:
+      type: object
+      required:
+      - id
+      - name
+      - version
+      - status
+      - steps
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          - retired
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowStep'
+        policyIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    WorkflowStep:
+      type: object
+      required:
+      - id
+      - type
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - query
+          - research
+          - agent
+          - human_approval
+          - policy_check
+          - tool
+          - transform
+          - outcome
+        config:
+          type: object
+          additionalProperties: true
+        onSuccess:
+          type:
+          - string
+          - 'null'
+        onFailure:
+          type:
+          - string
+          - 'null'
+    WorkflowCreate:
+      type: object
+      required:
+      - name
+      - version
+      - steps
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - active
+          default: draft
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowStep'
+        policyIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    WorkflowRunRequest:
+      type: object
+      properties:
+        actor:
+          $ref: '#/components/schemas/ActorRef'
+        input:
+          type: object
+          additionalProperties: true
+        dryRun:
+          type: boolean
+          default: false
+    AuditEvent:
+      type: object
+      required:
+      - id
+      - eventType
+      - actor
+      - occurredAt
+      - resource
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        actor:
+          $ref: '#/components/schemas/ActorRef'
+        resource:
+          $ref: '#/components/schemas/ResourceRef'
+        action:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        requestId:
+          type:
+          - string
+          - 'null'
+        decisionId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        details:
+          type: object
+          additionalProperties: true
+        previousHash:
+          type:
+          - string
+          - 'null'
+        eventHash:
+          type:
+          - string
+          - 'null'
+    Health:
+      type: object
+      required:
+      - status
+      - version
+      - time
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - degraded
+        version:
+          type: string
+        time:
+          type: string
+          format: date-time
+    Capabilities:
+      type: object
+      required:
+      - apiVersion
+      - features
+      properties:
+        apiVersion:
+          type: string
+        features:
+          type: array
+          items:
+            type: string
+        modelProviders:
+          type: array
+          items:
+            type: string
+        maximumGraphHops:
+          type: integer
+    IdentityPage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identity'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    RelationshipPage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Relationship'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    FactPage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fact'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    EvidencePage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    AuditEventPage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    Purpose:
+      type: object
+      required:
+      - id
+      - name
+      - permits
+      properties:
+        id:
+          type: string
+          examples:
+          - identity-introduction
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        permits:
+          type: array
+          items:
+            type: string
+          description: Node types this profile admits, e.g. Person, Role, Organization, Jurisdiction, Credential, Facility,
+            Obligation.
+        sensitivityCeiling:
+          type: string
+          enum:
+          - public
+          - internal
+          - confidential
+          - restricted
+        default:
+          type: boolean
+          default: false
+    PurposePage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Purpose'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    ProjectionNode:
+      type: object
+      required:
+      - id
+      - type
+      - label
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        label:
+          type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        status:
+          type: string
+          enum:
+          - seed
+          - proposed
+          - certified
+    Projection:
+      type: object
+      required:
+      - identityId
+      - purpose
+      - nodes
+      - edges
+      - truncated
+      - governance
+      - createdAt
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectionNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Relationship'
+          description: Certified relationships only. Proposed relationships never reach a projection.
+        truncated:
+          type: boolean
+          description: True when the node budget bound before traversal finished; the context is incomplete.
+        emptyWarning:
+          type:
+          - string
+          - 'null'
+          description: Set when no nodes were admitted. The identity exists; the context does not. Usually no consent covers
+            this purpose.
+        withheld:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Count of withheld nodes by node type. Use the explain endpoint for the reason per node.
+        governance:
+          $ref: '#/components/schemas/GovernanceReceipt'
+        createdAt:
+          type: string
+          format: date-time
+    GateResult:
+      type: object
+      required:
+      - gate
+      - result
+      properties:
+        gate:
+          type: string
+          enum:
+          - nodeType
+          - sensitivity
+          - consent
+          - jurisdiction
+        result:
+          type: string
+          enum:
+          - pass
+          - fail
+          - skipped
+        reason:
+          type:
+          - string
+          - 'null'
+          description: Actionable, e.g. "purpose profile does not permit Obligation nodes". Pass it through rather than paraphrasing.
+    ProjectionExplanation:
+      type: object
+      required:
+      - identityId
+      - purpose
+      - considered
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        considered:
+          type: array
+          items:
+            type: object
+            required:
+            - node
+            - admitted
+            - gates
+            properties:
+              node:
+                $ref: '#/components/schemas/ProjectionNode'
+              admitted:
+                type: boolean
+              gates:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GateResult'
+              firstFailure:
+                type:
+                - string
+                - 'null'
+        truncated:
+          type: boolean
+    Obligation:
+      type: object
+      required:
+      - id
+      - subjectId
+      - title
+      - status
+      - dueDate
+      properties:
+        id:
+          type: string
+          format: uuid
+        subjectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        obligee:
+          type:
+          - string
+          - 'null'
+          description: 'Who it is owed to: a regulator, a counterparty, an internal authority.'
+        facilityId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: The facility or asset that triggers it, when one does.
+        regulation:
+          type:
+          - string
+          - 'null'
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - attested
+          - proposed
+          description: 'attested: a human reviewed it and it is a real deadline. proposed: computed by the system, unchecked.'
+        attestedBy:
+          oneOf:
+          - $ref: '#/components/schemas/ActorRef'
+          - type: 'null'
+        attestedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        evidenceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    ObligationPage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Obligation'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    ConsentRecord:
+      type: object
+      required:
+      - id
+      - identityId
+      - purpose
+      - status
+      - grantedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        grantedBy:
+          $ref: '#/components/schemas/ActorRef'
+        scope:
+          type:
+          - string
+          - 'null'
+          description: Applications or workspaces the grant covers.
+        jurisdictions:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum:
+          - active
+          - revoked
+          - expired
+        grantedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ConsentPage:
+      type: object
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentRecord'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+    LearningState:
+      type: object
+      required:
+      - identityId
+      - paused
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        paused:
+          type: boolean
+        since:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        reason:
+          type:
+          - string
+          - 'null'
+        changedBy:
+          $ref: '#/components/schemas/ActorRef'
+        governance:
+          $ref: '#/components/schemas/GovernanceReceipt'
+    LearningStateChange:
+      type: object
+      required:
+      - paused
+      properties:
+        paused:
+          type: boolean
+        reason:
+          type: string
+          maxLength: 500
+    ForgetTarget:
+      type: object
+      required:
+      - type
+      - id
+      properties:
+        type:
+          type: string
+          enum:
+          - fact
+          - relationship
+          - context
+        id:
+          type: string
+    ForgetRequest:
+      type: object
+      required:
+      - targets
+      properties:
+        targets:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ForgetTarget'
+        reason:
+          type: string
+          maxLength: 500
+    ResetRequest:
+      type: object
+      required:
+      - confirmIdentityId
+      properties:
+        confirmIdentityId:
+          type: string
+          format: uuid
+          description: Must equal the identity in the path. A reset is not undoable.
+        reason:
+          type: string
+          maxLength: 500
+    Tombstone:
+      type: object
+      required:
+      - type
+      - id
+      - contentHash
+      - forgottenAt
+      properties:
+        type:
+          type: string
+          enum:
+          - fact
+          - relationship
+          - context
+        id:
+          type: string
+        contentHash:
+          type: string
+          description: SHA-256 of the record as it was, so a holder of the original can prove what was forgotten; the content is gone.
+        forgottenAt:
+          type: string
+          format: date-time
+    ForgetResult:
+      type: object
+      required:
+      - identityId
+      - forgotten
+      - governance
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        forgotten:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tombstone'
+        notFound:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForgetTarget'
+        governance:
+          $ref: '#/components/schemas/GovernanceReceipt'
+    LineageEntry:
+      type: object
+      required:
+      - seq
+      - eventType
+      - occurredAt
+      - eventHash
+      properties:
+        seq:
+          type: integer
+        eventType:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        decisionId:
+          type:
+          - string
+          - 'null'
+        eventHash:
+          type: string
+    IdentityExport:
+      type: object
+      required:
+      - identityId
+      - generatedAt
+      - fingerprint
+      - identity
+      - lineage
+      - governance
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        generatedAt:
+          type: string
+          format: date-time
+        fingerprint:
+          type: string
+          description: SHA-256 over the canonical form of identity, context, facts, relationships, obligations, consents and tombstones.
+            Any change to the record changes the fingerprint.
+        fingerprintOf:
+          type: string
+          description: The sentence describing how the fingerprint is computed, so a holder can recompute it.
+        identity:
+          $ref: '#/components/schemas/Identity'
+        context:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        facts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fact'
+        relationships:
+          type: array
+          items:
+            $ref: '#/components/schemas/Relationship'
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Obligation'
+        consents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentRecord'
+        learning:
+          $ref: '#/components/schemas/LearningState'
+        tombstones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tombstone'
+        lineage:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineageEntry'
+        governance:
+          $ref: '#/components/schemas/GovernanceReceipt'
+    InteractionRecordCreate:
+      type: object
+      required:
+      - purpose
+      - outcome
+      properties:
+        identityId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: 'The identity acted for. Omitted: the caller.'
+        purpose:
+          type: string
+        outcome:
+          type: string
+          enum:
+          - completed
+          - refused
+          - proceeded_on_truncated
+          - proceeded_on_empty
+          - escalated
+        reason:
+          type:
+          - string
+          - 'null'
+        projectionReceiptId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        runId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        model:
+          type:
+          - string
+          - 'null'
+    InteractionRecord:
+      allOf:
+      - $ref: '#/components/schemas/InteractionRecordCreate'
+      - type: object
+        required:
+        - id
+        - actor
+        - recordedAt
+        properties:
+          id:
+            type: string
+            format: uuid
+          actor:
+            $ref: '#/components/schemas/ActorRef'
+          recordedAt:
+            type: string
+            format: date-time
+          eventHash:
+            type:
+            - string
+            - 'null'
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Action denied by authority or policy
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Conflict with current state
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unprocessable:
+      description: Request is valid but cannot be governed or executed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

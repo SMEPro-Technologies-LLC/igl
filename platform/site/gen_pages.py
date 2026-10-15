@@ -29,8 +29,8 @@ PAGES = [
     {
         "slug": "docs",
         "view": "docs",
-        "title": "IGL API reference: 46 operations, purposes, projections, receipts and MCP tools",
-        "description": "The complete reference for the IGL Governed Identity Platform API: authentication, tenancy, purpose-bounded projections, policies, agents, workflows, audit, webhooks, schemas and the seven MCP tools.",
+        "title": "IGL API reference: 51 operations, purposes, projections, subject controls, receipts and MCP tools",
+        "description": "The complete reference for the IGL Governed Identity Platform API: authentication, tenancy, purpose-bounded projections, the subject controls (pause, forget, reset, export), policies, agents, workflows, audit, webhooks, schemas and the seven MCP tools.",
     },
     {
         "slug": "enterprise",

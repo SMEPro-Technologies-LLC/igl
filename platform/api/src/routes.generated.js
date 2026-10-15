@@ -1,5 +1,5 @@
 /* GENERATED from spec/openapi.yaml by platform/api/scripts/gen-routes.py. Do not edit. */
-export const CONTRACT_VERSION = "0.2.0";
+export const CONTRACT_VERSION = "0.3.0";
 export const ROUTES = [
   { method: "GET", path: "/health", pattern: new RegExp("^/health$"), operationId: "getHealth", scopes: [], keyHeader: false, idempotent: false, public: true, tag: "System" },
   { method: "GET", path: "/capabilities", pattern: new RegExp("^/capabilities$"), operationId: "getCapabilities", scopes: ["igl.read"], keyHeader: false, idempotent: false, public: false, tag: "System" },
@@ -16,6 +16,11 @@ export const ROUTES = [
   { method: "GET", path: "/identities/{identityId}/projection/explain", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/projection/explain$"), operationId: "explainIdentityProjection", scopes: ["igl.read"], keyHeader: false, idempotent: false, public: false, tag: "Projection" },
   { method: "GET", path: "/identities/{identityId}/obligations", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/obligations$"), operationId: "listObligations", scopes: ["igl.read"], keyHeader: false, idempotent: false, public: false, tag: "Projection" },
   { method: "GET", path: "/identities/{identityId}/consents", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/consents$"), operationId: "listConsents", scopes: ["igl.read"], keyHeader: false, idempotent: false, public: false, tag: "Projection" },
+  { method: "GET", path: "/identities/{identityId}/learning", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/learning$"), operationId: "getLearningState", scopes: ["igl.read"], keyHeader: false, idempotent: false, public: false, tag: "Subject" },
+  { method: "POST", path: "/identities/{identityId}/learning", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/learning$"), operationId: "setLearningState", scopes: ["igl.write"], keyHeader: false, idempotent: true, public: false, tag: "Subject" },
+  { method: "POST", path: "/identities/{identityId}/forget", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/forget$"), operationId: "forgetRecords", scopes: ["igl.write"], keyHeader: false, idempotent: true, public: false, tag: "Subject" },
+  { method: "POST", path: "/identities/{identityId}/reset", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/reset$"), operationId: "resetLearned", scopes: ["igl.write"], keyHeader: false, idempotent: true, public: false, tag: "Subject" },
+  { method: "GET", path: "/identities/{identityId}/export", pattern: new RegExp("^/identities/(?<identityId>[^/]+)/export$"), operationId: "exportIdentity", scopes: ["igl.read"], keyHeader: false, idempotent: false, public: false, tag: "Subject" },
   { method: "POST", path: "/authority/evaluate", pattern: new RegExp("^/authority/evaluate$"), operationId: "evaluateAuthority", scopes: ["igl.execute"], keyHeader: false, idempotent: false, public: false, tag: "Authority" },
   { method: "POST", path: "/knowledge/entities", pattern: new RegExp("^/knowledge/entities$"), operationId: "createKnowledgeEntity", scopes: ["igl.write"], keyHeader: false, idempotent: true, public: false, tag: "Knowledge" },
   { method: "GET", path: "/knowledge/entities/{entityId}", pattern: new RegExp("^/knowledge/entities/(?<entityId>[^/]+)$"), operationId: "getKnowledgeEntity", scopes: ["igl.read"], keyHeader: false, idempotent: false, public: false, tag: "Knowledge" },

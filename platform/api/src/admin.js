@@ -54,7 +54,7 @@ export async function adminFetch({ request, env, ctx, db, url, signer, requestId
   const path = url.pathname; const method = request.method;
 
   if (method === "GET" && path === "/.well-known/jwks.json") return json({ keys: [signer.jwk()] }, 200, { "cache-control": "public, max-age=300" });
-  if (method === "GET" && path === "/.well-known/igl.json") return json({ service: "igl-api", environment: env.IGL_ENV || "production", contract: CONTRACT_VERSION, version: env.SERVICE_VERSION || "1.4.0", signer: signer.id, publicKey: signer.pub(), tokenEndpoint: "/oauth2/token", operations: ROUTES.length }, 200, { "cache-control": "public, max-age=60" });
+  if (method === "GET" && path === "/.well-known/igl.json") return json({ service: "igl-api", environment: env.IGL_ENV || "production", contract: CONTRACT_VERSION, version: env.SERVICE_VERSION || "1.6.0", signer: signer.id, publicKey: signer.pub(), tokenEndpoint: "/oauth2/token", operations: ROUTES.length }, 200, { "cache-control": "public, max-age=60" });
 
   if (method === "POST" && path === "/oauth2/token") {
     const ct = request.headers.get("content-type") || "";

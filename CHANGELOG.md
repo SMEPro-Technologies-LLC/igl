@@ -4,6 +4,44 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.6.0] (2026-10-15)
+
+Contract 0.3.0. The Subject service: the controls a person holds over what
+is learned about them, the rules Ricorsa is built on, as platform operations.
+
+### Added
+
+- `GET` and `POST /identities/{id}/learning`: pause and resume learning about
+  an identity. While paused, context, facts and relationships that would add
+  to its record are refused with 409 `learning_paused`; what is known is still
+  served under its purposes
+- `POST /identities/{id}/forget`: each target (fact, relationship or context
+  entry) is emptied in place and marked forgotten, leaving every projection,
+  search, path, list and intelligence context at once. A tombstone and the
+  audit chain keep the act, the id and a SHA-256 of the record as it was,
+  never the content. Tombstones are append-only at the schema
+- `POST /identities/{id}/reset`: forgets everything learned in one governed
+  action; the identity, its declared attributes, obligations and consents
+  remain. The identity id is repeated in the body as confirmation
+- `GET /identities/{id}/export`: the whole record with a fingerprint over its
+  canonical form, the sentence that says how to recompute it, the lineage of
+  every chain event about the identity, and a receipt that signs the
+  fingerprint and names the chain head
+- Every control is policy-evaluated (allowed by default, a policy can deny or
+  escalate), receipted and chained. Conformance test covers all five; the
+  suite exercises all 51 operations
+- `docs/RICORSA.md`: how Ricorsa's identity graph, regions, provenance chain,
+  recursive learning loop and Discover map to the platform, and which rules
+  the platform now guarantees
+- The served contract has one stable address, `/igl-openapi.yaml`; the
+  versioned names redirect to it
+
+### Changed
+
+- `GET /capabilities` lists `subject-controls`; the seven MCP tools are
+  unchanged on purpose: a model must not be able to change what is learned
+  about a person
+
 ## [1.5.0] (2026-10-15)
 
 The five runtime findings left open by the October 2026 security review are

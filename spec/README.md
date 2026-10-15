@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Current version | **0.2.0** |
+| Current version | **0.3.0** |
 | Paths / operations / schemas | 42 / 46 / 63, plus 3 webhooks |
 | Auth | OAuth 2.0 (client credentials, authorization code) with scopes `igl.read`, `igl.write`, `igl.execute`, `igl.admin`; `X-IGL-API-Key` where listed |
 | Tenancy | `X-IGL-Tenant-Id` on every governed call |
@@ -14,6 +14,10 @@
 ## Services
 
 `/identities`, `/purposes`, `/authority`, `/knowledge`, `/policies`, `/evidence`, `/outcomes`, `/graph`, `/query`, `/research`, `/crosswalk`, `/investigate`, `/agents`, `/workflows`, `/runs`, `/audit`, `/health`, `/capabilities`
+
+## What changed in 0.3.0
+
+The Subject service: the controls a person holds over what is learned about them, as governed operations with signed receipts and chain entries. `GET` and `POST /identities/{id}/learning` (pause and resume), `POST /identities/{id}/forget` (targets are emptied in place; the chain keeps the act and a SHA-256 of each record as it was, never the content), `POST /identities/{id}/reset`, and `GET /identities/{id}/export` (the whole record with a fingerprint and the lineage of chain events). The 42 paths of 0.2.0 are unchanged. Every `AuthorityDecision` now carries `policiesMatched` and `subject`; every `GovernanceReceipt` carries `auditHead`. See `docs/RICORSA.md` for where these rules come from.
 
 ## What changed in 0.2.0
 

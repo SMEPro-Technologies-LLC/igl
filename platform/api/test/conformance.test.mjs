@@ -77,7 +77,7 @@ test("service is up and describes itself", async () => {
   const h = await call("GET", "/health", { auth: false, expect: 200 });
   assert.equal(h.json.status, "ok");
   const meta = await (await fetch(BASE + "/.well-known/igl.json")).json();
-  assert.equal(meta.environment, "sandbox"); assert.equal(meta.operations, 46);
+  assert.equal(meta.environment, "sandbox"); assert.equal(meta.operations, 51);
   const jwks = await (await fetch(BASE + "/.well-known/jwks.json")).json();
   assert.equal(jwks.keys[0].crv, "Ed25519");
 });
@@ -110,7 +110,7 @@ test("client credentials token works like the key and carries scopes", async () 
 
 test("capabilities and purposes", async () => {
   const c = await call("GET", "/capabilities", { expect: 200 });
-  assert.equal(c.json.apiVersion, "0.2.0");
+  assert.equal(c.json.apiVersion, "0.3.0");
   const p = await call("GET", "/purposes", { expect: 200 });
   assert.ok(p.json.items.some((x) => x.id === "identity-introduction" && x.default));
   await call("GET", "/purposes/identity-introduction", { expect: 200 });
@@ -442,6 +442,81 @@ test("keys: a key can be revoked through the API and stops working at once; boot
   assert.equal(second.status, 201); const b2 = await second.json();
   assert.equal(b2.tenantId, b1.tenantId, "rotation reuses the platform tenant"); assert.notEqual(b2.apiKey, b1.apiKey);
   assert.equal((await fetch(BASE + "/v1/capabilities", { headers: { authorization: `Bearer ${b1.apiKey}`, "x-igl-tenant-id": b1.tenantId } })).status, 401);
+});
+
+test("subject controls: pause stops learning, forget and reset leave tombstones and hashes, export carries a fingerprint and the lineage", async () => {
+  const canon = (x) => Array.isArray(x) ? "[" + x.map(canon).join(",") + "]" : (x && typeof x === "object") ? "{" + Object.keys(x).sort().map((k) => JSON.stringify(k) + ":" + canon(x[k])).join(",") + "}" : JSON.stringify(x === undefined ? null : x);
+  const verify = (signed) => { const { signer, alg, publicKey, signature, ...body } = signed; const pub = createPublicKey({ key: Buffer.from(publicKey, "base64"), format: "der", type: "spki" }); return edVerify(null, Buffer.from("IGL-RECEIPT-v0.2:" + canon(body)), pub, Buffer.from(signature, "base64")); };
+  /* a person of their own, so nothing here disturbs the rest of the suite */
+  const person = (await call("POST", "/identities", { body: { type: "person", displayName: "Dana Reyes", attributes: { role: "Field Engineer", jurisdiction: "US-TX" } }, expect: 201 })).json;
+  const employer = (await call("POST", "/identities", { body: { type: "organization", displayName: "Reyes Field Services" }, expect: 201 })).json;
+  await call("POST", `/identities/${person.id}/context`, { body: { kind: "goal", value: "finish the H-10 filings before the quarter closes" }, expect: 200 });
+  /* context entries and their ids are visible to the person through the export, which is how a client learns what it can forget */
+  const ctxEntry = (await call("GET", `/identities/${person.id}/export`, { expect: 200 })).json.context[0];
+  assert.equal(ctxEntry.kind, "goal"); assert.ok(ctxEntry.id);
+  const fact = (await call("POST", "/knowledge/facts", { body: { subjectId: person.id, predicate: "prefers.channel", object: "email", status: "proposed", confidence: 0.8, sources: [{ sourceId: "intake-1", sourceType: "document" }] }, expect: 201 })).json;
+  const rel = (await call("POST", "/graph/relationships", { body: { fromId: person.id, type: "works_for", toId: employer.id, status: "proposed" }, expect: 201 })).json;
+
+  /* learning state: off by default, pause is governed and receipted, and while paused nothing new is recorded */
+  const s0 = await call("GET", `/identities/${person.id}/learning`, { expect: 200 });
+  assert.equal(s0.json.paused, false);
+  const paused = await call("POST", `/identities/${person.id}/learning`, { body: { paused: true, reason: "the person asked" }, expect: 200 });
+  assert.equal(paused.json.paused, true); assert.ok(paused.json.since); assert.ok(verify(paused.json.governance), "the pause has a receipt that verifies");
+  assert.equal(paused.json.governance.authorityDecision.subject.action, "subject.pause");
+  const blocked = await call("POST", `/identities/${person.id}/context`, { body: { kind: "interest", value: "golf" }, expect: 409 });
+  assert.equal(blocked.json.type, "https://id-me.ai/problems/learning_paused");
+  await call("POST", "/knowledge/facts", { body: { subjectId: person.id, predicate: "x", object: "y", sources: [{ sourceId: "s", sourceType: "document" }] }, expect: 409 });
+  await call("POST", "/graph/relationships", { body: { fromId: employer.id, type: "employs", toId: person.id }, expect: 409 });
+  const me = await call("GET", `/identities/${person.id}/projection?purpose=identity-introduction`, { expect: 200 });
+  assert.ok(me.json.nodes.length >= 1, "what is already known is still served while paused");
+  const resumed = await call("POST", `/identities/${person.id}/learning`, { body: { paused: false }, expect: 200 });
+  assert.equal(resumed.json.paused, false);
+  await call("POST", `/identities/${person.id}/context`, { body: { kind: "interest", value: "golf" }, expect: 200 });
+
+  /* forget: the record is emptied in place, leaves every read, and the tombstone carries the hash of what it was */
+  const expectFactHash = createHash("sha256").update(canon(fact)).digest("hex");
+  const fg = await call("POST", `/identities/${person.id}/forget`, { body: { targets: [{ type: "fact", id: fact.id }, { type: "context", id: ctxEntry.id }, { type: "fact", id: "00000000-0000-0000-0000-000000000000" }], reason: "the person asked" }, expect: 200 });
+  assert.equal(fg.json.forgotten.length, 2); assert.equal(fg.json.notFound.length, 1);
+  const tf = fg.json.forgotten.find((t) => t.type === "fact");
+  assert.equal(tf.contentHash, expectFactHash, "the tombstone hash is the SHA-256 of the fact exactly as it was returned");
+  assert.ok(verify(fg.json.governance));
+  const factsNow = await call("GET", `/knowledge/facts?subjectId=${person.id}`, { expect: 200 });
+  assert.ok(!factsNow.json.items.some((f) => f.id === fact.id), "a forgotten fact is not listed");
+  const afterForget = (await call("GET", `/identities/${person.id}/export`, { expect: 200 })).json;
+  assert.ok(!afterForget.context.some((e) => e.id === ctxEntry.id), "a forgotten context entry is not in the record");
+  assert.ok(afterForget.tombstones.some((t) => t.type === "context" && t.id === ctxEntry.id), "only its tombstone remains");
+  assert.ok(!JSON.stringify(afterForget).includes("H-10 filings"), "the content is gone");
+  const forgottenEvent = (await call("GET", `/audit/events?eventType=subject.forgotten&resourceId=${person.id}`, { expect: 200 })).json.items[0];
+  assert.ok(forgottenEvent, "the forgetting is in the chain");
+  assert.equal(forgottenEvent.details.forgotten.find((t) => t.type === "fact").contentHash, expectFactHash);
+  assert.ok(!JSON.stringify(forgottenEvent).includes("email"), "the chain never carries the forgotten content");
+
+  /* export: a signed document with a fingerprint anyone can recompute and the lineage of chain events behind the record */
+  const ex = await call("GET", `/identities/${person.id}/export`, { expect: 200 });
+  const { governance, generatedAt, fingerprint, fingerprintOf, lineage, learning, ...parts } = ex.json;
+  assert.equal(fingerprint, createHash("sha256").update(canon({ identity: parts.identity, context: parts.context, facts: parts.facts, relationships: parts.relationships, obligations: parts.obligations, consents: parts.consents, tombstones: parts.tombstones })).digest("hex"), "the fingerprint recomputes from the exported parts as fingerprintOf describes");
+  assert.ok(fingerprintOf.includes("SHA-256"));
+  assert.equal(parts.tombstones.length, 2); assert.equal(parts.relationships.length, 1); assert.equal(parts.context.length, 1, "forgotten entries live in tombstones only");
+  assert.ok(lineage.length >= 6, "creation, context, fact, relationship, pause, resume, forget and the exports are all in the lineage");
+  assert.ok(lineage.some((l) => l.eventType === "subject.forgotten"));
+  const chain = (await call("GET", `/audit/events?limit=200`, { expect: 200 })).json.items;
+  for (const l of lineage.slice(-3)) assert.ok(chain.some((e) => e.eventHash === l.eventHash), "every lineage entry is a real chain event");
+  assert.ok(verify(governance)); assert.equal(governance.outputHash, createHash("sha256").update(canon({ identityId: person.id, fingerprint })).digest("hex"), "the receipt signs the fingerprint");
+
+  /* reset: everything learned goes, the declared identity stays, the fingerprint changes, and the confirmation is required */
+  await call("POST", `/identities/${person.id}/reset`, { body: { confirmIdentityId: employer.id }, expect: 422 });
+  const rs = await call("POST", `/identities/${person.id}/reset`, { body: { confirmIdentityId: person.id, reason: "the person asked" }, expect: 200 });
+  assert.ok(rs.json.forgotten.some((t) => t.type === "relationship" && t.id === rel.id)); assert.ok(rs.json.forgotten.some((t) => t.type === "context"));
+  const after = await call("GET", `/identities/${person.id}/export`, { expect: 200 });
+  assert.equal(after.json.relationships.length, 0); assert.equal(after.json.context.length, 0); assert.equal(after.json.facts.length, 0);
+  assert.equal(after.json.identity.displayName, "Dana Reyes"); assert.equal(after.json.identity.attributes.role, "Field Engineer", "declared attributes are not learned and stay");
+  assert.notEqual(after.json.fingerprint, fingerprint);
+  const paths = await call("POST", "/graph/paths", { body: { fromId: person.id, toId: employer.id, maxHops: 2 }, expect: 200 });
+  assert.equal(paths.json.length, 0, "a forgotten relationship is not a path");
+  /* a policy can still deny a control */
+  await call("POST", "/policies", { body: { name: "no resets", version: "1", effect: "deny", status: "active", rule: { actions: ["subject.reset"] } }, expect: 201 });
+  const denied = await call("POST", `/identities/${person.id}/reset`, { body: { confirmIdentityId: person.id }, expect: 403 });
+  assert.equal(denied.json.type, "https://id-me.ai/problems/policy_denied"); assert.ok(denied.json.receiptId);
 });
 
 test("every operation in the contract was exercised", () => {

@@ -11,7 +11,7 @@
   <a href="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/codeql.yml/badge.svg"></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/SMEPro-Technologies-LLC/igl"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/SMEPro-Technologies-LLC/igl/badge"></a>
   <a href="./LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
-  <a href="./CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-1.5.0-informational"></a>
+  <a href="./CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-1.6.0-informational"></a>
   <a href="https://id-me.ai"><img alt="Platform" src="https://img.shields.io/badge/platform-id--me.ai-a9a4f2"></a>
 </p>
 
@@ -32,9 +32,9 @@ If you are not a developer: think of IGL as the rulebook and the referee for an 
 
 **The runtime** is the IGL language and its reference implementation in Node.js: the lexer, parser and static checker, the interpreter, the identity-graph runtime, the hash-chained journal with Merkle inclusion proofs, signed receipts, and the governed decode bridge that keeps a language model's output inside the declared limits. Start with the [quick start](#quick-start) below and [`docs/SPEC.md`](./docs/SPEC.md).
 
-**The platform contract** is the public OpenAPI 3.1 description of the IGL Governed Identity Platform served at [id-me.ai](https://id-me.ai). It covers identities, authority, knowledge, policies, evidence, outcomes, the graph, intelligence queries, agents, workflows, audit, and purpose-bounded projections. The contract does not depend on any particular model: the reasoning model underneath it can change without changing how applications call it, and the hosted service reports the providers it runs at `GET /capabilities`. See [`spec/openapi.yaml`](./spec/openapi.yaml), [`spec/README.md`](./spec/README.md) and the [API reference](https://id-me.ai/#docs).
+**The platform contract** is the public OpenAPI 3.1 description of the IGL Governed Identity Platform served at [id-me.ai](https://id-me.ai). It covers identities, authority, knowledge, policies, evidence, outcomes, the graph, intelligence queries, agents, workflows, audit, purpose-bounded projections, and the subject controls a person holds over what is learned about them (pause, forget, reset, export). The contract does not depend on any particular model: the reasoning model underneath it can change without changing how applications call it, and the hosted service reports the providers it runs at `GET /capabilities`. See [`spec/openapi.yaml`](./spec/openapi.yaml), [`spec/README.md`](./spec/README.md) and the [API reference](https://id-me.ai/#docs).
 
-**The platform service** is the implementation of that contract: `platform/api`, a Cloudflare Worker with a D1 database per environment, deployed to `sandbox.id-me.ai` and `api.id-me.ai` from this repository by GitHub Actions. Its conformance suite runs all 46 operations against the service and checks every response against the contract. The public site at [id-me.ai](https://id-me.ai) is `platform/site`, also deployed from here. See [`platform/api/README.md`](./platform/api/README.md).
+**The platform service** is the implementation of that contract: `platform/api`, a Cloudflare Worker with a D1 database per environment, deployed to `sandbox.id-me.ai` and `api.id-me.ai` from this repository by GitHub Actions. Its conformance suite runs all 51 operations against the service and checks every response against the contract. The public site at [id-me.ai](https://id-me.ai) is `platform/site`, also deployed from here. See [`platform/api/README.md`](./platform/api/README.md).
 
 How the runtime and the platform fit together, including how runtime terms (BOUNDARY and FOOTPRINT graphs, journal, receipts, grants, observations) map to platform terms (the six graphs, purposes, projections, governance receipts), is written down once in [`docs/PLATFORM.md`](./docs/PLATFORM.md). Decisions that shaped either are recorded as [architecture decision records](./docs/adr/).
 
@@ -44,12 +44,12 @@ How the runtime and the platform fit together, including how runtime terms (BOUN
 |---|---|
 | `src/` | The language core: lexer, parser, static checker, interpreter, identity-graph runtime, hash-chained journal (`store.js`), signed receipts and approvals (`sign.js`), governed decode bridge (`bridge.js`), per-token governed decode (`decode.js`) |
 | `provision/` | The provisioning service: HTTP and MCP endpoints, authentication and rate limiting (`auth.mjs`), per-tenant graph storage (`registry.mjs`), persistent signing keys (`keys.mjs`), a plain-language attribute resolver, caller recognition (`whoami`), governed AI decode, the service's own OpenAPI file, a CLI, a Dockerfile, and IGL Studio (`studio.html`) |
-| `spec/` | The platform contract, `openapi.yaml` (version 0.2.0), checked in CI and published at [id-me.ai](https://id-me.ai) |
+| `spec/` | The platform contract, `openapi.yaml` (version 0.3.0), checked in CI and published at [id-me.ai](https://id-me.ai) |
 | `platform/api/` | The hosted platform service that implements the contract (Cloudflare Worker, D1), with its conformance suite |
 | `platform/site/` | The id-me.ai site, its generated API reference and the Contact Sales intake function |
 | `programs/` | Reference IGL programs: a company BOUNDARY graph and an individual FOOTPRINT graph |
 | `test/` | 169 tests: bridge, decode, extract, graph, igl, sign, store, security, resolver, and the audit regression suite (F-01 to F-09) |
-| `docs/` | Language specification (`SPEC.md`), graph model (`GRAPH.md`), decode bridge (`BRIDGE.md`), deliberate exclusions (`SCOPE.md`), platform mapping (`PLATFORM.md`), decision records (`adr/`), the security audit and its probes (`audit/`) |
+| `docs/` | Language specification (`SPEC.md`), graph model (`GRAPH.md`), decode bridge (`BRIDGE.md`), deliberate exclusions (`SCOPE.md`), platform mapping (`PLATFORM.md`), how Ricorsa's IGL maps to the platform (`RICORSA.md`), decision records (`adr/`), the security audit and its probes (`audit/`) |
 | `examples/` | Runnable end-to-end flows, including journal persistence and replay |
 
 ## Start here

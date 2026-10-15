@@ -6,6 +6,7 @@
 
 import { E, validate, pageParams, cursorWhere, pageOut, parseJson, nowIso, uuid, UUID_RE } from "./lib/http.js";
 import { appendAudit, rowToEvent, storeDecision, issueReceipt } from "./lib/audit.js";
+import { learningState, assertLearning, setLearning, forget, learnedTargets, exportRecord } from "./lib/subject.js";
 import { evaluate, activePolicies, rowToPolicy } from "./lib/policy.js";
 import { project, rowToIdentity, rowToRelationship, rowToObligation, rowToConsent, rowToPurpose, newConsent } from "./lib/projection.js";
 import { runIntelligence, rowToFact, rowToEvidence } from "./lib/intelligence.js";
@@ -57,6 +58,16 @@ async function decide(db, signer, tenantId, principal, action, resource, context
   }
   return { decision, policies, receipt };
 }
+/* forget and reset share one path: policy, tombstones, receipt over the tombstones, chain entry with the ids and hashes and never the content. */
+async function subjectForget(h, identity, targets, { action, eventType, reason }) {
+  const { db, principal, requestId, signer } = h;
+  const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, action, { type: "identity", id: identity.id }, { targets: targets.length }, { requestId, refuseOnEscalate: true });
+  if (decision.effect !== "allow") throw refusal(`A policy ${decision.effect === "deny" ? "denies" : "requires escalation for"} ${action === "subject.reset" ? "resetting" : "forgetting"} on this identity.`, decision.effect === "deny" ? "policy_denied" : "policy_escalate", decision, refusalReceipt);
+  const { forgotten, notFound } = await forget(db, principal.tenantId, identity.id, targets, { reason, decisionId: decision.decisionId });
+  const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), output: { identityId: identity.id, forgotten } });
+  await appendAudit(db, principal.tenantId, { eventType, actor: principal.actor, resource: { type: "identity", id: identity.id }, action, requestId, decisionId: decision.decisionId, details: { forgotten, notFound, reason, receiptId: receipt.receiptId } });
+  return { status: 200, body: { identityId: identity.id, forgotten, notFound, governance: receipt } };
+}
 /* The 403 names the decision and the receipt, so the caller can fetch the signed record of its own refusal. */
 function refusal(detail, code, decision, receipt) {
   return E.forbidden(detail, { code, decisionId: decision.decisionId, receiptId: receipt?.receiptId ?? null, reasonCodes: decision.reasonCodes });
@@ -83,10 +94,10 @@ async function serveProjection(h, identity, { explain = false } = {}) {
 export const handlers = {
   /* ---------------- System ---------------- */
   async getHealth({ env }) {
-    return { status: 200, body: { status: "ok", version: env.SERVICE_VERSION || "1.4.0", time: nowIso() }, headers: { "cache-control": "no-store" } };
+    return { status: 200, body: { status: "ok", version: env.SERVICE_VERSION || "1.6.0", time: nowIso() }, headers: { "cache-control": "no-store" } };
   },
   async getCapabilities({ env }) {
-    return { status: 200, body: { apiVersion: CONTRACT_VERSION, features: ["identities", "projections", "purposes", "consents", "obligations", "authority", "knowledge", "policies", "evidence", "outcomes", "graph", "intelligence", "agents", "workflows", "audit", "receipts", "webhooks", "idempotency"], modelProviders: env.ANTHROPIC_API_KEY ? ["anthropic"] : [], maximumGraphHops: 12 } };
+    return { status: 200, body: { apiVersion: CONTRACT_VERSION, features: ["identities", "projections", "purposes", "consents", "obligations", "authority", "knowledge", "policies", "evidence", "outcomes", "graph", "intelligence", "agents", "workflows", "audit", "receipts", "webhooks", "idempotency", "subject-controls"], modelProviders: env.ANTHROPIC_API_KEY ? ["anthropic"] : [], maximumGraphHops: 12 } };
   },
 
   /* ---------------- Identity ---------------- */
@@ -147,6 +158,7 @@ export const handlers = {
     const cur = await getIdentity(db, principal.tenantId, params.identityId);
     validate(body, { required: ["kind", "value"], fields: { kind: { type: "string", enum: ["interest", "goal", "project", "relationship", "expertise", "preference", "constraint", "observation", "other"] }, confidence: { type: "number", min: 0, max: 1 }, source: { type: "object" } } });
     const sources = body.source ? checkSources([body.source], "source") : [];
+    await assertLearning(db, principal.tenantId, cur.id);
     const row = await db.prepare("SELECT context FROM identities WHERE tenant_id = ?1 AND id = ?2").bind(principal.tenantId, cur.id).first();
     const context = parseJson(row.context, []);
     context.push({ id: uuid(), kind: body.kind, value: body.value, confidence: body.confidence ?? null, sources, recordedAt: nowIso(), recordedBy: principal.actor });
@@ -161,7 +173,7 @@ export const handlers = {
     const { limit, cursor } = pageParams(url); const type = url.searchParams.get("type");
     const c = cursorWhere(cursor);
     const p = [principal.tenantId, params.identityId, params.identityId];
-    let sql = "SELECT * FROM relationships WHERE tenant_id = ? AND (from_id = ? OR to_id = ?)";
+    let sql = "SELECT * FROM relationships WHERE tenant_id = ? AND status != 'forgotten' AND (from_id = ? OR to_id = ?)";
     if (type) { sql += " AND type = ?"; p.push(type); }
     sql += c.clause; p.push(...c.params); sql += " ORDER BY created_at DESC, id DESC LIMIT ?"; p.push(limit + 1);
     const { results } = await db.prepare(sql).bind(...p).all();
@@ -204,6 +216,55 @@ export const handlers = {
     const { limit, cursor } = pageParams(url); const c = cursorWhere(cursor, "granted_at");
     const { results } = await db.prepare(`SELECT * FROM consents WHERE tenant_id = ? AND identity_id = ?${c.clause} ORDER BY granted_at DESC, id DESC LIMIT ?`).bind(principal.tenantId, identity.id, ...c.params, limit + 1).all();
     return { status: 200, body: pageOut(results, limit, rowToConsent, "granted_at") };
+  },
+
+  /* ---------------- Subject (contract 0.3) ----------------
+     The controls a person holds over what is learned about them. Each one
+     is evaluated against policy like any other action, receipted and chained;
+     forget and reset leave tombstones (the act and a hash), never content. */
+  async getLearningState({ db, principal, params }) {
+    await getIdentity(db, principal.tenantId, params.identityId);
+    return { status: 200, body: await learningState(db, principal.tenantId, params.identityId) };
+  },
+  async setLearningState(h) {
+    const { db, principal, params, body, requestId, signer } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    validate(body, { required: ["paused"], fields: { paused: { type: "boolean" }, reason: { type: "string", maxLength: 500 } } });
+    const action = body.paused ? "subject.pause" : "subject.resume";
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, action, { type: "identity", id: identity.id }, {}, { requestId, refuseOnEscalate: true });
+    if (decision.effect !== "allow") throw refusal(`A policy ${decision.effect === "deny" ? "denies" : "requires escalation for"} changing learning on this identity.`, decision.effect === "deny" ? "policy_denied" : "policy_escalate", decision, refusalReceipt);
+    const state = await setLearning(db, principal.tenantId, identity.id, { paused: !!body.paused, reason: body.reason ?? null, actor: principal.actor, decisionId: decision.decisionId });
+    const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), output: { identityId: identity.id, paused: state.paused, since: state.since } });
+    await appendAudit(db, principal.tenantId, { eventType: body.paused ? "subject.learning_paused" : "subject.learning_resumed", actor: principal.actor, resource: { type: "identity", id: identity.id }, action, requestId, decisionId: decision.decisionId, details: { reason: body.reason ?? null, receiptId: receipt.receiptId } });
+    return { status: 200, body: { ...state, governance: receipt } };
+  },
+  async forgetRecords(h) {
+    const { db, principal, params, body } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    validate(body, { required: ["targets"], fields: { targets: { type: "array" }, reason: { type: "string", maxLength: 500 } } });
+    if (!body.targets.length || body.targets.length > 200) throw E.unprocessable("targets must hold between 1 and 200 entries.", { code: "validation" });
+    for (const t of body.targets) if (!t || !["fact", "relationship", "context"].includes(t.type) || typeof t.id !== "string") throw E.unprocessable("Each target is { type: fact | relationship | context, id }.", { code: "validation" });
+    return subjectForget(h, identity, body.targets, { action: "subject.forget", eventType: "subject.forgotten", reason: body.reason ?? null });
+  },
+  async resetLearned(h) {
+    const { db, principal, params, body } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    validate(body, { required: ["confirmIdentityId"], fields: { confirmIdentityId: { type: "string", uuid: true }, reason: { type: "string", maxLength: 500 } } });
+    if (body.confirmIdentityId !== identity.id) throw E.unprocessable("confirmIdentityId must equal the identity in the path; a reset is not undoable.", { code: "confirmation_mismatch" });
+    const targets = await learnedTargets(db, principal.tenantId, identity.id);
+    return subjectForget(h, identity, targets, { action: "subject.reset", eventType: "subject.reset", reason: body.reason ?? null });
+  },
+  async exportIdentity(h) {
+    const { db, principal, params, requestId, signer } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, "subject.export", { type: "identity", id: identity.id }, {}, { requestId, refuseOnEscalate: true });
+    if (decision.effect !== "allow") throw refusal("A policy does not allow exporting this identity's record.", decision.effect === "deny" ? "policy_denied" : "policy_escalate", decision, refusalReceipt);
+    const row = await db.prepare("SELECT * FROM identities WHERE tenant_id = ?1 AND id = ?2").bind(principal.tenantId, identity.id).first();
+    const record = await exportRecord(db, principal.tenantId, row);
+    /* the receipt signs the fingerprint and names the chain head: a holder can show the record was this record at this point in the chain */
+    const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), output: { identityId: identity.id, fingerprint: record.fingerprint } });
+    await appendAudit(db, principal.tenantId, { eventType: "subject.exported", actor: principal.actor, resource: { type: "identity", id: identity.id }, action: "subject.export", requestId, decisionId: decision.decisionId, details: { fingerprint: record.fingerprint, receiptId: receipt.receiptId } });
+    return { status: 200, body: { ...record, governance: receipt }, headers: { "cache-control": "no-store" } };
   },
 
   /* ---------------- Authority and policy ---------------- */
@@ -252,7 +313,7 @@ export const handlers = {
   },
   async listFacts({ db, url, principal }) {
     const { limit, cursor } = pageParams(url); const c = cursorWhere(cursor);
-    const p = [principal.tenantId]; let sql = "SELECT * FROM facts WHERE tenant_id = ?";
+    const p = [principal.tenantId]; let sql = "SELECT * FROM facts WHERE tenant_id = ? AND status != 'forgotten'";
     for (const [k, col] of [["subjectId", "subject_id"], ["predicate", "predicate"], ["status", "status"]]) { const v = url.searchParams.get(k); if (v) { sql += ` AND ${col} = ?`; p.push(v); } }
     sql += c.clause; p.push(...c.params); sql += " ORDER BY created_at DESC, id DESC LIMIT ?"; p.push(limit + 1);
     const { results } = await db.prepare(sql).bind(...p).all();
@@ -261,6 +322,7 @@ export const handlers = {
   async createFact({ db, principal, body, requestId, ctx }) {
     validate(body, { required: ["subjectId", "predicate", "object"], fields: { subjectId: { type: "string", uuid: true }, predicate: { type: "string", maxLength: 200 }, qualifiers: { type: "object" }, status: { type: "string", enum: ["seed", "proposed", "certified"] }, confidence: { type: "number", min: 0, max: 1 }, validFrom: { type: "string", datetime: true }, validTo: { type: "string", datetime: true } } });
     await getIdentity(db, principal.tenantId, body.subjectId);
+    await assertLearning(db, principal.tenantId, body.subjectId, body.object && typeof body.object === "object" ? body.object.id : null);
     const sources = checkSources(body.sources);
     if (body.status === "certified" && !principal.scopes.some((s) => ["igl.admin", "igl.platform"].includes(s))) throw E.forbidden("Only igl.admin may create a fact as certified; create it as proposed and certify through governance.", { code: "certification_requires_admin" });
     const id = uuid(); const now = nowIso();
@@ -352,6 +414,7 @@ export const handlers = {
     validate(body, { required: ["fromId", "type", "toId"], fields: { fromId: { type: "string", uuid: true }, toId: { type: "string", uuid: true }, type: { type: "string", maxLength: 100 }, direction: { type: "string", enum: ["directed", "undirected"] }, attributes: { type: "object" }, effectiveFrom: { type: "string", datetime: true }, effectiveTo: { type: "string", datetime: true }, confidence: { type: "number", min: 0, max: 1 }, status: { type: "string", enum: ["proposed", "certified"] } } });
     await getIdentity(db, principal.tenantId, body.fromId); await getIdentity(db, principal.tenantId, body.toId);
     if (body.fromId === body.toId) throw E.unprocessable("A relationship needs two different identities.", { code: "validation" });
+    await assertLearning(db, principal.tenantId, body.fromId, body.toId);
     if (body.status === "certified" && !principal.scopes.some((s) => ["igl.admin", "igl.platform"].includes(s))) throw E.forbidden("Only igl.admin may create a relationship as certified.", { code: "certification_requires_admin" });
     const sources = checkSources(body.sources);
     const id = uuid(); const now = nowIso();

@@ -140,6 +140,35 @@ CREATE TABLE IF NOT EXISTS facts (
 );
 CREATE INDEX IF NOT EXISTS facts_subject ON facts (tenant_id, subject_id, predicate);
 
+-- Subject controls (contract 0.3). Learning state per identity, and the
+-- tombstones left by forget and reset: the act, the target and a hash of the
+-- record as it was. The content itself is emptied in place in its own table.
+CREATE TABLE IF NOT EXISTS learning_state (
+  identity_id TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL,
+  paused      INTEGER NOT NULL DEFAULT 0,
+  since       TEXT,
+  reason      TEXT,
+  changed_by  TEXT,                        -- ActorRef JSON
+  decision_id TEXT
+);
+CREATE TABLE IF NOT EXISTS tombstones (
+  id           TEXT PRIMARY KEY,           -- the forgotten record's id
+  tenant_id    TEXT NOT NULL,
+  identity_id  TEXT NOT NULL,
+  kind         TEXT NOT NULL,              -- fact | relationship | context
+  content_hash TEXT NOT NULL,              -- SHA-256 of the record as it was
+  reason       TEXT,
+  forgotten_at TEXT NOT NULL,
+  decision_id  TEXT,
+  receipt_id   TEXT
+);
+CREATE INDEX IF NOT EXISTS tombstones_identity ON tombstones (tenant_id, identity_id, forgotten_at);
+CREATE TRIGGER IF NOT EXISTS tombstones_no_update BEFORE UPDATE ON tombstones
+  BEGIN SELECT RAISE(ABORT, 'tombstones are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS tombstones_no_delete BEFORE DELETE ON tombstones
+  BEGIN SELECT RAISE(ABORT, 'tombstones are append-only'); END;
+
 CREATE TABLE IF NOT EXISTS policies (
   id             TEXT PRIMARY KEY,
   tenant_id      TEXT NOT NULL,
