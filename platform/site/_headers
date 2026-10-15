@@ -8,3 +8,12 @@
 /*.yaml
   Content-Type: application/yaml; charset=utf-8
   Cache-Control: public, max-age=300
+
+/brand/*
+  Cache-Control: public, max-age=86400
+
+/favicon.svg
+  Cache-Control: public, max-age=86400
+
+/social-share.png
+  Cache-Control: public, max-age=86400

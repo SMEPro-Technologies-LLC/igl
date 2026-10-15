@@ -4,7 +4,7 @@
     <img src="docs/assets/igl-logo.png" width="420" alt="IGL, Identity Governed Logic">
   </picture>
 </p>
-<p align="center"><strong>The open-source runtime and the public API contract behind the IGL Governed Identity Platform.</strong><br><em>Status: experimental. Read the <a href="./docs/audit/SECURITY-AUDIT-2026-10.md">security audit</a> before you run the provisioning service anywhere other than your own machine.</em></p>
+<p align="center"><strong>Governed intelligence. Before execution.</strong><br>The open-source runtime and the public API contract behind the IGL Governed Identity Platform.<br><em>Status: experimental. Read the <a href="./docs/audit/SECURITY-AUDIT-2026-10.md">security audit</a> before you run the provisioning service anywhere other than your own machine.</em></p>
 
 <p align="center">
   <a href="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml/badge.svg"></a>
@@ -155,6 +155,10 @@ The tools this repository serves today are `check_health`, `list_graphs`, `get_g
 - How decisions are made: [GOVERNANCE.md](./GOVERNANCE.md)
 - Contributing: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Roadmap: [issues labelled `roadmap`](https://github.com/SMEPro-Technologies-LLC/igl/issues?q=label%3Aroadmap). Planned but not yet in this repository: a WASM build with a browser playground, Python and TypeScript SDKs, and a policy-pack registry. This README only describes what exists.
+
+## Brand
+
+The logo, the symbol, the favicons and the social images live in [`docs/assets/brand/`](./docs/assets/brand/) with a short usage guide in [`docs/BRAND.md`](./docs/BRAND.md). Use them as they are; do not recolor, stretch or add effects.
 
 ## License and trademarks
 
