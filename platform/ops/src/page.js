@@ -26,7 +26,7 @@ export const LOGIN = `<!doctype html>
 </head>
 <body>
 <form method="post" action="/login" autocomplete="on">
-  <h1><b>IGL</b> <span>operations</span></h1>
+  <h1 style="display:flex;align-items:center;gap:10px"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 384 384" role="img" aria-label="IGL Identity Governed Logic"><title>IGL | Identity Governed Logic</title><defs><linearGradient id="igl-gradient" x1="35" y1="0" x2="256" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#1455FF"/><stop offset="0.53" stop-color="#333CFF"/><stop offset="1" stop-color="#713BFF"/></linearGradient></defs><g transform="translate(35.5,57)"><g fill="url(#igl-gradient)"><path d="M162 0H197L270 50V110L194 58Q180 48 164 48C98 48 53 92 53 143C53 185 77 218 108 230V94L165 64V270H137C61 270 0 212 0 137C0 59 68 0 162 0Z"/><path d="M176 116L232 155V221H287L313 246L287 270H176Z"/></g></g></svg><span><b>IGL</b> <span>operations</span></span></h1>
   <label>Username <input name="username" autocomplete="username" required autofocus></label>
   <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
   <div class="err">__ERROR__</div>
@@ -49,6 +49,7 @@ export const PAGE = `<!doctype html>
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--hair); flex-wrap: wrap; }
   header b { letter-spacing: .08em; }
+  .brandline { display: flex; align-items: center; gap: 10px; } .brandline svg { display: block; }
   header .r { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink2); font-size: 13px; }
   select, button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--hair); border-radius: 8px; padding: 6px 10px; }
   button.p { background: var(--acc); border-color: var(--acc); color: #fff; }
@@ -76,7 +77,7 @@ export const PAGE = `<!doctype html>
 </head>
 <body>
 <header>
-  <div><b>IGL</b> <span class="sub">operations</span></div>
+  <div class="brandline"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 384 384" role="img" aria-label="IGL Identity Governed Logic"><title>IGL | Identity Governed Logic</title><defs><linearGradient id="igl-gradient" x1="35" y1="0" x2="256" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#1455FF"/><stop offset="0.53" stop-color="#333CFF"/><stop offset="1" stop-color="#713BFF"/></linearGradient></defs><g transform="translate(35.5,57)"><g fill="url(#igl-gradient)"><path d="M162 0H197L270 50V110L194 58Q180 48 164 48C98 48 53 92 53 143C53 185 77 218 108 230V94L165 64V270H137C61 270 0 212 0 137C0 59 68 0 162 0Z"/><path d="M176 116L232 155V221H287L313 246L287 270H176Z"/></g></g></svg><b>IGL</b> <span class="sub">operations</span></div>
   <div class="r"><span id="who">__WHO__</span>
     <select id="days"><option value="1">last 24 hours</option><option value="7" selected>last 7 days</option><option value="30">last 30 days</option><option value="90">last 90 days</option></select>
     <button id="refresh" class="p">Refresh</button><span id="stamp" class="sub"></span>__SIGNOUT__</div>
