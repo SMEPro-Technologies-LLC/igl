@@ -3,13 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>IGL, Identity Governed Logic</title>
-<meta name="description" content="IGL Governed Identity Platform by Smeprotech: an open-source runtime that makes AI identify itself, declare its limits and state its intent before it acts, and the public API contract built on it.">
+<title>IGL, Identity Governed Logic. Governed intelligence. Before execution.</title>
+<meta name="description" content="IGL makes every AI action answer who is acting, what they may do, why, and what happened, before it runs, and proves it with a signed receipt. Open source runtime, hosted API with a free sandbox, and MCP tools for AI assistants.">
 <link rel="canonical" href="https://id-me.ai/">
 <meta property="og:title" content="IGL, Identity Governed Logic. Governed intelligence. Before execution.">
-<meta property="og:description" content="Open-source runtime and public API contract for governed identity. Status, source and what runs today, with nothing claimed that is not served.">
+<meta property="og:description" content="Every AI action answers who, what, why and what happened before it runs, with a receipt anyone can verify. Open source runtime, hosted API, free sandbox, MCP tools.">
 <meta property="og:url" content="https://id-me.ai/">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="IGL, Identity Governed Logic">
+<meta property="og:locale" content="en_US">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
+<meta name="author" content="SMEPro Technologies LLC">
 <meta property="og:image" content="https://id-me.ai/social-share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -23,9 +27,9 @@
 <link rel="alternate icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/apple-touch-icon-180.png">
 <link rel="manifest" href="/site.webmanifest">
+<script type="application/ld+json">[{"@context":"https://schema.org","@type":"Organization","name":"SMEPro Technologies LLC","alternateName":"Smeprotech","url":"https://smeprotech.com/","logo":"https://id-me.ai/brand/IGL-horizontal-primary-1280.png","sameAs":["https://github.com/SMEPro-Technologies-LLC/igl","https://id-me.ai/"],"contactPoint":[{"@type":"ContactPoint","contactType":"sales","email":"sales@id-me.ai","url":"https://id-me.ai/#sales"},{"@type":"ContactPoint","contactType":"security","email":"security@id-me.ai"}]},{"@context":"https://schema.org","@type":"WebSite","name":"IGL, Identity Governed Logic","url":"https://id-me.ai/","publisher":{"@type":"Organization","name":"SMEPro Technologies LLC"},"inLanguage":"en"},{"@context":"https://schema.org","@type":"SoftwareApplication","name":"IGL Governed Identity Platform","alternateName":"Identity Governed Logic","applicationCategory":"DeveloperApplication","operatingSystem":"Any (hosted API); Node.js 20 or newer (runtime)","url":"https://id-me.ai/","downloadUrl":"https://github.com/SMEPro-Technologies-LLC/igl","softwareVersion":"1.4.0","license":"https://www.apache.org/licenses/LICENSE-2.0","description":"Every AI action answers who is acting, what they may do, why, and what happened, before it runs, with a signed receipt anyone can verify. Open source runtime, hosted API with a free sandbox, MCP tools for AI assistants.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free self-serve sandbox. Production tenants through Contact Sales."},"publisher":{"@type":"Organization","name":"SMEPro Technologies LLC"},"featureList":["Purpose-bounded identity projections with four gates","Ed25519 governance receipts verifiable with a published key","Per-tenant hash-chained audit trail","Policy evaluation that fails closed","MCP tools for AI assistants","OpenAPI 3.1 contract with 46 operations"]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is IGL in one sentence?","acceptedAnswer":{"@type":"Answer","text":"A way to run AI and automated work so that every action states who is acting, what they are allowed to do and why before it runs, and leaves a record afterwards that cannot be quietly changed."}},{"@type":"Question","name":"Do I need to learn a programming language to use it?","acceptedAnswer":{"@type":"Answer","text":"No. Most teams use the hosted API from their existing applications or connect an AI assistant through MCP. The language exists for people who want governance inside their own programs; the platform applies the same rules to identity data over HTTP."}},{"@type":"Question","name":"Which AI models does it work with?","acceptedAnswer":{"@type":"Answer","text":"Any. IGL governs what a model is allowed to see and do; it does not replace the model. The hosted intelligence operations use Anthropic's Claude by default and the contract does not depend on the provider."}},{"@type":"Question","name":"How do I get a key?","acceptedAnswer":{"@type":"Answer","text":"Call the sandbox signup endpoint with an organization name and an email. The response is your tenant, your identity and your key, shown once. The developer console on this page does it for you."}},{"@type":"Question","name":"How do I know a result was not tampered with?","acceptedAnswer":{"@type":"Answer","text":"Every projection and governed answer carries a receipt signed with the service's Ed25519 key, whose public half is published at auth.id-me.ai. Fifteen lines of Node.js verify it without trusting the service, and the audit chain behind it refuses edits at the database level."}},{"@type":"Question","name":"What does it cost?","acceptedAnswer":{"@type":"Answer","text":"The sandbox is free and self-serve. Production tenants are issued through Contact Sales. The runtime and the API contract are open source under Apache 2.0."}}]}]</script>
+
 <style>:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
-</head>
-<body>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
 <style>
   /* Layout: full-bleed dark developer-platform fold, top nav, launch strip, hero with copy left and a perspective-tilted playground mock right. Single dark look by choice. */
@@ -158,6 +162,10 @@
   .view h2 { margin: 6px 0 10px; font-weight: 500; font-size: clamp(1.7rem, 3vw, 2.4rem); letter-spacing: -0.015em; line-height: 1.15; text-wrap: balance; }
   .view h3 { margin: 0 0 8px; font-weight: 500; font-size: 1.12rem; }
   .lead { color: var(--ink-2); font-size: 1.08rem; max-width: 62ch; margin: 0 0 32px; }
+  .faq { max-width: 76ch; display: grid; gap: 10px; }
+  .faq details { border: 1px solid var(--hair); border-radius: 12px; padding: 14px 18px; background: var(--bg-panel); }
+  .faq summary { cursor: pointer; font-weight: 600; font-size: 1.02rem; }
+  .faq p { margin: 10px 0 2px; color: var(--ink-2); line-height: 1.55; }
   .view p { max-width: 65ch; }
   .panel { background: var(--bg-panel); border: 1px solid var(--hair-2); border-radius: 12px; padding: 22px 24px; min-width: 0; }
   .panel p { color: var(--ink-2); margin: 0; font-size: 0.95rem; }
@@ -603,7 +611,8 @@
     .cta:hover, .login:hover { transform: translateY(-1px); }
   }
 </style>
-
+</head>
+<body>
 <header class="nav">
   <div class="wrap">
     <a class="brand" href="#top" aria-label="IGL, Identity Governed Logic, home">
@@ -1000,6 +1009,15 @@
     </div>
   </div>
 
+
+  <div class="band" id="faq">
+    <div class="wrap">
+      <span class="eyebrow">Questions people ask first</span>
+      <h2>Straight answers</h2>
+      <div class="faq"><details><summary>What is IGL in one sentence?</summary><p>A way to run AI and automated work so that every action states who is acting, what they are allowed to do and why before it runs, and leaves a record afterwards that cannot be quietly changed.</p></details><details><summary>Do I need to learn a programming language to use it?</summary><p>No. Most teams use the hosted API from their existing applications or connect an AI assistant through MCP. The language exists for people who want governance inside their own programs; the platform applies the same rules to identity data over HTTP.</p></details><details><summary>Which AI models does it work with?</summary><p>Any. IGL governs what a model is allowed to see and do; it does not replace the model. The hosted intelligence operations use Anthropic's Claude by default and the contract does not depend on the provider.</p></details><details><summary>How do I get a key?</summary><p>Call the sandbox signup endpoint with an organization name and an email. The response is your tenant, your identity and your key, shown once. The developer console on this page does it for you.</p></details><details><summary>How do I know a result was not tampered with?</summary><p>Every projection and governed answer carries a receipt signed with the service's Ed25519 key, whose public half is published at auth.id-me.ai. Fifteen lines of Node.js verify it without trusting the service, and the audit chain behind it refuses edits at the database level.</p></details><details><summary>What does it cost?</summary><p>The sandbox is free and self-serve. Production tenants are issued through Contact Sales. The runtime and the API contract are open source under Apache 2.0.</p></details></div>
+      <p class="lead" style="margin-top:28px">More in the <a href="https://github.com/SMEPro-Technologies-LLC/igl/wiki/FAQ">wiki FAQ</a>, for developers and for security and compliance teams.</p>
+    </div>
+  </div>
 </section>
 
 <!-- ===================== HOW IT WORKS ===================== -->
@@ -1184,7 +1202,7 @@
 <pre class="block"><span class="c"># mcp.json</span>
 { <span class="k">"mcpServers"</span>: { <span class="k">"igl_identity_mcp"</span>: {
     <span class="k">"url"</span>: <span class="s">"https://api.id-me.ai/v1/mcp"</span>,   <span class="c"># self-hosted: http://127.0.0.1:8787/mcp from npm run provision</span>
-    <span class="k">"headers"</span>: { <span class="k">"X-IGL-API-Key"</span>: <span class="s">"igl_live_…"</span>,
+    <span class="k">"headers"</span>: { <span class="k">"X-IGL-API-Key"</span>: <span class="s">"igl_live_..."</span>,
                  <span class="k">"X-IGL-Tenant-Id"</span>: <span class="s">"e7bcde63-4ccd-4594-aa64-6de1cce72ae8"</span> } } } }
 
 <span class="c"># first call</span>
@@ -1504,46 +1522,6 @@ curl -X POST https://sandbox.id-me.ai/v1/query \
 </section>
 
 <!-- ===================== PRICING ===================== -->
-<section class="view" id="pricing" data-view="pricing" hidden>
-  <div class="wrap">
-    <span class="eyebrow">Pricing, console only</span>
-    <h2>Priced per governed projection</h2>
-    <p class="lead">Every plan includes all seven tools, the four purpose profiles and hash-chained journals. You pay for projections served, not for the size of the graph behind them.</p>
-    <div class="cols cols-3">
-      <div class="panel price">
-        <div><h3>Developer</h3><p>For building and testing against a sandbox graph.</p></div>
-        <div class="amt">$0<small>/ month</small></div>
-        <ul><li>10,000 projections / month</li><li>Sandbox identities and journals</li><li>All purpose profiles</li><li>Community support</li></ul>
-        <a class="btn" href="#console">Create a key</a>
-      </div>
-      <div class="panel price hi">
-        <div><h3>Team <span class="tag acc">Most chosen</span></h3><p>For applications in production with real people in the graph.</p></div>
-        <div class="amt">$0.004<small>/ projection</small></div>
-        <ul><li>Unmetered whoami and list_purposes</li><li>Production journals, chain verification</li><li>Interaction records retained 13 months</li><li>Email support, 1 business day</li></ul>
-        <a class="btn primary" href="#console">Start on Team</a>
-      </div>
-      <div class="panel price">
-        <div><h3>Enterprise</h3><p>Your control plane, your jurisdictions, your signers.</p></div>
-        <div class="amt">Custom</div>
-        <ul><li>Dedicated control plane or on-premises</li><li>Cross-border transfer policies per region</li><li>Custom purpose profiles and signer registry</li><li>Named support, 99.95% SLA</li></ul>
-        <a class="btn" href="#sales">Contact sales</a>
-      </div>
-    </div>
-    <div class="tbl" style="margin-top:36px"><table>
-      <thead><tr><th>Included</th><th>Developer</th><th>Team</th><th>Enterprise</th></tr></thead>
-      <tbody>
-        <tr><td>Projections / month</td><td class="num">10,000</td><td class="num">Metered</td><td class="num">Committed volume</td></tr>
-        <tr><td>Node budget per projection</td><td class="num">100</td><td class="num">250</td><td class="num">Configurable</td></tr>
-        <tr><td>Purpose profiles</td><td>4 standard</td><td>4 standard</td><td>Standard + custom</td></tr>
-        <tr><td>Journal verification</td><td>Sandbox</td><td>Production</td><td>Production, exportable</td></tr>
-        <tr><td>Cross-border policy</td><td>, </td><td>Single region</td><td>Per region</td></tr>
-        <tr><td>Signer registry (Ed25519)</td><td>Shared</td><td>Shared</td><td>Your keys</td></tr>
-      </tbody>
-    </table></div>
-    <p class="note" style="margin-top:14px">Plan figures shown are placeholders for this build; replace with the published rate card before launch. Pricing is visible to signed-in console users only. <a href="#console" style="text-decoration:underline">Back to console</a></p>
-  </div>
-</section>
-
 <!-- ===================== ENTERPRISE ===================== -->
 <section class="view" id="enterprise" data-view="enterprise" hidden>
   <div class="wrap">
@@ -1844,13 +1822,13 @@ window.IGLResolver = (function () {
    resolution produces. Resolution is pure: same description to same graph.
 
    Alignment rules (revised 2026-08-16):
-   · Personal-context language ("at-home mother", "I am", "my store") resolves
+   - Personal-context language ("at-home mother", "I am", "my store") resolves
      to FOOTPRINT even when the person runs a business, the individual is the
      subject. Only an explicit legal entity suffix (LLC/Inc/Corp/Ltd) forces a
      BOUNDARY over personal context.
-   · Unmentioned jurisdiction falls back to the workspace default (TX), never
+   - Unmentioned jurisdiction falls back to the workspace default (TX), never
      a hash roll.
-   · Names are synthesized semantically (Role · Industry), never the raw
+   - Names are synthesized semantically (Role, Industry), never the raw
      sentence slug. */
 
 function hash53(str, seed = 0) {
@@ -2031,7 +2009,7 @@ const ROLE_ACTIONS = {
 
 function extractName(text, isCompany, industryLabel, role) {
   // "called X" / "named X" patterns win; explicit "X, LLC" entity names next;
-  // otherwise everything before the "is a / are the …" descriptor clause.
+  // otherwise everything before the "is a / are the ..." descriptor clause.
   // A sentence boundary ends the name: "My name is Maria Santos. I am" names Maria Santos, not "Maria Santos. I".
   const named = text.match(/(?:called|named|name is)\s+((?:[A-Z][A-Za-z0-9&'-]*)(?:\s+[A-Z][A-Za-z0-9&'-]*){0,5})/);
   if (named) return named[1].trim();
@@ -2045,7 +2023,7 @@ function extractName(text, isCompany, industryLabel, role) {
     return `${industryLabel} Company`;
   }
   // Individuals get a semantic label, never the raw sentence.
-  return `${toTitle(role)} · ${industryLabel}`;
+  return `${toTitle(role)}, ${industryLabel}`;
 }
 
 function toTitle(s) {
@@ -2196,7 +2174,7 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
     } catch (err) {
       btn.disabled = false;
       const body = encodeURIComponent(`Name: ${payload.first} ${payload.last}\nCompany: ${payload.company}\nTitle: ${payload.title}\nRegion: ${payload.region}\nInterests: ${payload.interests.join(", ")}\n\n${payload.message}`);
-      $("#sales-note").innerHTML = `The intake service did not accept the request (${err.message}). Email us instead: <a href="mailto:sales@id-me.ai?subject=${encodeURIComponent("IGL inquiry from " + payload.company)}&body=${body}" style="text-decoration:underline">sales@id-me.ai</a>, with the same details.`;
+      $("#sales-note").innerHTML = `The intake service did not accept the request (${esc(err.message)}). Email us instead: <a href="mailto:sales@id-me.ai?subject=${encodeURIComponent("IGL inquiry from " + payload.company)}&body=${body}" style="text-decoration:underline">sales@id-me.ai</a>, with the same details.`;
     }
   });
 
@@ -2308,7 +2286,9 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
 
   /* ---------- environment ---------- */
   const env = { server: (SPEC.servers[1] || SPEC.servers[0]).url, tenant: "e7bcde63-4ccd-4594-aa64-6de1cce72ae8", auth: "bearer", cred: "", purpose: "identity-introduction" };
-  try { Object.assign(env, JSON.parse(localStorage.getItem("igl-env") || "{}")); if (/igl\.example/.test(env.server || "")) env.server = SPEC.servers[1].url; } catch (e) {}
+  // The server, tenant, auth mode and purpose are remembered in this browser. The credential never is: it lives in memory for this visit only.
+  const envPersist = () => { const { cred, ...rest } = env; localStorage.setItem("igl-env", JSON.stringify(rest)); };
+  try { const saved = JSON.parse(localStorage.getItem("igl-env") || "{}"); delete saved.cred; Object.assign(env, saved); if (/igl\.example/.test(env.server || "")) env.server = SPEC.servers[1].url; } catch (e) {}
   SPEC.servers.forEach(sv => { const o = document.createElement("option"); o.value = sv.url; o.textContent = sv.description + ", " + sv.url; $("#env-server").append(o); });
   const envFields = { server: "#env-server", tenant: "#env-tenant", auth: "#env-auth", cred: "#env-cred", purpose: "#env-purpose" };
   function envLoad() {
@@ -2318,7 +2298,7 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
   }
   function envRead() { for (const k in envFields) env[k] = $(envFields[k]).value.trim(); }
   envLoad();
-  $("#env-save").addEventListener("click", () => { envRead(); try { localStorage.setItem("igl-env", JSON.stringify(env)); $("#env-status").textContent = "Saved in this browser only."; } catch (e) { $("#env-status").textContent = "This browser refused storage; values apply for this visit."; } render(); });
+  $("#env-save").addEventListener("click", () => { envRead(); try { envPersist(); $("#env-status").textContent = "Server, tenant and purpose saved in this browser. The credential is kept for this visit only."; } catch (e) { $("#env-status").textContent = "This browser refused storage; values apply for this visit."; } render(); });
   $("#env-clear").addEventListener("click", () => { try { localStorage.removeItem("igl-env"); } catch (e) {} env.cred = ""; env.tenant = ""; envLoad(); $("#env-status").textContent = "Cleared."; render(); });
   $$("#pane-env input, #pane-env select").forEach(i => i.addEventListener("input", () => { envRead(); render(); }));
 
@@ -2346,9 +2326,9 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.detail || j.error || ("HTTP " + r.status));
       env.server = SPEC.servers.find(s => /sandbox/.test(s.url)).url; env.tenant = j.tenantId; env.auth = "bearer"; env.cred = j.apiKey; envLoad();
-      try { localStorage.setItem("igl-env", JSON.stringify(env)); } catch (e) {}
+      try { envPersist(); } catch (e) {}
       $("#su-out").hidden = false; $("#su-out").textContent = JSON.stringify({ tenantId: j.tenantId, identityId: j.identityId, clientId: j.clientId, apiKey: j.apiKey, scopes: j.scopes }, null, 2);
-      st.textContent = "Done. The key is shown once below and is now the credential in this browser's Environment. Store it somewhere safe.";
+      st.textContent = "Done. The key is shown once below and is the credential for this visit. It is not stored by this page; keep a copy somewhere safe and paste it into Environment next time.";
       render();
     } catch (e) { st.textContent = "Signup failed: " + e.message; }
     finally { $("#su-go").disabled = false; }
@@ -2434,7 +2414,7 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
       root.append(Object.assign(document.createElement("div"), { className: "optag", textContent: t }));
       for (const o of items) {
         const b = document.createElement("button"); b.type = "button"; b.className = "opbtn"; b.setAttribute("aria-current", String(o === current));
-        b.innerHTML = `<span class="m ${o.method}">${o.method.toUpperCase()}</span><code>${o.path}</code>`;
+        b.innerHTML = `<span class="m ${esc(o.method)}">${esc(o.method.toUpperCase())}</span><code>${esc(o.path)}</code>`;
         b.addEventListener("click", () => { current = o; state.values = {}; state.body = ""; listOps(); renderOp(); });
         root.append(b);
       }
@@ -2591,22 +2571,22 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
     }
     const nodes = $("#sb-nodes"); nodes.replaceChildren();
     if (!admitted.length) nodes.append(Object.assign(document.createElement("span"), { className: "empty", textContent: "No nodes admitted. The identity exists; the context does not." }));
-    for (const n of admitted) { const sp = document.createElement("span"); sp.innerHTML = `<i>${n.type}</i>${n.label}`; nodes.append(sp); }
+    for (const n of admitted) { const sp = document.createElement("span"); sp.innerHTML = `<i>${esc(n.type)}</i>${esc(n.label)}`; nodes.append(sp); }
     const flags = []; if (truncated) flags.push('<span class="tag warn">truncated: true</span>'); if (!admitted.length) flags.push('<span class="tag warn">empty_warning</span>'); flags.push(`<span class="tag">${admitted.length} admitted, ${Object.values(withheld).reduce((a, b) => a + b, 0)} withheld</span>`);
     $("#sb-flags").innerHTML = flags.join(" ");
     const proj = { identityId: UUID, purpose: sb.purpose, nodes: admitted.map(n => ({ id: n.id, type: n.type, label: n.label, status: n.status })), edges: [], truncated, emptyWarning: admitted.length ? null : "no consent or no permitted node types for this purpose", withheld, governance: { receiptId: "0c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f", actor: { identityId: UUID }, authorityDecision: { decisionId: "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d", effect: admitted.length ? "allow" : "deny", evaluatedAt: "2026-10-14T14:02:11Z" }, policiesEvaluated: [], createdAt: "2026-10-14T14:02:11Z" }, createdAt: "2026-10-14T14:02:11Z" };
     $("#sb-json").textContent = JSON.stringify(proj, null, 2);
     const tb = $("#sb-explain"); tb.replaceChildren();
-    const cell = r => r ? `<td class="g-${r.result === "pass" ? "pass" : r.result === "fail" ? "fail" : "skip"}">${r.result}${r.reason ? `<span class="g-why">${r.reason}</span>` : ""}</td>` : '<td class="g-skip">, </td>';
+    const cell = r => r ? `<td class="g-${r.result === "pass" ? "pass" : r.result === "fail" ? "fail" : "skip"}">${esc(r.result)}${r.reason ? `<span class="g-why">${esc(r.reason)}</span>` : ""}</td>` : '<td class="g-skip">, </td>';
     for (const c of considered) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${c.n.label}</td><td>${c.n.type}</td>` + (c.gates ? c.gates.map(cell).join("") : `<td colspan="4" class="g-skip">${c.why}</td>`) + `<td class="${c.admitted ? "g-pass" : "g-fail"}">${c.admitted ? "admitted" : "withheld"}</td>`;
+      tr.innerHTML = `<td>${esc(c.n.label)}</td><td>${esc(c.n.type)}</td>` + (c.gates ? c.gates.map(cell).join("") : `<td colspan="4" class="g-skip">${esc(c.why)}</td>`) + `<td class="${c.admitted ? "g-pass" : "g-fail"}">${c.admitted ? "admitted" : "withheld"}</td>`;
       tb.append(tr);
     }
     const ob = $("#sb-oblig"); ob.replaceChildren();
     const obs = admitted.filter(n => n.ob);
     if (!obs.length) ob.append(Object.assign(document.createElement("div"), { className: "note", textContent: P.permits.includes("Obligation") ? "None admitted under the current consent, jurisdiction or budget." : `Obligation nodes are not permitted by ${sb.purpose}. Switch to regulatory-filing to list deadlines.` }));
-    for (const n of obs) { const d = document.createElement("div"); d.className = "ob"; d.innerHTML = `<div>${n.label.split(", ")[0]}<div class="m2">${n.ob.obligee}${n.ob.by ? ", attested by " + n.ob.by : ", computed, nobody has checked"}</div></div><div class="num"><span class="tag ${n.ob.st === "attested" ? "ok" : "warn"}">${n.ob.st}</span> ${n.ob.due}</div>`; ob.append(d); }
+    for (const n of obs) { const d = document.createElement("div"); d.className = "ob"; d.innerHTML = `<div>${esc(n.label.split(", ")[0])}<div class="m2">${esc(n.ob.obligee)}${n.ob.by ? ", attested by " + esc(n.ob.by) : ", computed, nobody has checked"}</div></div><div class="num"><span class="tag ${n.ob.st === "attested" ? "ok" : "warn"}">${esc(n.ob.st)}</span> ${esc(n.ob.due)}</div>`; ob.append(d); }
     const outcome = !admitted.length ? "refused" : truncated ? "proceeded_on_truncated" : "completed";
     $("#sb-record").textContent = JSON.stringify({ identityId: UUID, purpose: sb.purpose, outcome, reason: !admitted.length ? "no consent covers this purpose" : truncated ? "node budget bound before traversal finished; answered on partial context" : null, projectionReceiptId: proj.governance.receiptId, model: "claude" }, null, 2);
   }
@@ -2658,18 +2638,18 @@ return { resolveDescription, ROLE_ACTIONS, slugify, actorToken, hash53 };
     } catch (e) { $("#sb-source-note").textContent = "Projection failed: " + e.message; return; }
     const nodes = $("#sb-nodes"); nodes.replaceChildren();
     if (!proj.nodes.length) nodes.append(Object.assign(document.createElement("span"), { className: "empty", textContent: proj.emptyWarning || "No nodes admitted." }));
-    for (const n of proj.nodes) { const sp = document.createElement("span"); sp.innerHTML = `<i>${n.type}</i>${n.label}`; nodes.append(sp); }
-    const flags = []; if (proj.truncated) flags.push('<span class="tag warn">truncated: true</span>'); if (proj.emptyWarning) flags.push('<span class="tag warn">emptyWarning</span>'); flags.push(`<span class="tag">${proj.nodes.length} admitted, ${Object.values(proj.withheld || {}).reduce((a, b) => a + b, 0)} withheld</span>`); flags.push(`<span class="tag ok">receipt ${proj.governance.receiptId.slice(0, 8)}, signed by ${proj.governance.signer}</span>`);
+    for (const n of proj.nodes) { const sp = document.createElement("span"); sp.innerHTML = `<i>${esc(n.type)}</i>${esc(n.label)}`; nodes.append(sp); }
+    const flags = []; if (proj.truncated) flags.push('<span class="tag warn">truncated: true</span>'); if (proj.emptyWarning) flags.push('<span class="tag warn">emptyWarning</span>'); flags.push(`<span class="tag">${proj.nodes.length} admitted, ${Object.values(proj.withheld || {}).reduce((a, b) => a + b, 0)} withheld</span>`); flags.push(`<span class="tag ok">receipt ${proj.governance.receiptId.slice(0, 8)}, signed by ${esc(proj.governance.signer)}</span>`);
     $("#sb-flags").innerHTML = flags.join(" ");
     $("#sb-json").textContent = JSON.stringify(proj, null, 2);
     const tb = $("#sb-explain"); tb.replaceChildren();
-    const cell = r => `<td class="g-${r.result === "pass" ? "pass" : r.result === "fail" ? "fail" : "skip"}">${r.result}${r.reason ? `<span class="g-why">${r.reason}</span>` : ""}</td>`;
-    for (const c of ex.considered) { const tr = document.createElement("tr"); tr.innerHTML = `<td>${c.node.label}</td><td>${c.node.type}</td>` + c.gates.map(cell).join("") + `<td class="${c.admitted ? "g-pass" : "g-fail"}">${c.admitted ? "admitted" : "withheld"}</td>`; tb.append(tr); }
+    const cell = r => `<td class="g-${r.result === "pass" ? "pass" : r.result === "fail" ? "fail" : "skip"}">${esc(r.result)}${r.reason ? `<span class="g-why">${esc(r.reason)}</span>` : ""}</td>`;
+    for (const c of ex.considered) { const tr = document.createElement("tr"); tr.innerHTML = `<td>${esc(c.node.label)}</td><td>${esc(c.node.type)}</td>` + c.gates.map(cell).join("") + `<td class="${c.admitted ? "g-pass" : "g-fail"}">${c.admitted ? "admitted" : "withheld"}</td>`; tb.append(tr); }
     const ob = $("#sb-oblig"); ob.replaceChildren();
     if (!obl) ob.append(Object.assign(document.createElement("div"), { className: "note", textContent: `Obligation nodes are not permitted by ${sb.purpose}.` }));
     else if (obl.error) ob.append(Object.assign(document.createElement("div"), { className: "note", textContent: obl.error }));
     else if (!obl.items.length) ob.append(Object.assign(document.createElement("div"), { className: "note", textContent: "No obligations recorded for this identity. Administrators add them with POST /admin/obligations." }));
-    else for (const o of obl.items) { const d = document.createElement("div"); d.className = "ob"; d.innerHTML = `<div>${o.title}<div class="m2">${o.obligee || o.regulation || ""}${o.attestedBy ? ", attested" : ", proposed, nobody has attested it"}</div></div><div class="num"><span class="tag ${o.status === "attested" ? "ok" : "warn"}">${o.status}</span> ${o.dueDate}</div>`; ob.append(d); }
+    else for (const o of obl.items) { const d = document.createElement("div"); d.className = "ob"; d.innerHTML = `<div>${esc(o.title)}<div class="m2">${esc(o.obligee || o.regulation || "")}${o.attestedBy ? ", attested" : ", proposed, nobody has attested it"}</div></div><div class="num"><span class="tag ${o.status === "attested" ? "ok" : "warn"}">${esc(o.status)}</span> ${esc(o.dueDate)}</div>`; ob.append(d); }
     const outcome = !proj.nodes.length ? "refused" : proj.truncated ? "proceeded_on_truncated" : "completed";
     $("#sb-record").textContent = JSON.stringify({ identityId: sb.identity, purpose: sb.purpose, outcome, reason: proj.emptyWarning || (proj.truncated ? "node budget reached" : null), projectionReceiptId: proj.governance.receiptId, model: "console" }, null, 2);
   }

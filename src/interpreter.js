@@ -154,7 +154,10 @@ export class Interpreter {
       const key = `${step.subsystem}.${step.fn}`;
       const args = this.bindArgs(step);
       if (step.subsystem === "UDM") {
-        assertions.push({ step: key, ...this.udm[step.fn](args) });
+        // Only a function the declared signature table names may be called, and it must be a method of the runtime itself (not "constructor", "__proto__" or anything from Object).
+        const udmFn = Object.prototype.hasOwnProperty.call(this.builtins, key) && !(step.fn in Object.prototype) && typeof this.udm[step.fn] === "function" ? this.udm[step.fn] : null;
+        if (!udmFn) throw new IGLError(`UDM.${step.fn} is not a declared resolver`, { line: step.line, phase: "exec", code: "IGL_UNKNOWN_RESOLVER" });
+        assertions.push({ step: key, ...udmFn.call(this.udm, args) });
       } else if (step.subsystem === "AI") {
         const a = step.fn === "Extract"
           ? await this.ai.extract(args, { ...ctx, udm: this.udm })
@@ -298,7 +301,7 @@ export class Interpreter {
     for (const h of st.onFail.handlers) {
       const args = Object.fromEntries(h.args.filter(a => a.kind === "Named").map(a => [a.name, this.evalValue(a.value)]));
       const positional = h.args.filter(a => a.kind === "Positional").map(a => this.evalValue(a.value));
-      const fn = this.handlers[h.name];
+      const fn = Object.prototype.hasOwnProperty.call(this.handlers, h.name) && !(h.name in Object.prototype) && typeof this.handlers[h.name] === "function" ? this.handlers[h.name] : null;
       const record = { handler: h.name, args, positional };
       if (fn) record.result = await fn({ statement: st, error, args, positional, interpreter: this });
       actions.push(record);

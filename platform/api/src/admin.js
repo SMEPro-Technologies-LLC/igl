@@ -43,7 +43,7 @@ async function createTenant(db, env, { name, jurisdiction = "US", settings = {} 
 }
 
 async function platformOrAdmin(request, env, db, signer, url, { adminOk }) {
-  const route = { scopes: adminOk ? ["igl.admin"] : ["igl.platform"], apiKey: true };
+  const route = { scopes: adminOk ? ["igl.admin"] : ["igl.platform"], keyHeader: true };
   const p = await authenticate({ request, env, db, signer, route, url });
   const platform = p.scopes.includes("igl.platform");
   if (!platform && !adminOk) throw E.forbidden("A platform credential is required.", { code: "platform_required" });

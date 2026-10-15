@@ -56,7 +56,7 @@ export function credentialFrom(request, { allowApiKeyHeader }) {
 
 export async function authenticate({ request, env, db, signer, route, url }) {
   const tenantHeader = request.headers.get("x-igl-tenant-id");
-  const cred = credentialFrom(request, { allowApiKeyHeader: route.apiKey });
+  const cred = credentialFrom(request, { allowApiKeyHeader: route.keyHeader });
   if (!cred) throw E.unauthorized();
   if (cred.kind === "key-not-allowed") throw E.unauthorized("This operation does not accept X-IGL-API-Key; use an OAuth 2.0 bearer token.");
 

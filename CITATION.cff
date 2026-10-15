@@ -5,9 +5,15 @@ type: software
 authors:
   - name: SMEPro Technologies LLC
     website: https://www.smeprotech.com
-version: 1.2.1
-date-released: 2026-08-18
+version: 1.4.0
+date-released: 2026-10-15
 license: Apache-2.0
 repository-code: https://github.com/SMEPro-Technologies-LLC/igl
 url: https://id-me.ai
-abstract: A language and runtime in which identity, boundaries, intent and a hash-chained trace are bound into the computation, and the public contract of the IGL Governed Identity Platform.
+abstract: Governed intelligence, before execution. A language and runtime in which identity, boundaries, intent and a hash-chained trace are bound into the computation, the public API contract of the IGL Governed Identity Platform, and the hosted service that implements it at id-me.ai.
+keywords:
+  - AI governance
+  - identity
+  - audit trail
+  - Model Context Protocol
+  - compliance

@@ -11,6 +11,10 @@ export const DOMAIN_RECEIPT = "IGL-RECEIPT-v0.2:";
 export const DOMAIN_TOKEN = "IGL-TOKEN-v0.2:";
 export const GENESIS = "0".repeat(64);
 
+/* API keys are stored as sha256(secret). That is deliberate: a key is 40
+   characters of random base64url (about 240 bits of entropy), not a password
+   a person chose, so a slow password hash buys nothing and would cost every
+   request a key-derivation round. Passwords are never stored by this service. */
 export const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 export const hmacHex = (secret, s) => createHmac("sha256", secret).update(s).digest("hex");
 
