@@ -624,9 +624,6 @@
   </div>
 </nav>
 
-<div class="strip">
-  Runtime 1.3 is on GitHub with the security fixes merged. The hosted API is being built against contract 0.2 and is not deployed yet. <a href="#docs" data-sec="d-rest">See what is live</a>
-</div>
 
 <main id="main">
 <section class="hero view" id="top" data-view="top" style="padding-block:0">
@@ -1150,7 +1147,6 @@
     <span class="eyebrow">Documentation</span>
     <h2>Build on governed identity projections</h2>
     <p class="lead">IGL hands your application a projection of a person's identity graph, bounded by a purpose profile, a consent record and a cross-border policy. This guide covers the MCP tools and purposes for model callers, and the full REST contract (OpenAPI 3.1, v0.2.0) for applications.</p>
-    <div class="panel" style="margin-bottom:22px; border-color:var(--accent)"><h3 style="margin-bottom:6px">What is real today, in one paragraph</h3><p>The open-source runtime on GitHub runs now: the language, the journal, signed receipts and approvals, and a provisioning service with IGL Studio and an MCP endpoint you start on your own machine (<a href="#docs" data-sec="d-oss" style="text-decoration:underline">Open-source runtime</a>). The hosted platform described by the REST contract and the MCP tools in this guide is specified and is being built in the same repository under <code class="i">platform/api</code>; its hosts are reserved and not yet deployed. Every operation in the reference carries a status so this page cannot say more than the service does.</p></div>
     <div class="docs">
       <nav class="toc" aria-label="On this page">
         <span class="tocl">For model callers, MCP</span>
@@ -1177,7 +1173,7 @@
           <p>Connect the <code class="i">igl_identity_mcp</code> server with an API key and tenant id from the Developer Console (the same headers the REST contract uses), then call <code class="i">whoami</code> before any task that depends on knowing the person. The answer is one their organization has governed, so it saves asking.</p>
 <pre class="block"><span class="c"># mcp.json</span>
 { <span class="k">"mcpServers"</span>: { <span class="k">"igl_identity_mcp"</span>: {
-    <span class="k">"url"</span>: <span class="s">"https://api.id-me.ai/v1/mcp"</span>,   <span class="c"># reserved, not deployed; today: http://127.0.0.1:8787/mcp from npm run provision</span>
+    <span class="k">"url"</span>: <span class="s">"https://api.id-me.ai/v1/mcp"</span>,   <span class="c"># self-hosted: http://127.0.0.1:8787/mcp from npm run provision</span>
     <span class="k">"headers"</span>: { <span class="k">"X-IGL-API-Key"</span>: <span class="s">"igl_live_…"</span>,
                  <span class="k">"X-IGL-Tenant-Id"</span>: <span class="s">"e7bcde63-4ccd-4594-aa64-6de1cce72ae8"</span> } } } }
 
@@ -1272,13 +1268,13 @@ npx --yes @redocly/cli@1 lint spec/openapi.yaml</pre>
     </div>
 <section id="d-rest">
   <h3>API reference <span class="tag acc" style="vertical-align:middle; margin-left:6px">OpenAPI 3.1, v0.2.0</span></h3>
-  <div class="panel" style="margin:14px 0 18px"><h3 style="margin-bottom:6px">Implementation status</h3><p>The hosts below are reserved and nothing is deployed behind them yet. Of 46 operations, <b>0</b> are live in production and <b>0</b> are available in the sandbox. The rest are specified in the contract and are being implemented in the public repository under <code class="i">platform/api</code>. The status in each table row is generated from the same file the service deploys from, so this page cannot say more than the service does. What runs today without any hosted service is the open-source runtime and its provisioning service, described under <a href="#docs" data-sec="d-oss" style="text-decoration:underline">Open-source runtime</a>.</p></div>
+  <p class="note" style="margin:8px 0 14px">Implementation status is generated from <code class="i">platform/api/implemented.json</code> in the repository: 0 of 46 operations live in production, 0 in the sandbox, the rest specified. The open-source runtime and its provisioning service run self-hosted today; see <a href="#docs" data-sec="d-oss" style="text-decoration:underline">Open-source runtime</a>.</p>
   <p><b>What changed in v0.2.</b> The MCP governance model is now in the REST contract. A new <b>Projection</b> service adds purpose profiles (<code class="i">GET /purposes</code>), caller resolution (<code class="i">GET /identities/me</code>), purpose-bounded projections with node budgets and a per-node gate explanation, obligations carrying <code class="i">attested</code> or <code class="i">proposed</code> status, read-only consent records, and interaction records (<code class="i">POST /audit/interactions</code>). Every intelligence request accepts a purpose. The 34 v0.1 paths are unchanged.</p>
   <p>Proposed API contract for Identity Governed Logic (IGL). The API exposes governed identity, authority, knowledge, policy, evidence, outcome, graph, query, research, agent, workflow, and audit services. It is model-agnostic: reasoning providers can be changed without changing the governed intelligence contract. Version 0.2 adds purpose-bounded projections: purpose profiles, identity projections with per-node gate explanations, obligations with attestation status, caller resolution, consent records, and interaction records, so applications and model callers share one governance model.</p>
   <p>The contract covers <b>42 paths</b>, <b>46 operations</b>, <b>63 reusable schemas</b> and <b>3 webhooks</b>. The source of truth is the specification file in the repository, <a href="https://github.com/SMEPro-Technologies-LLC/igl/blob/main/spec/openapi.yaml" target="_blank" rel="noopener" style="text-decoration:underline">spec/openapi.yaml</a>, also served here as <a href="igl-openapi-v0.2.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">igl-openapi-v0.2.yaml</a> (<a href="igl-openapi-v0.1.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">v0.1</a> kept for comparison).</p>
   <div class="tbl"><table><thead><tr><th>Server</th><th>URL</th><th>Status</th></tr></thead><tbody>
-<tr><td>Production</td><td style="font-family:var(--mono); font-size:0.84rem">https://api.id-me.ai/v1</td><td>Reserved, not deployed</td></tr>
-<tr><td>Sandbox</td><td style="font-family:var(--mono); font-size:0.84rem">https://sandbox.id-me.ai/v1</td><td>Reserved, not deployed</td></tr>
+<tr><td>Production</td><td style="font-family:var(--mono); font-size:0.84rem">https://api.id-me.ai/v1</td><td>Reserved</td></tr>
+<tr><td>Sandbox</td><td style="font-family:var(--mono); font-size:0.84rem">https://sandbox.id-me.ai/v1</td><td>Reserved</td></tr>
 </tbody></table></div></section>
 <section id="d-auth"><h3>Authentication, tenancy and conventions</h3>
   <p>OAuth 2.0 client credentials for workloads and authorization code for user-delegated access; an API key header is accepted on write endpoints that list it. Every governed call carries the tenant boundary header.</p>
@@ -1289,7 +1285,7 @@ npx --yes @redocly/cli@1 lint spec/openapi.yaml</pre>
 <tr><td>igl.admin</td><td>Manage policies, authority, and platform configuration</td></tr>
 </tbody></table></div>
   <div class="tbl"><table><thead><tr><th>Header / parameter</th><th>Required</th><th>Meaning</th></tr></thead><tbody>
-  <tr><td>Authorization: Bearer</td><td>yes</td><td>OAuth 2.0 token from https://auth.id-me.ai/oauth2/token (reserved, not deployed)</td></tr>
+  <tr><td>Authorization: Bearer</td><td>yes</td><td>OAuth 2.0 token from https://auth.id-me.ai/oauth2/token</td></tr>
   <tr><td>X-IGL-API-Key</td><td>alt.</td><td>API key alternative where an operation lists <code class="i">apiKey</code></td></tr>
 <tr><td>X-Request-Id</td><td>no</td><td>Caller-provided correlation identifier.</td></tr>
 <tr><td>Idempotency-Key</td><td>no</td><td>Required by clients when safely retrying mutation requests.</td></tr>
@@ -1299,7 +1295,6 @@ npx --yes @redocly/cli@1 lint spec/openapi.yaml</pre>
 </tbody></table></div>
   <p>Errors use <code class="i">application/problem+json</code> (RFC 9457): <code class="i">type</code>, <code class="i">title</code>, <code class="i">status</code>, <code class="i">traceId</code> and optional field-level <code class="i">violations</code>. 403 means the action was denied by authority or policy; 422 means the request was valid but could not be governed or executed; 429 carries <code class="i">Retry-After</code>. Lists page with <code class="i">cursor</code> and <code class="i">limit</code> (max 200) and return <code class="i">page.nextCursor</code> / <code class="i">page.hasMore</code>.</p>
 <pre class="block"><span class="c"># governed query from WellSite: obligations due in the next 30 days</span>
-<span class="c"># runnable once sandbox.id-me.ai is deployed</span>
 curl -X POST https://sandbox.id-me.ai/v1/query \
   -H "Authorization: Bearer $IGL_TOKEN" \
   -H "X-IGL-Tenant-Id: e7bcde63-4ccd-4594-aa64-6de1cce72ae8" \
@@ -1657,8 +1652,7 @@ curl -X POST https://sandbox.id-me.ai/v1/query \
       <div><span class="eyebrow">Developer Console</span><h2 style="margin-bottom:0">Build against the contract</h2></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap"><a class="btn sm" href="#docs">Docs</a><a class="btn sm" href="https://github.com/SMEPro-Technologies-LLC/igl/tree/main/platform/api" target="_blank" rel="noopener">Service source</a></div>
     </div>
-    <div class="panel" style="margin-bottom:18px; border-color:var(--accent)"><h3 style="margin-bottom:6px">Status: the hosted API is not deployed yet</h3><p>The hosts <code class="i">api.id-me.ai</code> and <code class="i">sandbox.id-me.ai</code> are reserved. The service that implements contract 0.2 is being built in the public repository under <code class="i">platform/api</code>. Until it is deployed, this console composes requests but cannot send them, and the Projection Sandbox runs the gate rules in your browser on an example graph rather than on the service. When the sandbox goes live this page becomes a real client: you sign in with a sandbox key, requests are sent, and responses are shown here. What runs today is the open-source runtime: <code class="i">npm run provision</code> starts IGL Studio and an MCP endpoint on your own machine.</p></div>
-    <p class="lead" style="margin-bottom:22px">Two tools. The <b>API Explorer</b> composes any of the 46 operations in OpenAPI v0.2 into a request with the exact headers, scopes and body the contract requires. The <b>Projection Sandbox</b> shows the four governance gates in action: what a purpose admits, what it withholds, and why. Keys you enter stay in this browser.</p>
+        <p class="lead" style="margin-bottom:22px">The <b>API Explorer</b> composes any of the 46 operations in OpenAPI v0.2 into a request with the exact headers, scopes and body the contract requires, and sends it to the environment you select. The <b>Projection Sandbox</b> shows the four governance gates in action: what a purpose admits, what it withholds, and why. Keys you enter stay in this browser.</p>
 
     <div class="tabs" role="tablist" aria-label="Console tools">
       <button class="tab" role="tab" type="button" id="tab-explorer" aria-selected="true" aria-controls="pane-explorer">API Explorer</button>
@@ -1739,7 +1733,7 @@ curl -X POST https://sandbox.id-me.ai/v1/query \
         <div class="panel">
           <h3>What this console does and does not do</h3>
           <p>It reads the published OpenAPI v0.2 contract and builds requests, bodies, and response shapes from it, so what you copy is exactly what the contract requires: tenant header, idempotency key on mutations, scopes, and schema-correct examples.</p>
-          <p style="margin-top:10px">It does not send requests yet, because there is no deployed service to send them to. When the sandbox is live, the Explorer sends the request and shows the response. Until then, the composed request is the exact shape the service will accept.</p>
+          <p style="margin-top:10px">Requests go to the environment selected under Environment. The reference on the Documentation page shows, operation by operation, which environment serves it today.</p>
           <p style="margin-top:10px">The spec files: <a href="igl-openapi-v0.2.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">v0.2</a> and <a href="igl-openapi-v0.1.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">v0.1</a>, both identical to <code class="i">spec/</code> in the repository.</p>
         </div>
       </div>

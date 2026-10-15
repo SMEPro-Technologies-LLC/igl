@@ -72,15 +72,12 @@ n_live = len(LIVE); n_sandbox = len(SANDBOX)
 servers = spec.get("servers", [])
 srv_rows = []
 for s in servers:
-    state = "Deployed" if DEPLOYED else "Reserved, not deployed"
+    state = "Deployed" if DEPLOYED else "Reserved"
     srv_rows.append(f'<tr><td>{E(s.get("description","").split(".")[0] or "Server")}</td><td {MONO.replace("0.8rem","0.84rem")}>{E(s["url"])}</td><td>{E(state)}</td></tr>')
 status_para = (
-    f'<div class="panel" style="margin:14px 0 18px"><h3 style="margin-bottom:6px">Implementation status</h3>'
-    f'<p>{"The hosted service is deployed." if DEPLOYED else "The hosts below are reserved and nothing is deployed behind them yet."} '
-    f'Of {n_ops} operations, <b>{n_live}</b> are live in production and <b>{n_sandbox}</b> are available in the sandbox. '
-    f'The rest are specified in the contract and are being implemented in the public repository under <code class="i">platform/api</code>. '
-    f'The status in each table row is generated from the same file the service deploys from, so this page cannot say more than the service does. '
-    f'What runs today without any hosted service is the open-source runtime and its provisioning service, described under <a href="#docs" data-sec="d-oss" style="text-decoration:underline">Open-source runtime</a>.</p></div>')
+    f'<p class="note" style="margin:8px 0 14px">Implementation status is generated from <code class="i">platform/api/implemented.json</code> in the repository: '
+    f'{n_live} of {n_ops} operations live in production, {n_sandbox} in the sandbox, the rest specified. '
+    f'The open-source runtime and its provisioning service run self-hosted today; see <a href="#docs" data-sec="d-oss" style="text-decoration:underline">Open-source runtime</a>.</p>')
 d_rest = f'''<section id="d-rest">
   <h3>API reference <span class="tag acc" style="vertical-align:middle; margin-left:6px">OpenAPI 3.1, v{E(spec["info"]["version"])}</span></h3>
   {status_para}
