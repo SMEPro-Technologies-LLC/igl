@@ -33,7 +33,7 @@ const ALLOWED_ORIGINS = new Set(
 const TOOLS = [
   {
     name: "check_health",
-    description: "Check that the Identity Graph provisioning service and the AI model are warm.",
+    description: "Check that the Identity Graph service and its model are ready.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
   },
@@ -76,20 +76,20 @@ const TOOLS = [
   {
     name: "identity_graph_whoami",
     description:
-      "Recognize the caller. Returns the caller's own Identity Graph — their FOOTPRINT (individual) or BOUNDARY (company) — with journal chain status, footprint digest, and latest governed results. First contact seeds the graph from the registered profile; every contact after that replays the existing hash-chained journal instantly. Call this FIRST in every conversation to bind the session to the caller's identity graph before any other tool.",
+      "Identify the caller and return their Identity Graph, journal status, footprint digest, and latest results. The first contact creates the graph from the registered profile. Later contacts replay its journal. Call this before using other tools so the session is associated with the caller's graph.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
   },
   {
     name: "provision_identity",
     description:
-      "Provision an Identity Graph from a natural-language description of a company or individual. Deterministically resolves attributes, folds the identity graph into a hash-chained journal (one-time boot; repeat calls replay idempotently), generates the executable IGL program, and runs it with the model inside the compiled governance mask. For individuals, the second statement deliberately asserts an observed-but-never-granted action and is refused with IGL_FOOTPRINT_DENIED — that refusal is the governance proof, NOT an error.",
+      "Create an Identity Graph from a description of a company or individual. The service resolves its attributes, records the graph in a hash-chained journal, generates an IGL program, and runs it with governed model output. Repeated requests reuse the existing journal. For individuals, one example action is observed but not granted. IGL rejects it with IGL_FOOTPRINT_DENIED before generating model output.",
     inputSchema: {
       type: "object",
       properties: {
         description: { type: "string", description: "e.g. 'Example Energy, LLC is a Texas oil and gas operator' or 'Jordan Avery is a DFIR coordinator in Houston, Texas'" },
         kind: { type: "string", enum: ["BOUNDARY", "FOOTPRINT"], description: "Optional override; omit to let the resolver decide." },
-        auto: { type: "boolean", description: "Provision a synthetic entity (description not required)." },
+        auto: { type: "boolean", description: "Create a sample graph without a description." },
       },
     },
     annotations: { readOnlyHint: false },
@@ -105,7 +105,7 @@ function summarize(graph) {
 async function callTool(name, args, caller) {
   switch (name) {
     case "identity_graph_whoami": {
-      if (!caller) throw new Error("unrecognized caller — this session is not bound to a registered identity key");
+      if (!caller) throw new Error("Unrecognized caller. This session is not associated with a registered identity key.");
       const { whoAmI } = await import("./service.mjs");
       return whoAmI(caller);
     }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GRAPH Studio: Identity Graph Provisioning</title>
+<title>IGL Studio: Provision an identity graph</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -70,26 +70,26 @@
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/><circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/><path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/></svg>
     GRAPH
   </span>
-  <div class="sect">EXPLORE</div>
-  <button class="nav-item active" data-v="console" onclick="show('console',this)">Studio Console</button>
-  <button class="nav-item" data-v="graphs" onclick="show('graphs',this)">My Graphs</button>
-  <div class="sect">MANAGE</div>
+  <div class="sect">PROVISION</div>
+  <button class="nav-item active" data-v="console" onclick="show('console',this)">New identity graph</button>
+  <button class="nav-item" data-v="graphs" onclick="show('graphs',this)">Provisioned graphs</button>
+  <div class="sect">SETTINGS</div>
   <button class="nav-item" data-v="settings" onclick="show('settings',this)">Service settings</button>
-  <div class="health" id="health">service: checking...</div>
+  <div class="health" id="health">Service status: checking...</div>
 </aside>
 
 <main>
 
 <div class="view on" id="view-console">
-  <h1>Provision your Identity Graph
+  <h1>Provision an identity graph
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="3.5" r="2.4" fill="#a142f4"/><circle cx="3.5" cy="12" r="2.4" fill="#f06292"/><circle cx="20.5" cy="12" r="2.4" fill="#4285f4"/><circle cx="12" cy="20.5" r="2.4" fill="#7c5cff"/><path d="M12 6v12M6 12h12M12 6L6 12l6 6 6-6z" stroke="#b7a6ff" stroke-width="1.1" fill="none"/></svg>
   </h1>
-  <p class="sub">Describe a company (a <b>boundary</b>) or an individual (a <b>footprint</b>). The service resolves the attributes deterministically, folds the graph into a hash-chained journal, generates the executable IGL program, and runs it with the model decoding inside the compiled governance mask. Every provision returns the program, the per-statement results, the journal head, and receipt verification.</p>
+  <p class="sub">Enter a short description of a company or an individual. IGL builds its graph and journal, creates an IGL program, and runs it with governed model output. The results include the program, each statement's status, and journal and receipt checks.</p>
   <div class="prompt"><div class="prompt-in">
     <textarea id="desc" placeholder="Example: Ridgeline Energy, LLC is a Texas oil and gas operator. Or: Jordan Avery is a DFIR coordinator in Houston, Texas."></textarea>
     <div class="prompt-row">
       <select id="kind">
-        <option value="">Resolver decides</option>
+        <option value="">Choose type automatically</option>
         <option value="BOUNDARY">Company: BOUNDARY</option>
         <option value="FOOTPRINT">Individual: FOOTPRINT</option>
       </select>
@@ -97,7 +97,7 @@
         <button class="btn primary" id="provBtn" onclick="provision(false)">Provision</button>
         <button class="btn" id="autoBtn" onclick="provision(true)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg>
-          Auto-provision
+          Create sample graph
         </button>
       </div>
     </div>
@@ -107,21 +107,21 @@
 </div>
 
 <div class="view" id="view-graphs">
-  <h1>My Graphs</h1>
-  <p class="sub">Every provisioned Identity Graph on this service, newest first. Seed means first provision; replay means the existing hash-chained journal answered idempotently.</p>
-  <div class="card"><div id="glist" class="empty">Loading...</div></div>
+  <h1>Provisioned graphs</h1>
+  <p class="sub">Graphs created by this service, newest first. "Seed" means the graph was created for the first time. "Replay" means IGL reused its existing journal.</p>
+  <div class="card"><div id="glist" class="empty">Loading graphs...</div></div>
 </div>
 
 <div class="view" id="view-settings">
   <h1>Service settings</h1>
-  <p class="sub">Served from the provisioning service itself, the studio talks to its own origin and needs no setup. Point it elsewhere only if the service runs on another host or behind a tunnel. The key is held in memory for this tab only.</p>
+  <p class="sub">The studio uses this service by default. Enter another service URL only if it runs on a different host. If you enter an API key, it stays in this browser tab and is cleared when the tab closes.</p>
   <div class="card">
     <h3>Connection</h3>
-    <label style="font-size:12.5px;color:var(--muted)">Service base URL (blank = this origin)</label>
+    <label style="font-size:12.5px;color:var(--muted)">Service URL (leave blank to use this service)</label>
     <input class="cfg mono" id="cfgBase" placeholder="http://localhost:8787">
-    <label style="font-size:12.5px;color:var(--muted);display:block;margin-top:12px">Bearer key (only if PROVISION_API_KEY is set)</label>
-    <input class="cfg mono" id="cfgKey" type="password" placeholder="optional">
-    <div style="margin-top:12px"><button class="btn small primary" onclick="applyCfg()">Apply and re-check</button></div>
+    <label style="font-size:12.5px;color:var(--muted);display:block;margin-top:12px">API key (only if PROVISION_API_KEY is set)</label>
+    <input class="cfg mono" id="cfgKey" type="password" placeholder="Leave blank if the service does not require a key">
+    <div style="margin-top:12px"><button class="btn small primary" onclick="applyCfg()">Save and check connection</button></div>
     <div class="flash" id="cfgFlash"></div>
   </div>
 </div>
@@ -148,29 +148,29 @@ async function health(){
   try {
     const r = await fetch(api("/api/health"));
     const j = await r.json();
-    el.innerHTML = j.ok ? "service: <b style='color:var(--ok)'>warm</b> (" + esc(j.model) + ")" : "service: <b style='color:var(--bad)'>unhealthy</b>";
-  } catch { el.innerHTML = "service: <b style='color:var(--bad)'>unreachable</b>. Run: npm run provision"; }
+    el.innerHTML = j.ok ? "Service: <b style='color:var(--ok)'>ready</b> (" + esc(j.model) + ")" : "Service: <b style='color:var(--bad)'>unavailable</b>";
+  } catch { el.innerHTML = "Service: <b style='color:var(--bad)'>unreachable</b>. Start it with: npm run provision"; }
 }
 function applyCfg(){
   cfg.base = document.getElementById("cfgBase").value.trim().replace(/\/$/,"");
   cfg.key = document.getElementById("cfgKey").value.trim();
-  flash("cfgFlash","Applied. Checking the service...");
+  flash("cfgFlash","Settings saved. Checking the service...");
   health();
 }
 
 async function provision(auto){
   const desc = document.getElementById("desc").value.trim();
   const kind = document.getElementById("kind").value || undefined;
-  if (!auto && !desc) return flash("flash","Describe a company or an individual first, or use Auto-provision.",false);
+  if (!auto && !desc) return flash("flash","Enter a company or individual description, or create a sample graph.",false);
   const b1=document.getElementById("provBtn"), b2=document.getElementById("autoBtn");
-  b1.disabled=b2.disabled=true; flash("flash", auto ? "Provisioning a synthetic entity..." : "Provisioning. The model runs inside the compiled governance mask; first run can take a moment.");
+  b1.disabled=b2.disabled=true; flash("flash", auto ? "Creating a sample graph..." : "Creating the graph. The first run may take a moment.");
   try {
     const r = await fetch(api("/api/provision"), { method:"POST", headers:hdrs(), body: JSON.stringify(auto ? { auto:true } : { description: desc, kind }) });
     const j = await r.json();
-    if (!r.ok) return flash("flash", "Service error: " + (j.error || r.status), false);
-    flash("flash", (j.runtime.boot === "seed" ? "Provisioned " : "Replayed ") + j.runtime.slug + " (" + j.runtime.kind + ").");
+    if (!r.ok) return flash("flash", "The service returned an error: " + (j.error || r.status), false);
+    flash("flash", (j.runtime.boot === "seed" ? "Created " : "Replayed ") + j.runtime.slug + " (" + j.runtime.kind + ").");
     renderResult(j.runtime, j.resolved);
-  } catch(e) { flash("flash","Could not reach the service: " + e.message, false); }
+  } catch(e) { flash("flash","Could not connect to the service: " + e.message, false); }
   finally { b1.disabled=b2.disabled=false; }
 }
 
@@ -181,7 +181,7 @@ function renderResult(rt, resolved){
     return `<div class="stmt ${denied?"denied":""}">
       <b>Statement ${i+1}</b> <span class="tag ${s.status==="ok"?"ok":"bad"}">${esc(s.status)}</span>
       ${s.intent?`<span class="mono" style="font-size:12px;color:var(--muted)"> ${esc(s.intent)}</span>`:""}
-      ${denied?`<div class="why"><b>${esc(s.error.code)}</b>: ${esc(s.error.message)}. This refusal is the governance proof, not an error: the action was observed but never granted, and observation does not confer authority. No model output was emitted.</div>`
+      ${denied?`<div class="why"><b>${esc(s.error.code)}</b>: ${esc(s.error.message)}. The action was observed but not granted, so IGL stopped it before generating model output.</div>`
               : s.error?`<div class="why"><b>${esc(s.error.code)}</b>: ${esc(s.error.message)}</div>`:""}
       ${proj?`<table><thead><tr><th>Slot</th><th>Emitted</th><th>Lifted value</th><th>How</th></tr></thead><tbody>${proj}</tbody></table>`:""}
     </div>`;
@@ -210,7 +210,7 @@ async function loadGraphs(){
     const r = await fetch(api("/api/graphs"), { headers: hdrs() });
     const j = await r.json();
     const gs = j.graphs || [];
-    if (!gs.length){ el.className="empty"; el.textContent="Nothing provisioned yet. Use the console."; return; }
+    if (!gs.length){ el.className="empty"; el.textContent="No graphs yet. Create one from the New identity graph page."; return; }
     window.__gs = gs;
     el.className=""; el.innerHTML = gs.map((g,i)=>`
       <div class="gitem"><div>
@@ -220,7 +220,7 @@ async function loadGraphs(){
         <div style="font-size:12px;color:var(--muted);margin-top:4px" class="mono">digest ${esc(String(g.footprintDigest||"").slice(0,40))}...</div>
       </div>
       <button class="btn small" onclick="openGraph(${i})">Open</button></div>`).join("");
-  } catch(e){ el.className="empty"; el.textContent="Could not reach the service: " + e.message; }
+  } catch(e){ el.className="empty"; el.textContent="Could not connect to the service: " + e.message; }
 }
 function openGraph(i){
   renderResult(window.__gs[i]);

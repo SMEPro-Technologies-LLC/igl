@@ -1,12 +1,12 @@
 # Contributing to IGL
 
-Thank you for your interest in contributing. IGL is a governance language — the bar for changes is deliberately high, because the guarantees IGL makes (identity, boundary, intent, trace) only hold if the implementation is disciplined. This document explains the process.
+Thanks for considering a contribution. Changes must preserve IGL's identity, boundary, intent, and trace guarantees. This guide explains how to contribute.
 
 ## Before you write code
 
 - **Small fixes** (typos, docs, bug fixes with tests): open a pull request directly.
-- **Language changes** (syntax, semantics, new bindings, changes to the trace schema): open an **IGL Enhancement Proposal (IEP)** first, as an issue using the IEP template. Language changes require spec discussion before implementation. The four bindings are invariant — proposals that weaken identity, boundary, intent, or trace guarantees will not be accepted.
-- **New capture channels or event types**: must conform to the existing envelope schema and provenance taxonomy (see the spec, `spec/`). Provenance is assigned by capture route, never by payload self-claims. This rule is not negotiable.
+- **Language changes** (syntax, semantics, bindings, or trace schema): open an **IGL Enhancement Proposal (IEP)** as an issue before implementation. Discuss the change in the specification first. Proposals must preserve the identity, boundary, intent, and trace guarantees.
+- **New capture channels or event types**: follow the existing envelope schema and provenance rules in `docs/SPEC.md`. The capture route assigns provenance; payload claims do not.
 
 ## Developer Certificate of Origin (DCO)
 
@@ -63,21 +63,21 @@ This appends `Signed-off-by: Your Name <you@example.com>` to the commit message.
 ## Code standards
 
 - **Tests are required.** A PR without tests will not be merged. Governance-critical paths (identity check, boundary evaluation, hash chain, provenance assignment) require unit *and* property-based tests.
-- **Canonicalization is law.** Any code touching hashing or serialization must produce canonical output (sorted keys, no whitespace) — see `spec/normalization.md`.
+- Code that handles hashing or serialization must produce canonical output with sorted keys and no extra whitespace. See the normalization rules in `docs/SPEC.md`.
 - **No provenance upgrades.** Code that reclassifies `reported:*` or `derived:*` events as `observed:*` will be rejected on review. This is a security invariant.
 - **Signed commits are encouraged** (`git commit -S`) and required for maintainers.
 
 ## Pull request process
 
 1. Fork and branch from `main`.
-2. Keep PRs focused — one concern per PR.
-3. CI must pass: build, tests, lint, spec-conformance suite.
+2. Keep each PR focused on one concern.
+3. Make sure the tests pass with `npm test` and that CI is green.
 4. At least one maintainer review; two for changes to `core/` or `spec/`.
 5. Squash-merge with a clear commit message.
 
 ## Reporting bugs
 
-Open a GitHub issue with a minimal reproduction. For **security vulnerabilities, do not open a public issue** — see [SECURITY.md](./SECURITY.md).
+Open a GitHub issue with a minimal reproduction. For **security vulnerabilities, do not open a public issue**. See [SECURITY.md](./SECURITY.md).
 
 ## Code of Conduct
 

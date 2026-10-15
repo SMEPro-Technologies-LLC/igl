@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Identity Graph Provisioning (IGL Runtime)",
-    "description": "Provisions Identity Graphs for companies (BOUNDARY) and individuals (FOOTPRINT). The service deterministically resolves attributes from a natural-language description, folds the identity graph into a hash-chained journal, generates an executable IGL (Identity Governed Logic) program, and runs it with the AI model decoding inside the compiled governance mask. Returns the generated program, per-statement execution results, journal chain status, footprint digest, and receipt verification.",
+    "description": "Creates Identity Graphs for companies (BOUNDARY) and individuals (FOOTPRINT). The service resolves attributes from a description, records the graph in a hash-chained journal, generates an IGL (Identity Governed Logic) program, and runs it with governed model output. The response includes the program, statement results, journal status, footprint digest, and receipt verification.",
     "version": "0.2.0"
   },
   "servers": [
@@ -18,7 +18,7 @@
     "/api/health": {
       "get": {
         "operationId": "checkHealth",
-        "summary": "Check that the provisioning service and AI model are warm",
+        "summary": "Check that the provisioning service and model are ready",
         "security": [],
         "responses": {
           "200": { "description": "Service healthy" }
@@ -29,7 +29,7 @@
       "post": {
         "operationId": "provisionIdentity",
         "summary": "Provision an Identity Graph from a natural-language description of a company or individual",
-        "description": "Deterministically resolves attributes, folds the identity graph into a hash-chained journal (one-time boot; repeat calls replay the existing chain idempotently), generates the executable IGL program, and executes it with the model inside the compiled decode mask. For an individual, the second statement deliberately asserts an observed-but-never-granted action and is refused with IGL_FOOTPRINT_DENIED — that refusal is the governance proof, not an error.",
+        "description": "Resolves attributes, records the graph in a hash-chained journal, generates an IGL program, and runs it with governed model output. Repeated requests reuse the existing journal. For an individual, one example action is observed but not granted. IGL rejects it with IGL_FOOTPRINT_DENIED before generating model output.",
         "requestBody": {
           "required": true,
           "content": {
@@ -39,16 +39,16 @@
                 "properties": {
                   "description": {
                     "type": "string",
-                    "description": "Natural-language description, e.g. 'Example Energy, LLC is a Texas oil and gas operator' or 'Jordan Avery is a DFIR coordinator in Houston, Texas'"
+                    "description": "For example, 'Example Energy, LLC is a Texas oil and gas operator' or 'Jordan Avery is a DFIR coordinator in Houston, Texas'"
                   },
                   "kind": {
                     "type": "string",
                     "enum": ["BOUNDARY", "FOOTPRINT"],
-                    "description": "Optional override: BOUNDARY for a company, FOOTPRINT for an individual. Omit to let the resolver decide."
+                    "description": "Optional. Use BOUNDARY for a company or FOOTPRINT for an individual. Omit to choose automatically."
                   },
                   "auto": {
                     "type": "boolean",
-                    "description": "When true, provisions a synthetic entity (description not required)."
+                    "description": "When true, creates a sample graph without a description."
                   }
                 }
               }

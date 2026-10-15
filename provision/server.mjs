@@ -97,7 +97,7 @@ const server = http.createServer(async (req, res) => {
     const caller = resolveCaller(callerKey(req, url));
 
     if (req.method === "GET" && url.pathname === "/api/whoami") {
-      if (!caller) return send(req, res, 401, { error: "unrecognized caller — present a registered identity key" });
+      if (!caller) return send(req, res, 401, { error: "Unrecognized caller. Provide a registered identity key." });
       return send(req, res, 200, await whoAmI(caller));
     }
 
@@ -146,7 +146,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[provision] Identity Graph provisioning service on http://localhost:${PORT}`);
-  console.log(`[provision] POST /api/provision — model warm, journals hash-chained`);
-  console.log(`[provision] POST /mcp — MCP endpoint for ChatGPT Apps${API_KEY ? " (append ?key=$PROVISION_API_KEY)" : ""}`);
+  console.log(`[provision] POST /api/provision: model ready, journals hash-chained`);
+  console.log(`[provision] POST /mcp: MCP endpoint for ChatGPT Apps${API_KEY ? " (append ?key=$PROVISION_API_KEY)" : ""}`);
   if (API_KEY) console.log(`[provision] bearer auth ENABLED (PROVISION_API_KEY set)`);
 });
