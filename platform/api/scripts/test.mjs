@@ -16,7 +16,7 @@ function run(cmd, args, opts = {}) {
 }
 
 await run("npx", ["wrangler", "d1", "execute", "igl-api-local", "--local", "--file=schema.sql"]);
-const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "IGL_ENV:sandbox", "--var", "RATE_BURST:100000"], { env, stdio: ["ignore", "pipe", "pipe"] });
+const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "IGL_ENV:sandbox", "--var", "RATE_BURST:100000", "--var", "BOOTSTRAP_TOKEN:test-bootstrap"], { env, stdio: ["ignore", "pipe", "pipe"] });
 let log = ""; dev.stdout.on("data", (d) => { log += d; }); dev.stderr.on("data", (d) => { log += d; });
 
 let up = false;
