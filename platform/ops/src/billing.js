@@ -26,25 +26,31 @@ export const CATALOG = {
     meters: [{ id: "gas", name: "Gas", unit: "gas", usd_per_unit: 0.025, note: "1 gas per question on Fast or Best, 3 on Reasoning, 10 per Research report, 25 per Discover set, 250 per Build version, 1 per browser action or minute" }],
   },
   tortplus: {
+    // Mirrors the application's own catalog (projects/tortplus/worker/src/billing.js); the Worker creates these plans in Finix on first use, tagged app=tortplus.
     model: "subscription",
     plans: [
-      { tier: "pilot", name: "Pilot", amount_cents: 0, description: "TortPlus. Pay per CDIP package at $250; no monthly fee.", included: { cdip: 0 } },
-      { tier: "practice", name: "Practice", amount_cents: 45000, description: "TortPlus. Two CDIP packages a month included, $200 each after.", included: { cdip: 2 } },
-      { tier: "firm", name: "Firm", amount_cents: 125000, description: "TortPlus. Eight CDIP packages a month included, $200 each after.", included: { cdip: 8 } },
-      { tier: "archive", name: "Archive retention", amount_cents: 15000, description: "TortPlus. Transcript and finding archive retained past the matter.", addon: true },
+      { tier: "pilot", name: "Pilot", amount_cents: 0, description: "TortPlus. Two AI-drafted imports a month and $5 of model use; no card.", included: { imports: 2, users: 3 } },
+      { tier: "analyst", name: "Analyst", amount_cents: 19500, description: "TortPlus. Up to 3 users and 10 AI-drafted imports a month.", included: { imports: 10, users: 3 } },
+      { tier: "firm", name: "Firm", amount_cents: 65000, description: "TortPlus. Up to 25 users and 60 AI-drafted imports a month.", included: { imports: 60, users: 25 } },
     ],
     meters: [
-      { id: "cdip", name: "CDIP package", unit: "package", usd_per_unit: 200, first_unit_usd: 250, note: "$250 on Pilot; $200 beyond the plan's included packages" },
-      { id: "model", name: "Model usage", unit: "USD of provider cost", usd_per_unit: 1.3, note: "provider cost plus 30%, from the usage meter the Worker already keeps" },
+      { id: "imports", name: "AI-drafted import beyond the plan", unit: "import", usd_per_unit: 15 },
+      { id: "model_usd", name: "Model use", unit: "USD of provider cost", usd_per_unit: 1.3, note: "provider cost plus 30%, charged with the imports on the first of the following month" },
     ],
   },
   tortgraph: {
+    // Tortgraph's own store has the Pilot plan, the per-CDIP price (certified findings package per matter, $250 default) and the archive subscription.
     model: "subscription",
     plans: [
-      { tier: "analyst", name: "Analyst", amount_cents: 19500, description: "Tortgraph.ai. 500 graph queries a month.", included: { query: 500 } },
-      { tier: "firm", name: "Firm", amount_cents: 65000, description: "Tortgraph.ai. 3,000 graph queries a month.", included: { query: 3000 } },
+      { tier: "pilot", name: "Pilot", amount_cents: 0, description: "Tortgraph.ai. Pay per CDIP package at $250; no monthly fee.", included: { cdip: 0 } },
+      { tier: "practice", name: "Practice", amount_cents: 45000, description: "Tortgraph.ai. Two CDIP packages a month included, $200 each after.", included: { cdip: 2 } },
+      { tier: "firm", name: "Firm", amount_cents: 125000, description: "Tortgraph.ai. Eight CDIP packages a month included, $200 each after.", included: { cdip: 8 } },
+      { tier: "archive", name: "Archive retention", amount_cents: 15000, description: "Tortgraph.ai. Transcript and finding archive retained past the matter.", addon: true },
     ],
-    meters: [{ id: "query", name: "Graph query", unit: "query", usd_per_unit: 0.5 }],
+    meters: [
+      { id: "cdip", name: "CDIP package", unit: "package", usd_per_unit: 200, first_unit_usd: 250, note: "$250 on Pilot; $200 beyond the plan's included packages" },
+      { id: "model", name: "Model usage", unit: "USD of provider cost", usd_per_unit: 1.3, note: "provider cost plus 30%, from the model_usage table" },
+    ],
   },
   vdrpros: {
     model: "subscription",

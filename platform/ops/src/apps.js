@@ -25,7 +25,7 @@ export const APPS = [
   { id: "wellsite", name: "WellSite", domain: "wellsite.app", worker: null, store: null, kind: "regulatory reporting, compliance calendar and data room for operators in 30 states; field to office from the pumper's phone; EDI and hard-copy filing" },
   { id: "leasexplorer", name: "LeaseXplorer", domain: "leasexplorer.com", worker: null, store: null, kind: "lease opportunity discovery three months ahead of the field, through the whole acquisition life cycle" },
   { id: "toxictort", name: "ToxicTort", domain: "toxictort.us", worker: null, store: null, kind: "toxic tort practice" },
-  { id: "tortplus", name: "TortPlus", domain: "tortplus.com", worker: "tortplus", store: "TORTGRAPH", kind: "deposition evidence intelligence" },
+  { id: "tortplus", name: "TortPlus", domain: "tortplus.com", worker: "tortplus", store: null, remote: "https://tortplus.com/api/ops", kind: "deposition evidence intelligence" },
   { id: "tortgraph", name: "Tortgraph", domain: "tortgraph.ai", worker: "tortgraph", store: "TORTGRAPH", kind: "defendant relationship graph" },
   { id: "vdrpros", name: "VDRPros", domain: "vdrpros.com", worker: "vdrpros", store: "VDRPROS", kind: "virtual data room" },
   { id: "realechat", name: "RealEChat", domain: "realechat.com", worker: "realechat", store: null, kind: "real estate leads and exposure" },
@@ -249,6 +249,42 @@ const IGL_API = {
   async setPlan() { throw new Error("platform tenants are provisioned through the API, not from this console"); },
 };
 
+/* Applications that keep their data outside D1 (TortPlus on KV) expose a management API of their own at
+   {remote}/{summary|customers|sessions|usage|subscriptions|plans|customer/:id} and POST {remote}/plan, read with the
+   per-application key in the OPS_KEYS secret ({"tortplus":"<key>"}). Rows arrive already in the console's shapes. */
+const REMOTE = {
+  describe: "the application's own management API, read with its key from OPS_KEYS",
+  sessionsKept: false,
+  async call(c, path, init = {}) {
+    const r = await fetch(c.base + path, { ...init, headers: { "x-ops-key": c.key, ...(init.body ? { "content-type": "application/json" } : {}) }, signal: AbortSignal.timeout(15000) });
+    const text = await r.text(); let j; try { j = JSON.parse(text); } catch { j = { error: text.slice(0, 200) }; }
+    if (!r.ok) throw new Error(`${c.base}${path}: ${r.status} ${j.error || ""}`.trim());
+    return j;
+  },
+  qs: (q, extra = {}) => "?" + new URLSearchParams(Object.entries({ limit: q.limit, offset: q.offset, q: q.search || "", customer: q.customer || "", days: q.days, ...extra }).filter(([, v]) => v !== "" && v != null).map(([k, v]) => [k, String(v)])).toString(),
+  summary(c) { return REMOTE.call(c, "/summary"); },
+  async customers(c, q) { return (await REMOTE.call(c, "/customers" + REMOTE.qs(q))).rows; },
+  async sessions(c, q) { const r = await REMOTE.call(c, "/sessions" + REMOTE.qs(q)); return r.rows ?? null; },
+  async usage(c, q) { return (await REMOTE.call(c, "/usage" + REMOTE.qs(q))).rows; },
+  async subscriptions(c, q) { return (await REMOTE.call(c, "/subscriptions" + REMOTE.qs(q))).rows; },
+  async plans(c) { return (await REMOTE.call(c, "/plans")).rows; },
+  async setPlan(c, id, plan) { await REMOTE.call(c, "/plan", { method: "POST", body: JSON.stringify({ customer: id, plan, by: "ops.id-me.ai" }) }); },
+};
+function remoteClient(env, app) {
+  let keys = {}; try { keys = JSON.parse(env.OPS_KEYS || "{}"); } catch { keys = {}; }
+  let bases = {}; try { bases = JSON.parse(env.OPS_REMOTE_BASES || "{}"); } catch { bases = {}; }   // local tests point an application at a stand-in
+  const key = keys[app.id]; return key ? { base: String(bases[app.id] || app.remote).replace(/\/$/, ""), key } : null;
+}
+/** The store and adapter for an application: a D1 binding with its adapter, or the application's own API. */
+function bindApp(env, app) {
+  if (app.remote) { const c = remoteClient(env, app); return c ? { db: c, adapter: REMOTE } : { db: null, adapter: REMOTE, why: `OPS_KEYS has no key for ${app.id}; the application's management API at ${app.remote} needs it` }; }
+  if (!app.store) return { db: null, adapter: null, why: "no store is bound for this application yet; health only" };
+  const db = env[app.store]; const adapter = ADAPTERS[app.store];
+  if (!db) return { db: null, adapter: null, why: `D1 binding ${app.store} is not configured on the ops Worker` };
+  if (!adapter) return { db, adapter: null, why: `no adapter for ${app.store}` };
+  return { db, adapter };
+}
+
 const ADAPTERS = { TORTGRAPH, RICORSA, RICORSA_CONSOLE, VDRPROS, API_PROD: IGL_API };
 
 /* ---------------- console tables (INTAKE database) ---------------- */
@@ -276,11 +312,8 @@ export async function portfolio(env, { health } = {}) {
   for (const app of APPS) {
     /** @type {any} */
     const row = { ...app, health: health?.[app.id] || null, store: app.store, configured: false };
-    const db = app.store ? env[app.store] : null;
-    const adapter = app.store ? ADAPTERS[app.store] : null;
-    if (!app.store) row.why = "no store is bound for this application yet; health only";
-    else if (!db) row.why = `D1 binding ${app.store} is not configured on the ops Worker`;
-    else if (!adapter) row.why = `no adapter for ${app.store}`;
+    const { db, adapter, why } = bindApp(env, app);
+    if (why || !db || !adapter) row.why = why || "store not configured";
     else {
       try { row.summary = await adapter.summary(db); row.configured = true; row.describe = adapter.describe; row.sessionsKept = adapter.sessionsKept; }
       catch (e) { row.why = `store answered with an error: ${e.message}`; }
@@ -322,8 +355,8 @@ export function query(url) {
 
 export async function appRead(env, appId, what, q) {
   const app = appById(appId); if (!app) return { error: "unknown application", status: 404 };
-  const db = app.store ? env[app.store] : null; const adapter = app.store ? ADAPTERS[app.store] : null;
-  if (!db || !adapter) return { error: app.store ? `D1 binding ${app.store} is not configured on the ops Worker` : "no store is bound for this application", status: 503 };
+  const { db, adapter, why } = bindApp(env, app);
+  if (!db || !adapter) return { error: why || "store not configured", status: 503 };
   const fn = adapter[what];
   if (typeof fn !== "function") return { error: `${what} is not available for ${app.name}`, status: 404 };
   const rows = await fn(db, q);
@@ -343,8 +376,8 @@ async function ingested(env, appId, q) {
 /* Plan change: the application's own plan column changes, and the console records who did it and why. */
 export async function changePlan(env, appId, customerId, plan, reason, byEmail) {
   const app = appById(appId); if (!app) return { error: "unknown application", status: 404 };
-  const db = app.store ? env[app.store] : null; const adapter = app.store ? ADAPTERS[app.store] : null;
-  if (!db || !adapter) return { error: "store not configured", status: 503 };
+  const { db, adapter, why } = bindApp(env, app);
+  if (!db || !adapter) return { error: why || "store not configured", status: 503 };
   if (!/^[a-z0-9][a-z0-9_.-]{0,40}$/i.test(plan)) return { error: "plan must be a short identifier", status: 422 };
   let fromPlan = null;
   try { const rows = await adapter.customers(db, { limit: 500, offset: 0, search: null }); fromPlan = rows.find((r) => r.id === customerId)?.plan ?? null; } catch {}
@@ -369,7 +402,7 @@ export async function addNote(env, appId, customerId, body, byEmail) {
 
 export async function customerRecord(env, appId, customerId, q) {
   const app = appById(appId); if (!app) return { error: "unknown application", status: 404 };
-  const db = app.store ? env[app.store] : null; const adapter = app.store ? ADAPTERS[app.store] : null;
+  const { db, adapter } = bindApp(env, app);
   const out = { app: appId, customer: customerId };
   if (db && adapter) {
     try {
