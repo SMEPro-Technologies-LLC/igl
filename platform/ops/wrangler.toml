@@ -4,6 +4,7 @@
 #   CLOUDFLARE_API_TOKEN  Zone Analytics: Read, Zone: Read on id-me.ai (site traffic)
 #   GITHUB_TOKEN          classic or fine-grained token with push access to the repo (traffic, clones); optional
 #   OPS_ADMIN_PASSWORD    the console's own sign-in (username OPS_ADMIN_USER, below); set it and the sign-in page is live
+#   INGEST_KEYS           JSON {"<app id>": "<key>"}; applications post login, logout and usage events to /ingest/<app id> with x-ops-ingest-key
 # Cloudflare Access can be used instead: set ACCESS_TEAM_DOMAIN and ACCESS_AUD from the Access application for ops.id-me.ai.
 name = "igl-ops"
 main = "src/index.js"
@@ -41,3 +42,25 @@ database_id = "9cb410a2-45a4-4a60-bea5-3400afccbc96"
 binding = "API_SANDBOX"
 database_name = "igl-api-sandbox"
 database_id = "9eb93da4-4bd4-4686-97db-9d407b5a11ed"
+
+# Application stores, read by the portfolio adapters in src/apps.js. Read only,
+# except the plan column an operator changes on purpose (logged in ops_plan_changes).
+[[d1_databases]]
+binding = "TORTGRAPH"
+database_name = "tortgraph"
+database_id = "114c0537-ef68-4ca7-b743-39029551c8f9"
+
+[[d1_databases]]
+binding = "RICORSA"
+database_name = "ricorsa"
+database_id = "47395d3b-09a7-403f-ad59-602ecb4fe1ff"
+
+[[d1_databases]]
+binding = "RICORSA_CONSOLE"
+database_name = "ricorsa-console"
+database_id = "6307a1b3-e03f-4e1b-9ad8-7d2294e74df6"
+
+[[d1_databases]]
+binding = "VDRPROS"
+database_name = "vdrpros"
+database_id = "0679c226-6c47-4e3d-ad99-3b51c8d29eb8"
