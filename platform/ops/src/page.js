@@ -104,6 +104,7 @@ export const PAGE = `<!doctype html>
     const out = [];
     // health
     out.push('<div class="row">' + Object.entries(d.health).map(([k, h]) => '<div class="card"><h2>' + esc(k) + '</h2><div class="kpi"><span class="tag ' + (h.ok ? "ok" : "bad") + '">' + (h.ok ? "up" : (h.error || "down")) + '</span></div><div class="sub">' + esc(h.url) + ' ' + (h.status || "") + ' ' + h.ms + ' ms</div></div>').join("") + '</div>');
+    out.push('<div class="card" id="apps"><h2>Applications</h2><div class="note">Loading</div></div>');
     // site
     if (!d.site.configured) out.push(unconf("Site traffic", d.site.why));
     else if (d.site.error) out.push(unconf("Site traffic", d.site.error));
@@ -133,7 +134,98 @@ export const PAGE = `<!doctype html>
     out.push('<div class="card" id="mentions"><h2>Mentions</h2><div class="note">Loading</div></div>');
     $("#main").innerHTML = out.join("");
     document.querySelectorAll("select.st").forEach((s) => s.addEventListener("change", async () => { const r = await fetch("/api/inquiry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: s.dataset.id, status: s.value }) }); if (!r.ok) alert("Could not update"); }));
-    loadMentions();
+    loadMentions(); loadApps();
+  }
+  /* ---------------- applications: the portfolio ---------------- */
+  let appsCache = null; const openApp = { id: null, tab: "customers", customer: null, q: "" };
+  const when = (v) => v ? esc(String(v).slice(0, 16).replace("T", " ")) : '<span class="sub">never</span>';
+  const money = (c) => (c === null || c === undefined) ? "n/a" : "$" + (Number(c) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  async function loadApps() {
+    try {
+      const r = await fetch("/api/apps"); if (!r.ok) throw new Error("HTTP " + r.status);
+      appsCache = (await r.json()).apps; renderApps();
+    } catch (e) { $("#apps").innerHTML = '<h2>Applications</h2><div class="note">Unavailable: ' + esc(e.message) + '</div>'; }
+  }
+  function renderApps() {
+    const apps = appsCache || [];
+    const rows = apps.map((a) => {
+      const h = a.health || {}; const st = h.ok ? '<span class="tag ok">up</span>' : '<span class="tag bad">' + esc(h.error || ("HTTP " + h.status)) + '</span>';
+      const sm = a.summary || {};
+      const plans = (sm.plans || []).map((p) => esc(p.plan || "none") + " " + n(p.n)).join(", ");
+      const store = a.configured ? '<span class="tag ok">' + esc(a.store) + '</span>' : '<span class="tag warn" title="' + esc(a.why || "") + '">' + esc(a.store ? "store not bound" : "no store") + '</span>';
+      const ing = a.ingest && !a.ingest.error ? n(a.ingest.logins_7d) + " in / " + n(a.ingest.logouts_7d) + " out" : "n/a";
+      return '<tr class="app" data-id="' + esc(a.id) + '" style="cursor:pointer"><td><b>' + esc(a.name) + '</b><br><span class="sub">' + esc(a.domain) + ' · ' + esc(a.kind) + '</span></td><td>' + st + ' <span class="sub">' + (h.ms || "") + ' ms' + (h.note ? ', ' + esc(h.note) : '') + '</span></td><td>' + store + '</td><td class="n">' + n(sm.customers) + '</td><td class="n">' + n(sm.signed_in ?? sm.active_subscriptions ?? sm.active) + '</td><td>' + (plans || '<span class="sub">n/a</span>') + '</td><td class="n">' + money(sm.mrr_cents ?? sm.paid_cents ?? sm.gas_cents) + '</td><td>' + ing + '</td></tr>';
+    }).join("");
+    $("#apps").innerHTML = '<h2>Applications (' + apps.length + ')</h2><div class="sub" style="margin-bottom:8px">Every row reads the application’s own store. Click a row to manage its customers, sessions, usage and plans. Logins and logouts posted to /ingest are counted in the last column.</div>' +
+      '<table><thead><tr><th>Application</th><th>Health</th><th>Store</th><th class="n">Customers</th><th class="n">Active</th><th>Plans</th><th class="n">Revenue</th><th>Ingest 7d</th></tr></thead><tbody>' + rows + '</tbody></table><div id="appdetail"></div>';
+    document.querySelectorAll("tr.app").forEach((tr) => tr.addEventListener("click", () => { openApp.id = tr.dataset.id; openApp.customer = null; openApp.tab = "customers"; renderAppDetail(); }));
+    if (openApp.id) renderAppDetail();
+  }
+  async function renderAppDetail() {
+    const a = (appsCache || []).find((x) => x.id === openApp.id); if (!a) return;
+    const box = $("#appdetail"); const tabs = ["customers", "sessions", "activity", "usage", "subscriptions", "messages", "plans"];
+    box.innerHTML = '<div class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">' + esc(a.name) + ' <span class="sub">' + esc(a.domain) + '</span></h2><div>' +
+      tabs.map((t) => '<button class="tab' + (t === openApp.tab ? ' p' : '') + '" data-tab="' + t + '">' + t + '</button>').join(" ") + ' <button id="appclose">Close</button></div></div>' +
+      (a.configured ? '<div class="sub">' + esc(a.describe) + '</div>' : '<div class="note">' + esc(a.why || "") + '</div>') +
+      '<div id="appbody" style="margin-top:10px"><div class="note">Loading</div></div><div id="custbody"></div></div>';
+    box.querySelectorAll("button.tab").forEach((b) => b.addEventListener("click", () => { openApp.tab = b.dataset.tab; renderAppDetail(); }));
+    $("#appclose").addEventListener("click", () => { openApp.id = null; box.innerHTML = ""; });
+    if (!a.configured) { $("#appbody").innerHTML = '<div class="note">Nothing to manage until a store is bound. Health is checked every refresh' + (a.ingest && a.ingest.events_7d ? '; ' + n(a.ingest.events_7d) + ' events arrived through /ingest in the last 7 days.' : '.') + '</div>'; return; }
+    try {
+      const r = await fetch("/api/apps/" + a.id + "/" + openApp.tab + "?limit=200&days=90" + (openApp.q ? "&q=" + encodeURIComponent(openApp.q) : "")); const d = await r.json();
+      if (!r.ok) { $("#appbody").innerHTML = '<div class="note">' + esc(d.error || ("HTTP " + r.status)) + '</div>'; return; }
+      const rows = d.rows || [];
+      let html = "";
+      if (openApp.tab === "customers") {
+        html = '<div style="display:flex;gap:8px;margin-bottom:8px"><input id="custq" placeholder="Search email, name, company" value="' + esc(openApp.q) + '" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--hair);border-radius:8px;padding:6px 10px;min-width:260px"><button id="custgo">Search</button></div>' +
+          (rows.length ? table([{ h: "Customer", f: (c) => '<a href="#" class="cust" data-id="' + esc(c.id) + '"><b>' + esc(c.name || c.email || c.id) + '</b></a><br><span class="sub">' + esc(c.email || "") + (c.org ? " · " + esc(c.org) : "") + '</span>' }, { h: "Plan", f: (c) => '<span class="tag">' + esc(c.plan || "none") + '</span>' }, { h: "Status", f: (c) => esc(c.status || "") }, { h: "MRR", f: (c) => money(c.mrr_cents), n: 1 }, { h: "Since", f: (c) => when(c.created_at) }, { h: "Last seen", f: (c) => when(c.last_seen_at) }, { h: "Detail", f: (c) => '<span class="sub">' + esc(Object.entries(c.external || {}).filter(([, v]) => v !== null && v !== undefined && v !== "" && v !== false).map(([k, v]) => k + ": " + (Array.isArray(v) ? v.join("/") : v)).join(", ")) + '</span>' }], rows) : '<div class="note">No customers match.</div>');
+      } else if (openApp.tab === "sessions") {
+        html = d.kept === false ? '<div class="note">' + esc(d.why) + '</div>' : (rows.length ? table([{ h: "Who", f: (s) => esc(s.email || s.customer_id) }, { h: "Signed in", f: (s) => when(s.started_at) }, { h: "Last seen", f: (s) => when(s.last_seen_at) }, { h: "Signed out", f: (s) => s.ended_at ? when(s.ended_at) + ' <span class="sub">' + esc(s.end_reason || "") + '</span>' : '<span class="tag ok">open</span>' }, { h: "From", f: (s) => '<span class="mono">' + esc(s.ip || "") + '</span><br><span class="sub">' + esc((s.user_agent || "").slice(0, 60)) + '</span>' }], rows) : '<div class="note">No sessions recorded.</div>');
+        if (d.ingest && d.ingest.length) html += '<h3>Posted through /ingest</h3>' + table([{ h: "When", f: (e) => when(e.at) }, { h: "Who", f: (e) => esc(e.email || e.customer_ref || "") }, { h: "Kind", k: "kind" }, { h: "Meter", f: (e) => esc(e.meter || "") + (e.qty !== null ? " × " + n(e.qty) : "") }, { h: "From", f: (e) => '<span class="mono">' + esc(e.ip || "") + '</span>' }], d.ingest);
+      } else if (openApp.tab === "activity") {
+        html = rows.length ? table([{ h: "When", f: (e) => when(e.at) }, { h: "Who", f: (e) => esc(e.email || e.account_id || e.acct_id || "") }, { h: "Kind", k: "kind" }, { h: "Detail", f: (e) => '<span class="sub">' + esc(String(e.detail || "").slice(0, 160)) + '</span>' }], rows) : '<div class="note">No activity recorded.</div>';
+      } else if (openApp.tab === "usage") {
+        html = rows.length ? table([{ h: "Period", k: "period" }, { h: "Customer", f: (u) => '<span class="mono">' + esc(u.customer_id) + '</span>' }, { h: "Meter", k: "meter" }, { h: "Quantity", f: (u) => n(u.qty), n: 1 }, { h: "Tokens in / out", f: (u) => (u.tokens_in != null ? n(u.tokens_in) + " / " + n(u.tokens_out) : ""), n: 1 }, { h: "Cost", f: (u) => u.cost_usd != null ? "$" + Number(u.cost_usd).toFixed(4) : "", n: 1 }], rows) : '<div class="note">No metered usage in the window.</div>';
+      } else if (openApp.tab === "subscriptions") {
+        html = rows.length ? table([{ h: "Who", f: (s) => esc(s.email || s.user_id) }, { h: "Plan", k: "plan_key" }, { h: "Status", k: "status" }, { h: "Provider", f: (s) => esc(s.provider || "") + (s.billing_cycle ? " · " + esc(s.billing_cycle) : "") }, { h: "Started", f: (s) => when(s.started_at) }, { h: "Next billing", f: (s) => when(s.next_billing_at) }, { h: "Cancelled", f: (s) => when(s.cancelled_at) }], rows) : '<div class="note">No subscriptions recorded by the application.</div>';
+      } else if (openApp.tab === "messages") {
+        html = rows.length ? table([{ h: "When", f: (m) => when(m.at) }, { h: "Customer", k: "customer" }, { h: "Direction", f: (m) => esc(m.direction + " " + m.kind) }, { h: "Subject", k: "subject" }, { h: "To", k: "to_email" }, { h: "Status", f: (m) => esc(m.status) + (m.provider ? " via " + esc(m.provider) : "") }], rows) : '<div class="note">No messages recorded by the application.</div>';
+      } else if (openApp.tab === "plans") {
+        html = rows.length ? table([{ h: "Plan", k: "plan" }, { h: "Customers", f: (p) => n(p.n), n: 1 }, { h: "MRR", f: (p) => p.mrr_cents != null ? money(p.mrr_cents) : (p.mrr != null ? "$" + Number(p.mrr).toFixed(2) : ""), n: 1 }], rows) : '<div class="note">No plan column in this store.</div>';
+      }
+      $("#appbody").innerHTML = html;
+      const qi = $("#custq"); if (qi) { $("#custgo").addEventListener("click", () => { openApp.q = qi.value.trim(); renderAppDetail(); }); qi.addEventListener("keydown", (e) => { if (e.key === "Enter") { openApp.q = qi.value.trim(); renderAppDetail(); } }); }
+      document.querySelectorAll("a.cust").forEach((el) => el.addEventListener("click", (e) => { e.preventDefault(); openApp.customer = el.dataset.id; renderCustomer(); }));
+      if (openApp.customer) renderCustomer();
+    } catch (e) { $("#appbody").innerHTML = '<div class="note">Could not load: ' + esc(e.message) + '</div>'; }
+  }
+  async function renderCustomer() {
+    const a = (appsCache || []).find((x) => x.id === openApp.id); if (!a || !openApp.customer) return;
+    const box = $("#custbody"); box.innerHTML = '<div class="note">Loading customer</div>';
+    try {
+      const r = await fetch("/api/apps/" + a.id + "/customer/" + encodeURIComponent(openApp.customer) + "?days=365"); const d = await r.json();
+      if (!r.ok) { box.innerHTML = '<div class="note">' + esc(d.error) + '</div>'; return; }
+      const c = d.customer_row || {};
+      let h = '<div class="card" style="margin-top:12px;border-color:var(--acc)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h2 style="margin:0">' + esc(c.name || c.email || openApp.customer) + ' <span class="sub">' + esc(c.email || "") + (c.org ? " · " + esc(c.org) : "") + '</span></h2><button id="custclose">Close</button></div>' +
+        '<div class="row" style="margin-top:8px"><div class="card"><h2>Plan</h2><div class="kpi">' + esc(c.plan || "none") + '</div><div class="sub">' + esc(c.status || "") + (c.mrr_cents != null ? " · " + money(c.mrr_cents) + " MRR" : "") + '</div>' +
+        '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><input id="planv" placeholder="new plan id" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--hair);border-radius:8px;padding:6px 10px;width:140px"><input id="planr" placeholder="reason" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--hair);border-radius:8px;padding:6px 10px;flex:1;min-width:140px"><button id="plango" class="p">Change plan</button></div></div>' +
+        '<div class="card"><h2>Since / last seen</h2><div>' + when(c.created_at) + '<br>' + when(c.last_seen_at) + '</div></div>' +
+        '<div class="card"><h2>Record</h2><div class="sub">' + esc(Object.entries(c.external || {}).filter(([, v]) => v !== null && v !== undefined && v !== "" && v !== false).map(([k, v]) => k + ": " + (Array.isArray(v) ? v.join("/") : v)).join("\n")).replace(/\n/g, "<br>") + '</div></div></div>';
+      const sec = (title, inner) => '<details open style="margin-top:10px"><summary>' + esc(title) + '</summary>' + inner + '</details>';
+      if (d.sessions) h += sec("Sessions (" + d.sessions.length + ")", d.sessions.length ? table([{ h: "Signed in", f: (s) => when(s.started_at) }, { h: "Last seen", f: (s) => when(s.last_seen_at) }, { h: "Signed out", f: (s) => s.ended_at ? when(s.ended_at) + " " + esc(s.end_reason || "") : '<span class="tag ok">open</span>' }, { h: "From", f: (s) => '<span class="mono">' + esc(s.ip || "") + '</span>' }], d.sessions) : '<div class="note">None.</div>');
+      if (d.ingested && d.ingested.length) h += sec("Events posted by the application (" + d.ingested.length + ")", table([{ h: "When", f: (e) => when(e.at) }, { h: "Kind", k: "kind" }, { h: "Meter", f: (e) => esc(e.meter || "") + (e.qty !== null ? " × " + n(e.qty) : "") }, { h: "From", f: (e) => '<span class="mono">' + esc(e.ip || "") + '</span>' }], d.ingested));
+      if (d.activity) h += sec("Activity (" + d.activity.length + ")", d.activity.length ? table([{ h: "When", f: (e) => when(e.at) }, { h: "Kind", k: "kind" }, { h: "Detail", f: (e) => '<span class="sub">' + esc(String(e.detail || "").slice(0, 200)) + '</span>' }], d.activity) : '<div class="note">None.</div>');
+      if (d.usage) h += sec("Usage (" + d.usage.length + ")", d.usage.length ? table([{ h: "Period", k: "period" }, { h: "Meter", k: "meter" }, { h: "Quantity", f: (u) => n(u.qty), n: 1 }, { h: "Cost", f: (u) => u.cost_usd != null ? "$" + Number(u.cost_usd).toFixed(4) : "", n: 1 }], d.usage) : '<div class="note">None.</div>');
+      if (d.subscriptions) h += sec("Subscriptions (" + d.subscriptions.length + ")", d.subscriptions.length ? table([{ h: "Plan", k: "plan_key" }, { h: "Status", k: "status" }, { h: "Provider", k: "provider" }, { h: "Started", f: (s) => when(s.started_at) }, { h: "Next billing", f: (s) => when(s.next_billing_at) }], d.subscriptions) : '<div class="note">None.</div>');
+      if (d.messages) h += sec("Messages in the application (" + d.messages.length + ")", d.messages.length ? table([{ h: "When", f: (m) => when(m.at) }, { h: "Direction", f: (m) => esc(m.direction + " " + m.kind) }, { h: "Subject", k: "subject" }, { h: "Status", k: "status" }], d.messages) : '<div class="note">None.</div>');
+      h += sec("Plan changes from this console (" + (d.plan_changes || []).length + ")", (d.plan_changes || []).length ? table([{ h: "When", f: (p) => when(p.at) }, { h: "From", k: "from_plan" }, { h: "To", k: "to_plan" }, { h: "Reason", k: "reason" }, { h: "By", k: "by_email" }], d.plan_changes) : '<div class="note">None.</div>');
+      h += sec("Notes (" + (d.notes || []).length + ")", ((d.notes || []).map((x) => '<div style="margin:6px 0"><span class="sub">' + when(x.at) + ' ' + esc(x.by_email) + '</span><br>' + esc(x.body) + '</div>').join("") || '<div class="note">None.</div>') + '<textarea id="notev" rows="2" placeholder="Add a note"></textarea><button id="notego" style="margin-top:6px">Save note</button>');
+      h += '</div>';
+      box.innerHTML = h;
+      $("#custclose").addEventListener("click", () => { openApp.customer = null; box.innerHTML = ""; });
+      $("#plango").addEventListener("click", async () => { const plan = $("#planv").value.trim(); if (!plan) return; if (!confirm("Change plan of " + (c.email || openApp.customer) + " to " + plan + "? This writes to " + a.name + "'s own store.")) return; const r2 = await fetch("/api/apps/" + a.id + "/plan/" + encodeURIComponent(openApp.customer), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan, reason: $("#planr").value }) }); const j = await r2.json(); if (!r2.ok) alert(j.error || "Could not change plan"); else { renderAppDetail(); } });
+      $("#notego").addEventListener("click", async () => { const body = $("#notev").value.trim(); if (!body) return; const r2 = await fetch("/api/apps/" + a.id + "/note/" + encodeURIComponent(openApp.customer), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ body }) }); if (!r2.ok) alert("Could not save"); else renderCustomer(); });
+    } catch (e) { box.innerHTML = '<div class="note">Could not load: ' + esc(e.message) + '</div>'; }
   }
   async function loadMentions() {
     try {

@@ -9,7 +9,9 @@ function run(args) { return new Promise((res, rej) => { const p = spawn("npx", a
 await run(["wrangler", "d1", "execute", "igl-intake", "--local", "--file=../site/schema/intake.sql"]);
 await run(["wrangler", "d1", "execute", "igl-api-sandbox", "--local", "--file=../api/schema.sql"]);
 await run(["wrangler", "d1", "execute", "igl-api-production", "--local", "--file=../api/schema.sql"]);
-const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "OPS_DEV:1"], { env, stdio: ["ignore", "pipe", "pipe"] });
+// Application stores: the production table shapes with fixture rows (test/fixtures), so the adapters run the same SQL they run live.
+for (const [name, file] of [["tortgraph", "tortgraph.sql"], ["ricorsa", "ricorsa.sql"], ["ricorsa-console", "ricorsa-console.sql"], ["vdrpros", "vdrpros.sql"]]) await run(["wrangler", "d1", "execute", name, "--local", "--file=test/fixtures/" + file]);
+const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "OPS_DEV:1", "--var", 'INGEST_KEYS:{"ricorsa":"fixture-key"}'], { env, stdio: ["ignore", "pipe", "pipe"] });
 let log = ""; dev.stdout.on("data", (d) => { log += d; }); dev.stderr.on("data", (d) => { log += d; });
 let up = false;
 for (let i = 0; i < 60 && !up; i++) { await new Promise((r) => setTimeout(r, 1000)); try { up = (await fetch(BASE + "/healthz")).ok; } catch {} }
@@ -24,7 +26,45 @@ try {
   if (!ov.platform.sandbox.configured || ov.platform.sandbox.error) throw new Error("sandbox binding should work locally: " + JSON.stringify(ov.platform.sandbox));
   const bad = await fetch(BASE + "/api/inquiry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: "x", status: "nope" }) });
   if (bad.status !== 422) throw new Error("status validation");
+  // The portfolio: every application answers; the four bound stores answer from their own tables.
+  const apps = (await (await fetch(BASE + "/api/apps")).json()).apps;
+  if (apps.length !== 15) throw new Error("expected 15 applications, got " + apps.length);
+  for (const id of ["tortplus", "tortgraph", "ricorsa", "vdrpros"]) { const a = apps.find((x) => x.id === id); if (!a?.configured) throw new Error(id + " should read its store: " + JSON.stringify(a?.why)); }
+  const unbound = apps.find((x) => x.id === "wellsite"); if (unbound.configured || !unbound.why) throw new Error("an application without a store must say so");
+  const tg = await (await fetch(BASE + "/api/apps/tortplus/customers")).json();
+  if (tg.rows.length !== 1 || tg.rows[0].email !== "reviewer@fixture.law" || tg.rows[0].plan !== "pilot") throw new Error("tortgraph customers: " + JSON.stringify(tg));
+  const ss = await (await fetch(BASE + "/api/apps/tortplus/sessions")).json();
+  if (ss.rows.length !== 2 || ss.rows[0].ended_at !== null || ss.rows[1].end_reason !== "signed_out") throw new Error("tortgraph sessions: " + JSON.stringify(ss.rows));
+  const ru = await (await fetch(BASE + "/api/apps/ricorsa/usage?customer=r1")).json();
+  if (!ru.rows.some((u) => u.meter === "gas" && u.qty === 160)) throw new Error("ricorsa gas meter: " + JSON.stringify(ru.rows));
+  const rs = await (await fetch(BASE + "/api/apps/ricorsa/sessions")).json();
+  if (rs.kept !== false || !/ingest/.test(rs.why)) throw new Error("ricorsa keeps no sessions and must say so");
+  const q = await (await fetch(BASE + "/api/apps/vdrpros/customers?q=dana")).json();
+  if (q.rows.length !== 1 || q.rows[0].mrr_cents !== 29900) throw new Error("vdrpros search: " + JSON.stringify(q.rows));
+  // Ingest: wrong key refused, right key accepted, the event then shows on the customer.
+  const nokey = await fetch(BASE + "/ingest/ricorsa", { method: "POST", headers: { "content-type": "application/json", "x-ops-ingest-key": "wrong" }, body: JSON.stringify({ customer: "r1", kind: "login" }) });
+  if (nokey.status !== 403) throw new Error("ingest should refuse a wrong key, got " + nokey.status);
+  const nokey2 = await fetch(BASE + "/ingest/tortplus", { method: "POST", headers: { "content-type": "application/json", "x-ops-ingest-key": "fixture-key" }, body: JSON.stringify({ customer: "a1", kind: "login" }) });
+  if (nokey2.status !== 503) throw new Error("an application without an ingest key should be 503, got " + nokey2.status);
+  const ok = await fetch(BASE + "/ingest/ricorsa", { method: "POST", headers: { "content-type": "application/json", "x-ops-ingest-key": "fixture-key" }, body: JSON.stringify({ events: [{ customer: "r1", email: "maria@fixture.example", kind: "login" }, { customer: "r1", kind: "usage", meter: "gas", qty: 12 }, { customer: "r1", kind: "logout" }] }) });
+  if (ok.status !== 200 || (await ok.json()).accepted !== 3) throw new Error("ingest should accept three events");
+  const badev = await fetch(BASE + "/ingest/ricorsa", { method: "POST", headers: { "content-type": "application/json", "x-ops-ingest-key": "fixture-key" }, body: JSON.stringify({ customer: "r1", kind: "usage", meter: "gas" }) });
+  if (badev.status !== 422) throw new Error("usage without qty should be 422");
+  const rec = await (await fetch(BASE + "/api/apps/ricorsa/customer/r1")).json();
+  if (rec.customer_row?.plan !== "pro" || rec.ingested.length !== 3 || !rec.subscriptions?.length) throw new Error("customer record: " + JSON.stringify({ plan: rec.customer_row?.plan, ingested: rec.ingested?.length, subs: rec.subscriptions?.length }));
+  // Plan change writes the application's own column and is logged with who and why.
+  const pc = await fetch(BASE + "/api/apps/ricorsa/plan/r2", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: "pro", reason: "fixture upgrade" }) });
+  if (!pc.ok) throw new Error("plan change: " + await pc.text());
+  const rec2 = await (await fetch(BASE + "/api/apps/ricorsa/customer/r2")).json();
+  if (rec2.customer_row?.plan !== "pro" || rec2.plan_changes?.[0]?.from_plan !== "free" || rec2.plan_changes?.[0]?.by_email !== "dev@localhost") throw new Error("plan change record: " + JSON.stringify(rec2.plan_changes));
+  const badplan = await fetch(BASE + "/api/apps/ricorsa/plan/r2", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: "not a plan id!" }) });
+  if (badplan.status !== 422) throw new Error("plan id validation");
+  const note = await fetch(BASE + "/api/apps/vdrpros/note/v1", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ body: "called, renewing in Q1" }) });
+  if (!note.ok) throw new Error("note");
+  const vrec = await (await fetch(BASE + "/api/apps/vdrpros/customer/v1")).json();
+  if (vrec.notes?.length !== 1 || vrec.activity?.length !== 1) throw new Error("vdrpros record: " + JSON.stringify({ notes: vrec.notes?.length, activity: vrec.activity?.length }));
   console.log("ops console: page renders, overview answers, unconfigured sources are reported, inquiry validation holds");
+  console.log("portfolio: 15 applications, four stores read through their adapters, sessions with login and logout, gas meter, search, ingest with per-app keys, plan change with audit, notes");
 } catch (e) { console.error("FAIL", e.message); code = 1; }
 dev.kill("SIGKILL");
 if (code) process.exit(code);

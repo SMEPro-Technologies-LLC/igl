@@ -8,6 +8,7 @@
 import { requireAccess, builtinConfigured, checkLogin, lockedOut, issueSession, sessionCookie, clearSessionCookie } from "./access.js";
 import { siteTraffic, github, intake, platform, health, mentions, npm } from "./sources.js";
 import { PAGE, LOGIN, SIGNOUT } from "./page.js";
+import { portfolio, appHealth, appRead, query, changePlan, addNote, customerRecord, ingest, appById } from "./apps.js";
 
 const json = (b, s = 200, h = {}) => new Response(JSON.stringify(b), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store", ...h } });
 const secure = { "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "no-referrer", "strict-transport-security": "max-age=31536000; includeSubDomains", "content-security-policy": "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'" };
@@ -16,6 +17,9 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/healthz") return json({ ok: true, service: "igl-ops" });
+    // Applications post their own login, logout and usage events here, with a per-application key. No session needed.
+    const ing = url.pathname.match(/^\/ingest\/([a-z0-9-]+)$/);
+    if (ing && request.method === "POST") { const r = await ingest(env, request, ing[1]); return json(r, r.status || 200, { "x-content-type-options": "nosniff" }); }
     const html = (body, status = 200, h = {}) => new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...secure, ...h } });
     const redirect = (to, h = {}) => new Response(null, { status: 303, headers: { location: to, "cache-control": "no-store", ...secure, ...h } });
 
@@ -49,6 +53,28 @@ export default {
         return json({ generatedAt: new Date().toISOString(), days, viewer: who.email, site, github: gh, intake: inq, platform: plat, health: hz, npm: npmd }, 200, secure);
       }
       if (url.pathname === "/api/mentions") return json(await mentions(env), 200, secure);
+      // The application portfolio
+      if (url.pathname === "/api/apps") { const health = await appHealth(env); return json({ generatedAt: new Date().toISOString(), apps: await portfolio(env, { health }) }, 200, secure); }
+      const m = url.pathname.match(/^\/api\/apps\/([a-z0-9-]+)(?:\/(customers|sessions|activity|usage|subscriptions|messages|plans|customer|plan|note))?(?:\/([^/]+))?$/);
+      if (m) {
+        const [, appId, what, arg] = m; const q = query(url);
+        if (!appById(appId)) return json({ error: "unknown application" }, 404, secure);
+        if (!what) { const health = await appHealth(env); const row = (await portfolio(env, { health })).find((a) => a.id === appId); return json(row, 200, secure); }
+        if (what === "customer" && arg && request.method === "GET") { const r = await customerRecord(env, appId, decodeURIComponent(arg), q); return json(r, r.status || 200, secure); }
+        if (what === "plan" && arg && request.method === "POST") {
+          const body = await request.json().catch(() => null);
+          if (!body || typeof body.plan !== "string") return json({ error: "plan is required" }, 422, secure);
+          const r = await changePlan(env, appId, decodeURIComponent(arg), body.plan.trim(), typeof body.reason === "string" ? body.reason.slice(0, 500) : null, who.email);
+          return json(r, r.status || 200, secure);
+        }
+        if (what === "note" && arg && request.method === "POST") {
+          const body = await request.json().catch(() => null);
+          if (!body || typeof body.body !== "string" || !body.body.trim()) return json({ error: "body is required" }, 422, secure);
+          const r = await addNote(env, appId, decodeURIComponent(arg), body.body.trim(), who.email);
+          return json(r, r.status || 200, secure);
+        }
+        if (request.method === "GET") { const r = await appRead(env, appId, what, q); return json(r, r.status || 200, secure); }
+      }
       if (url.pathname === "/api/inquiry" && request.method === "POST") {
         if (!env.INTAKE) return json({ error: "INTAKE binding missing" }, 503, secure);
         const body = await request.json().catch(() => null);

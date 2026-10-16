@@ -4,6 +4,16 @@
 
 Every source reports "not configured" with the reason when its token or binding is missing, so the page is never blank and never pretends.
 
+## The application portfolio
+
+The Applications table manages every product SMEPro operates: WellReporter, WellSite, LeaseXplorer, ToxicTort, TortPlus, Tortgraph, VDRPros, RealEChat, RealStar Global, ID-ME.ai, Ricorsa, SMEProtech, SMEProtec, AILU and LU Concourse. The registry is `src/apps.js`. Each application with a bound store (a D1 binding in `wrangler.toml`) is read through an adapter that turns that store's own tables into one shape: customers, sessions (every sign-in and sign-out with its timestamp, where the application keeps them), activity, metered usage, subscriptions, messages and plans. Nothing is copied or invented; an application without a store shows health only and says so.
+
+What an operator can change: a customer's plan (written to the application's own plan column and recorded in `ops_plan_changes` with who, from, to and why) and notes on a customer (`ops_notes`). Both tables live in the intake database and are created on first use.
+
+Applications that keep no session table post their own events: `POST https://ops.id-me.ai/ingest/<app id>` with header `x-ops-ingest-key` and a body of one event or `{ "events": [...] }`, each `{ "customer": "<their user id>", "email": "...", "kind": "login" | "logout" | "usage" | "event", "meter": "gas", "qty": 12, "at": "<ISO time>", "detail": {...} }`. Keys are the `INGEST_KEYS` secret, a JSON object of app id to key. Events land in `ops_events` and show on the application's Sessions tab and on the customer's record.
+
+Local test fixtures in `test/fixtures/` carry the production table shapes of the bound stores (DDL copied from `sqlite_master`) with a few rows, so `npm test` runs the adapters' real SQL.
+
 ## Deploy
 
 ```bash
