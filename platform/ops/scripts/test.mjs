@@ -11,6 +11,9 @@ await run(["wrangler", "d1", "execute", "igl-api-sandbox", "--local", "--file=..
 await run(["wrangler", "d1", "execute", "igl-api-production", "--local", "--file=../api/schema.sql"]);
 // Application stores: the production table shapes with fixture rows (test/fixtures), so the adapters run the same SQL they run live.
 for (const [name, file] of [["tortgraph", "tortgraph.sql"], ["ricorsa", "ricorsa.sql"], ["ricorsa-console", "ricorsa-console.sql"], ["vdrpros", "vdrpros.sql"]]) await run(["wrangler", "d1", "execute", name, "--local", "--file=test/fixtures/" + file]);
+// The console's own tables start empty each run (the local state persists between runs otherwise), and the fixture plan change is undone.
+await run(["wrangler", "d1", "execute", "igl-intake", "--local", "--command=DROP TABLE IF EXISTS ops_events; DROP TABLE IF EXISTS ops_notes; DROP TABLE IF EXISTS ops_plan_changes; DROP TABLE IF EXISTS ops_messages; DROP TABLE IF EXISTS ops_agent_runs; DROP TABLE IF EXISTS ops_seo; DROP TABLE IF EXISTS ops_content; DROP TABLE IF EXISTS ops_leads; DROP TABLE IF EXISTS ops_insights;"]);
+await run(["wrangler", "d1", "execute", "ricorsa", "--local", "--command=UPDATE users SET plan = 'free' WHERE id = 'r2';"]);
 const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "OPS_DEV:1", "--var", 'INGEST_KEYS:{"ricorsa":"fixture-key"}'], { env, stdio: ["ignore", "pipe", "pipe"] });
 let log = ""; dev.stdout.on("data", (d) => { log += d; }); dev.stderr.on("data", (d) => { log += d; });
 let up = false;
@@ -65,6 +68,23 @@ try {
   if (vrec.notes?.length !== 1 || vrec.activity?.length !== 1) throw new Error("vdrpros record: " + JSON.stringify({ notes: vrec.notes?.length, activity: vrec.activity?.length }));
   console.log("ops console: page renders, overview answers, unconfigured sources are reported, inquiry validation holds");
   console.log("portfolio: 15 applications, four stores read through their adapters, sessions with login and logout, gas meter, search, ingest with per-app keys, plan change with audit, notes");
+  // Billing: the catalog is served without Finix; Finix itself reports unconfigured instead of pretending.
+  const bill = await (await fetch(BASE + "/api/billing")).json();
+  if (bill.configured !== false || !bill.catalog?.tortplus?.plans?.length || !/FINIX_USERNAME/.test(bill.why)) throw new Error("billing should report unconfigured with the catalog: " + JSON.stringify(bill).slice(0, 200));
+  const prices = await (await fetch(BASE + "/api/billing/prices/vdrpros")).json();
+  if (prices.plans?.[0]?.monthly_usd !== 299 || prices.meters?.[0]?.id !== "gb") throw new Error("price list: " + JSON.stringify(prices));
+  const sync = await fetch(BASE + "/api/billing/sync", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+  if (sync.status !== 503) throw new Error("plan sync without Finix should be 503, got " + sync.status);
+  // Marketing: the agent audits the application's live page, queues nothing without a model, and says what is off.
+  const mkt0 = await (await fetch(BASE + "/api/apps/idme/marketing")).json();
+  if (mkt0.postiz?.configured !== false || mkt0.model !== false || !Array.isArray(mkt0.content)) throw new Error("marketing state: " + JSON.stringify(mkt0).slice(0, 200));
+  const run = await (await fetch(BASE + "/api/apps/idme/marketing/run", { method: "POST" })).json();
+  if (!run.ok || typeof run.seo?.score !== "number" || !/ANTHROPIC_API_KEY/.test(run.detail?.content?.error || "") || !/BRAVE_API_KEY/.test(run.detail?.leads?.error || "")) throw new Error("agent run: " + JSON.stringify(run).slice(0, 300));
+  const mkt = await (await fetch(BASE + "/api/apps/idme/marketing")).json();
+  if (mkt.runs.length !== 1 || !mkt.seo || mkt.insights.length !== 1 || !/site score/.test(mkt.insights[0].body)) throw new Error("marketing after run: " + JSON.stringify({ runs: mkt.runs.length, seo: !!mkt.seo, insights: mkt.insights.length }));
+  const badDecision = await fetch(BASE + "/api/apps/idme/marketing/content/nope", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "approve" }) });
+  if (badDecision.status !== 404) throw new Error("deciding a missing draft should be 404");
+  console.log("billing and marketing: catalog and price lists served, Finix and Postiz report unconfigured, the agent audits id-me.ai live and records the run, insights and findings");
 } catch (e) { console.error("FAIL", e.message); code = 1; }
 dev.kill("SIGKILL");
 if (code) process.exit(code);

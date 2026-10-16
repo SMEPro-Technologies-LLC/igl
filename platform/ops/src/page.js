@@ -105,6 +105,7 @@ export const PAGE = `<!doctype html>
     // health
     out.push('<div class="row">' + Object.entries(d.health).map(([k, h]) => '<div class="card"><h2>' + esc(k) + '</h2><div class="kpi"><span class="tag ' + (h.ok ? "ok" : "bad") + '">' + (h.ok ? "up" : (h.error || "down")) + '</span></div><div class="sub">' + esc(h.url) + ' ' + (h.status || "") + ' ' + h.ms + ' ms</div></div>').join("") + '</div>');
     out.push('<div class="card" id="apps"><h2>Applications</h2><div class="note">Loading</div></div>');
+    out.push('<div class="card" id="billing"><h2>Billing</h2><div class="note">Loading</div></div>');
     // site
     if (!d.site.configured) out.push(unconf("Site traffic", d.site.why));
     else if (d.site.error) out.push(unconf("Site traffic", d.site.error));
@@ -134,7 +135,35 @@ export const PAGE = `<!doctype html>
     out.push('<div class="card" id="mentions"><h2>Mentions</h2><div class="note">Loading</div></div>');
     $("#main").innerHTML = out.join("");
     document.querySelectorAll("select.st").forEach((s) => s.addEventListener("change", async () => { const r = await fetch("/api/inquiry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: s.dataset.id, status: s.value }) }); if (!r.ok) alert("Could not update"); }));
-    loadMentions(); loadApps();
+    loadMentions(); loadApps(); loadBilling();
+  }
+  /* ---------------- billing: the catalog in Finix ---------------- */
+  async function loadBilling() {
+    const box = $("#billing"); if (!box) return;
+    try {
+      const r = await fetch("/api/billing"); const d = await r.json(); if (!r.ok) throw new Error(d.error || "HTTP " + r.status);
+      if (!d.configured) { box.innerHTML = '<h2>Billing (Finix)</h2><div class="note">Not configured: ' + esc(d.why) + '</div>' + catalogTable(d.catalog, null); box.classList.add("unconf"); return; }
+      if (d.error) { box.innerHTML = '<h2>Billing (Finix, ' + esc(d.env) + ')</h2><div class="note">Finix answered with an error: ' + esc(d.error) + '</div>'; return; }
+      const totalMrr = Object.values(d.apps).reduce((a, x) => a + (x.mrr_cents || 0), 0);
+      const missing = Object.values(d.apps).reduce((a, x) => a + x.missing, 0);
+      const subs = Object.values(d.apps).reduce((a, x) => a + x.subscriptions.length, 0);
+      box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Billing (Finix, ' + esc(d.env) + ')</h2><div><button id="syncplans" class="p"' + (missing ? "" : " disabled") + '>Create ' + missing + ' missing plan' + (missing === 1 ? "" : "s") + ' in Finix</button></div></div>' +
+        '<div class="row" style="margin:8px 0"><div class="card"><h2>MRR on Finix subscriptions</h2><div class="kpi">' + money(totalMrr) + '</div><div class="sub">' + n(subs) + ' subscriptions matched to applications, ' + n(d.unassigned.subscriptions) + ' not matched, ' + n(d.unassigned.transfers) + ' transfers without an app tag</div></div>' +
+        '<div class="card"><h2>Merchant</h2><div class="mono">' + esc(d.merchant || "none") + '</div><div class="sub">' + n(d.finixPlans.length) + ' plans on the account</div></div></div>' + catalogTable(d.catalog, d.apps);
+      const b = $("#syncplans"); if (b) b.addEventListener("click", async () => { if (!confirm("Create the missing catalog plans in Finix " + d.env + "? Existing plans are never changed.")) return; b.disabled = true; const r2 = await fetch("/api/billing/sync", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); const j = await r2.json(); alert(r2.ok ? ("Created " + j.created.length + ", existing " + j.existing.length + (j.failed.length ? ", failed " + j.failed.length + ": " + j.failed.map((f) => f.app + "/" + f.tier + " " + f.error).join("; ") : "")) : (j.error || "failed")); loadBilling(); });
+      document.querySelectorAll("button.cancelsub").forEach((el) => el.addEventListener("click", async () => { if (!confirm("Cancel subscription " + el.dataset.id + " in Finix? The customer keeps access until their application reads the cancellation.")) return; const r2 = await fetch("/api/billing/subscriptions/" + encodeURIComponent(el.dataset.id) + "/cancel", { method: "POST" }); const j = await r2.json(); alert(r2.ok ? "Now " + j.status : (j.error || "failed")); loadBilling(); }));
+    } catch (e) { box.innerHTML = '<h2>Billing</h2><div class="note">Unavailable: ' + esc(e.message) + '</div>'; }
+  }
+  function catalogTable(catalog, apps) {
+    const rows = [];
+    for (const [id, cat] of Object.entries(catalog)) {
+      const a = (appsCache || []).find((x) => x.id === id); const live = apps ? apps[id] : null;
+      const plans = cat.plans.map((p) => { const f = live ? live.plans.find((x) => x.tier === p.tier) : null; return '<span class="tag' + (f ? (f.in_finix ? " ok" : " warn") : "") + '" title="' + esc(p.description) + '">' + esc(p.name) + ' ' + (p.amount_cents ? money(p.amount_cents) + '/mo' : 'no monthly') + (f && f.in_finix ? '' : (apps ? ' · not in Finix' : '')) + '</span>'; }).join(" ");
+      const meters = cat.meters.map((m) => esc(m.name) + " $" + m.usd_per_unit + "/" + esc(m.unit)).join(", ");
+      const subs = live ? live.subscriptions : [];
+      rows.push('<tr><td><b>' + esc(a ? a.name : id) + '</b><br><span class="sub">' + esc(cat.model) + (cat.note ? ' · ' + esc(cat.note) : '') + '</span></td><td>' + (plans || '<span class="sub">none</span>') + '</td><td><span class="sub">' + (meters || 'none') + '</span></td><td class="n">' + (live ? money(live.mrr_cents) : '') + '</td><td>' + (subs.length ? subs.slice(0, 8).map((s) => '<div><span class="tag ' + (s.status === "active" ? "ok" : (s.status === "canceled" ? "bad" : "")) + '">' + esc(s.status) + '</span> ' + esc(s.plan || s.plan_id || "direct") + ' ' + money(s.amount_cents) + ' <span class="sub">' + esc(s.email || s.customer || "") + (s.next_billing ? ' · next ' + esc(s.next_billing) : '') + '</span> ' + (s.status === "active" || s.status === "trialing" ? '<button class="cancelsub" data-id="' + esc(s.id) + '">Cancel</button>' : '') + '</div>').join("") + (subs.length > 8 ? '<div class="sub">and ' + (subs.length - 8) + ' more</div>' : '') : '<span class="sub">' + (apps ? 'none' : '') + '</span>') + '</td></tr>');
+    }
+    return '<table><thead><tr><th>Application</th><th>Plans (catalog, approved Oct 16)</th><th>Metered</th><th class="n">MRR</th><th>Subscriptions in Finix</th></tr></thead><tbody>' + rows.join("") + '</tbody></table>';
   }
   /* ---------------- applications: the portfolio ---------------- */
   let appsCache = null; const openApp = { id: null, tab: "customers", customer: null, q: "" };
@@ -163,13 +192,14 @@ export const PAGE = `<!doctype html>
   }
   async function renderAppDetail() {
     const a = (appsCache || []).find((x) => x.id === openApp.id); if (!a) return;
-    const box = $("#appdetail"); const tabs = ["customers", "sessions", "activity", "usage", "subscriptions", "messages", "plans"];
+    const box = $("#appdetail"); const tabs = ["customers", "sessions", "activity", "usage", "subscriptions", "messages", "plans", "marketing"];
     box.innerHTML = '<div class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">' + esc(a.name) + ' <span class="sub">' + esc(a.domain) + '</span></h2><div>' +
       tabs.map((t) => '<button class="tab' + (t === openApp.tab ? ' p' : '') + '" data-tab="' + t + '">' + t + '</button>').join(" ") + ' <button id="appclose">Close</button></div></div>' +
       (a.configured ? '<div class="sub">' + esc(a.describe) + '</div>' : '<div class="note">' + esc(a.why || "") + '</div>') +
       '<div id="appbody" style="margin-top:10px"><div class="note">Loading</div></div><div id="custbody"></div></div>';
     box.querySelectorAll("button.tab").forEach((b) => b.addEventListener("click", () => { openApp.tab = b.dataset.tab; renderAppDetail(); }));
     $("#appclose").addEventListener("click", () => { openApp.id = null; box.innerHTML = ""; });
+    if (openApp.tab === "marketing") { renderMarketing(a); return; }
     if (!a.configured) { $("#appbody").innerHTML = '<div class="note">Nothing to manage until a store is bound. Health is checked every refresh' + (a.ingest && a.ingest.events_7d ? '; ' + n(a.ingest.events_7d) + ' events arrived through /ingest in the last 7 days.' : '.') + '</div>'; return; }
     try {
       const r = await fetch("/api/apps/" + a.id + "/" + openApp.tab + "?limit=200&days=90" + (openApp.q ? "&q=" + encodeURIComponent(openApp.q) : "")); const d = await r.json();
@@ -198,6 +228,34 @@ export const PAGE = `<!doctype html>
       document.querySelectorAll("a.cust").forEach((el) => el.addEventListener("click", (e) => { e.preventDefault(); openApp.customer = el.dataset.id; renderCustomer(); }));
       if (openApp.customer) renderCustomer();
     } catch (e) { $("#appbody").innerHTML = '<div class="note">Could not load: ' + esc(e.message) + '</div>'; }
+  }
+  /* ---------------- marketing: the agent's work for one application ---------------- */
+  async function renderMarketing(a) {
+    const body = $("#appbody"); body.innerHTML = '<div class="note">Loading</div>';
+    try {
+      const r = await fetch("/api/apps/" + a.id + "/marketing"); const d = await r.json(); if (!r.ok) throw new Error(d.error || "HTTP " + r.status);
+      const integ = Array.isArray(d.postiz.integrations) ? d.postiz.integrations.filter((i) => !i.disabled) : [];
+      const sev = (s) => '<span class="tag ' + (s === "critical" ? "bad" : (s === "warn" ? "warn" : "")) + '">' + esc(s) + '</span>';
+      let h = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div class="sub">' + (d.brief ? esc(d.brief.audience) + ' · ' + esc(d.brief.pitch) : '') + '</div><button id="runagent" class="p">Run the agent now</button></div>' +
+        '<div class="row" style="margin:8px 0">' +
+        '<div class="card"><h2>Site score</h2><div class="kpi">' + (d.seo ? d.seo.score + '<span class="sub">/100</span>' : 'n/a') + '</div><div class="sub">' + (d.seo ? 'checked ' + when(d.seo.checked_at) : 'not audited yet') + '</div></div>' +
+        '<div class="card"><h2>Channels (Postiz)</h2><div>' + (d.postiz.configured ? (integ.length ? integ.map((i) => '<span class="tag ok">' + esc(i.identifier) + (i.name ? ' · ' + esc(i.name) : '') + '</span>').join(" ") : (d.postiz.integrations && d.postiz.integrations.error ? '<span class="tag bad">' + esc(d.postiz.integrations.error) + '</span>' : '<span class="sub">none connected</span>')) : '<span class="tag warn">POSTIZ_API_KEY not set</span>') + '</div><div class="sub">model ' + (d.model ? 'on' : 'off (ANTHROPIC_API_KEY)') + ' · search ' + (d.search ? 'on' : 'off (BRAVE_API_KEY)') + '</div></div>' +
+        '<div class="card"><h2>Queue</h2><div class="kpi">' + d.content.filter((c) => c.status === "draft").length + '</div><div class="sub">drafts awaiting approval · ' + d.content.filter((c) => c.status === "scheduled").length + ' scheduled · ' + d.leads.filter((l) => l.status === "new").length + ' new leads</div></div></div>';
+      if (d.insights.length) h += '<h3>Insights</h3>' + d.insights.slice(0, 3).map((i) => '<div style="margin:4px 0"><span class="sub">' + when(i.at) + '</span> ' + esc(i.body) + '</div>').join("");
+      if (d.seo) h += '<details open style="margin-top:10px"><summary>SEO findings (' + d.seo.findings.length + ') for ' + esc(d.seo.url) + '</summary>' + (d.seo.findings.length ? table([{ h: "Severity", f: (f) => sev(f.severity) }, { h: "Check", k: "check" }, { h: "Found", f: (f) => esc(f.found) }, { h: "Fix", f: (f) => esc(f.fix) }], d.seo.findings) : '<div class="note">Nothing to fix on the home page.</div>') +
+        '<div class="sub" style="margin-top:6px">title: ' + esc(d.seo.facts.title || "none") + ' · description: ' + esc((d.seo.facts.description || "none").slice(0, 160)) + ' · JSON-LD: ' + esc((d.seo.facts.jsonld_types || []).join(", ") || "none") + ' · sitemap entries: ' + esc(d.seo.facts.sitemap ?? "none") + ' · llms.txt: ' + (d.seo.facts.llms_txt ? 'yes' : 'no') + '</div></details>';
+      const drafts = d.content.filter((c) => c.status === "draft" || c.status === "approved");
+      h += '<details open style="margin-top:10px"><summary>Content queue (' + drafts.length + ' to review, ' + d.content.length + ' total)</summary>' + (d.content.length ? d.content.slice(0, 40).map((c) => '<div class="card" style="margin:8px 0"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><span class="tag">' + esc(c.channel) + '</span> <span class="tag ' + (c.status === "scheduled" ? "ok" : (c.status === "rejected" ? "bad" : (c.status === "approved" ? "warn" : ""))) + '">' + esc(c.status) + '</span> <span class="sub">' + when(c.created_at) + (c.scheduled_for ? ' · scheduled ' + when(c.scheduled_for) : '') + (c.decided_by ? ' · ' + esc(c.decided_by) : '') + (c.error ? ' · ' + esc(c.error) : '') + '</span></div>' +
+        (c.status === "draft" || c.status === "approved" ? '<div style="display:flex;gap:6px;flex-wrap:wrap"><select class="ch" data-id="' + esc(c.id) + '">' + (integ.length ? integ.map((i) => '<option value="' + esc(i.id) + '"' + (i.id === c.integration_id || (!c.integration_id && i.identifier === c.channel) ? ' selected' : '') + '>' + esc(i.identifier) + (i.name ? ' · ' + esc(i.name) : '') + '</option>').join("") : '<option value="">no Postiz channel</option>') + '</select><input type="datetime-local" class="wh" data-id="' + esc(c.id) + '" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--hair);border-radius:8px;padding:4px 8px"><button class="approve p" data-id="' + esc(c.id) + '">Approve and schedule</button><button class="reject" data-id="' + esc(c.id) + '">Reject</button></div>' : '') + '</div>' +
+        (c.title ? '<div><b>' + esc(c.title) + '</b></div>' : '') + '<div style="white-space:pre-wrap;margin-top:6px">' + esc(c.body) + '</div>' + (c.hashtags.length ? '<div class="sub">' + esc(c.hashtags.map((t) => "#" + t.replace(/^#/, "")).join(" ")) + '</div>' : '') + '</div>').join("") : '<div class="note">No drafts yet. Run the agent.</div>') + '</details>';
+      h += '<details style="margin-top:10px"><summary>Leads (' + d.leads.length + ')</summary>' + (d.leads.length ? table([{ h: "Prospect", f: (l) => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.name) + '</a><br><span class="sub">' + esc(l.org || "") + '</span>' }, { h: "From", f: (l) => esc(l.source) + ' <span class="sub">' + esc(l.query || "") + '</span>' }, { h: "Note", f: (l) => '<span class="sub">' + esc(l.note || "") + '</span>' }, { h: "Status", f: (l) => '<select class="lead" data-id="' + esc(l.id) + '">' + ["new", "contacted", "qualified", "dropped"].map((s) => '<option' + (s === l.status ? ' selected' : '') + '>' + s + '</option>').join("") + '</select>' }], d.leads) : '<div class="note">' + (d.search ? 'No leads yet.' : 'Lead sourcing needs BRAVE_API_KEY on the ops Worker.') + '</div>') + '</details>';
+      h += '<details style="margin-top:10px"><summary>Agent runs (' + d.runs.length + ')</summary>' + (d.runs.length ? table([{ h: "Started", f: (x) => when(x.started_at) }, { h: "Trigger", k: "trigger" }, { h: "Status", k: "status" }, { h: "Summary", f: (x) => '<span class="sub">' + esc(x.summary || "") + '</span>' }], d.runs) : '<div class="note">Never run. The schedule runs one application an hour.</div>') + '</details>';
+      body.innerHTML = h;
+      $("#runagent").addEventListener("click", async () => { $("#runagent").disabled = true; $("#runagent").textContent = "Running"; const r2 = await fetch("/api/apps/" + a.id + "/marketing/run", { method: "POST" }); const j = await r2.json(); if (!r2.ok) alert(j.error || "failed"); renderMarketing(a); });
+      body.querySelectorAll("button.approve").forEach((b) => b.addEventListener("click", async () => { const id = b.dataset.id; const ch = body.querySelector('select.ch[data-id="' + id + '"]'); const wh = body.querySelector('input.wh[data-id="' + id + '"]'); const r2 = await fetch("/api/apps/" + a.id + "/marketing/content/" + encodeURIComponent(id), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "approve", integrationId: ch ? ch.value : null, when: wh && wh.value ? new Date(wh.value).toISOString() : null }) }); const j = await r2.json(); if (!r2.ok) alert(j.error || "failed"); renderMarketing(a); }));
+      body.querySelectorAll("button.reject").forEach((b) => b.addEventListener("click", async () => { const r2 = await fetch("/api/apps/" + a.id + "/marketing/content/" + encodeURIComponent(b.dataset.id), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "reject" }) }); if (!r2.ok) alert("failed"); renderMarketing(a); }));
+      body.querySelectorAll("select.lead").forEach((s) => s.addEventListener("change", async () => { const r2 = await fetch("/api/apps/" + a.id + "/marketing/lead/" + encodeURIComponent(s.dataset.id), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: s.value }) }); if (!r2.ok) alert("failed"); }));
+    } catch (e) { body.innerHTML = '<div class="note">Could not load: ' + esc(e.message) + '</div>'; }
   }
   async function renderCustomer() {
     const a = (appsCache || []).find((x) => x.id === openApp.id); if (!a || !openApp.customer) return;
