@@ -22,7 +22,9 @@ import { handleMcp } from "./mcp.mjs";
 import { readFile } from "node:fs/promises";
 import { makeGate, listenConfig, RateLimiter, Semaphore, allowedOrigins, corsHeaders as cors, clientError } from "./auth.mjs";
 /* Real caller registry is gitignored (identities.mjs); the example ships in
-   the repo so the service boots out of the box. */
+   the repo so the service boots out of the box. The type checker runs in CI
+   where the real file never exists, hence the ignore on the import. */
+// @ts-ignore identities.mjs is gitignored; when it is absent the example registry is used
 const { resolveCaller } = await import("./identities.mjs").catch(() => import("./identities.example.mjs"));
 
 const cfg = listenConfig(process.env);            // throws on PUBLIC without a key
