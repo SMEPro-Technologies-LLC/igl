@@ -8,12 +8,18 @@
 import { requireAccess, builtinConfigured, checkLogin, lockedOut, issueSession, sessionCookie, clearSessionCookie } from "./access.js";
 import { siteTraffic, github, intake, platform, health, mentions, npm } from "./sources.js";
 import { PAGE, LOGIN, SIGNOUT } from "./page.js";
-import { portfolio, appHealth, appRead, query, changePlan, addNote, customerRecord, ingest, appById } from "./apps.js";
+import { portfolio, appHealth, appRead, query, changePlan, addNote, customerRecord, ingest, appById, APPS } from "./apps.js";
+import { billingOverview, syncPlans, cancelAppSubscription, priceList } from "./billing.js";
+import { runAgent, scheduledRun, marketingFor, decideContent, updateLead } from "./marketing.js";
 
 const json = (b, s = 200, h = {}) => new Response(JSON.stringify(b), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store", ...h } });
 const secure = { "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "no-referrer", "strict-transport-security": "max-age=31536000; includeSubDomains", "content-security-policy": "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'" };
 
+/* The marketing agents' schedule: one application an hour ([triggers] in wrangler.toml). */
+async function scheduled(event, env, ctx) { ctx.waitUntil(scheduledRun(env, APPS).catch((e) => console.error("agent schedule", e?.stack || e))); }
+
 export default {
+  scheduled,
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/healthz") return json({ ok: true, service: "igl-ops" });
@@ -55,6 +61,23 @@ export default {
       if (url.pathname === "/api/mentions") return json(await mentions(env), 200, secure);
       // The application portfolio
       if (url.pathname === "/api/apps") { const health = await appHealth(env); return json({ generatedAt: new Date().toISOString(), apps: await portfolio(env, { health }) }, 200, secure); }
+      // Billing across the portfolio (Finix)
+      if (url.pathname === "/api/billing" && request.method === "GET") return json(await billingOverview(env), 200, secure);
+      if (url.pathname === "/api/billing/sync" && request.method === "POST") { const body = await request.json().catch(() => ({})); const r = await syncPlans(env, body?.app || null); return json(r, r.status || 200, secure); }
+      const cs = url.pathname.match(/^\/api\/billing\/subscriptions\/([^/]+)\/cancel$/);
+      if (cs && request.method === "POST") { try { return json(await cancelAppSubscription(env, decodeURIComponent(cs[1])), 200, secure); } catch (e) { return json({ error: e.message }, 502, secure); } }
+      const pl = url.pathname.match(/^\/api\/billing\/prices\/([a-z0-9-]+)$/);
+      if (pl) { const r = priceList(pl[1]); return r ? json(r, 200, secure) : json({ error: "unknown application" }, 404, secure); }
+      // Marketing agents
+      const mk = url.pathname.match(/^\/api\/apps\/([a-z0-9-]+)\/marketing(?:\/(run|content|lead))?(?:\/([^/]+))?$/);
+      if (mk) {
+        const [, appId, what, arg] = mk;
+        if (!appById(appId)) return json({ error: "unknown application" }, 404, secure);
+        if (!what && request.method === "GET") { const r = await marketingFor(env, appId); return json(r, r.status || 200, secure); }
+        if (what === "run" && request.method === "POST") { const r = await runAgent(env, appId, "manual"); return json(r, typeof r.status === "number" ? r.status : 200, secure); }
+        if (what === "content" && arg && request.method === "POST") { const body = await request.json().catch(() => ({})); const r = await decideContent(env, decodeURIComponent(arg), body?.action, { integrationId: body?.integrationId || null, when: body?.when || null, by: who.email }); return json(r, typeof r.status === "number" ? r.status : 200, secure); }
+        if (what === "lead" && arg && request.method === "POST") { const body = await request.json().catch(() => ({})); const r = await updateLead(env, decodeURIComponent(arg), body?.status); return json(r, r.status || 200, secure); }
+      }
       const m = url.pathname.match(/^\/api\/apps\/([a-z0-9-]+)(?:\/(customers|sessions|activity|usage|subscriptions|messages|plans|customer|plan|note))?(?:\/([^/]+))?$/);
       if (m) {
         const [, appId, what, arg] = m; const q = query(url);
