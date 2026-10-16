@@ -60,7 +60,7 @@ export const CATALOG = {
     plans: [
       { tier: "essentials", name: "Essentials", amount_cents: 42500, description: "Wellsite", existing: true },
       { tier: "flex", name: "Flex", amount_cents: 57500, description: "WellSite", existing: true },
-      { tier: "enterprise", name: "Enterprise", amount_cents: 120000, description: "WellSite. All districts, all forms, unlimited operators and GIS seats." },
+      { tier: "enterprise", name: "Enterprise", amount_cents: 120000, description: "WellSite. Reporting in all 30 states, EDI and hard-copy filing, compliance calendar, data room, unlimited field and office users." },
     ],
     meters: [],
   },
@@ -76,8 +76,8 @@ export const CATALOG = {
   leasexplorer: {
     model: "subscription",
     plans: [
-      { tier: "explorer", name: "Explorer", amount_cents: 35000, description: "LeaseXplorer. Deal sourcing, pipeline and records; 500 agent runs a month.", included: { run: 500 } },
-      { tier: "pipeline", name: "Pipeline", amount_cents: 90000, description: "LeaseXplorer. Everything, VDR and partner portal; 2,500 agent runs a month.", included: { run: 2500 } },
+      { tier: "explorer", name: "Explorer", amount_cents: 35000, description: "LeaseXplorer. Early lease discovery, deal sourcing, pipeline and records; 500 agent runs a month.", included: { run: 500 } },
+      { tier: "pipeline", name: "Pipeline", amount_cents: 90000, description: "LeaseXplorer. The whole acquisition life cycle: discovery, pipeline, VDR, field capture, land accounting, partner portal; 2,500 agent runs a month.", included: { run: 2500 } },
     ],
     meters: [{ id: "run", name: "Agent run", unit: "run", usd_per_unit: 0.25 }],
   },
@@ -99,8 +99,8 @@ export const CATALOG = {
     note: "The sandbox is free. Enterprise is by contract through Contact Sales.",
   },
   realstarglobal: { model: "unpriced", plans: [], meters: [], note: "Not priced yet: tell the console what RealStar Global sells." },
-  ailu: { model: "unpriced", plans: [], meters: [], note: "Not priced yet." },
-  luconcourse: { model: "unpriced", plans: [], meters: [], note: "Not priced yet." },
+  ailu: { model: "none", plans: [], meters: [], note: "No billing: a Lamar University custom application under contract." },
+  luconcourse: { model: "none", plans: [], meters: [], note: "No billing: a Lamar University custom application under contract." },
   toxictort: { model: "none", plans: [], meters: [], note: "No billing: a practice site." },
   smeprotech: { model: "none", plans: [], meters: [], note: "No billing: the company site and the merchant of record." },
   smeprotec: { model: "none", plans: [], meters: [], note: "No billing: the company site." },

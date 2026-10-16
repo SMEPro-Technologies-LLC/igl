@@ -29,8 +29,8 @@ const uuid = () => crypto.randomUUID();
 /* Per-application marketing brief: who it is for, what to say, where. Facts only, no claims the product does not back. */
 export const BRIEFS = {
   wellreporter: { audience: "Texas oil and gas operators, regulatory and compliance staff", pitch: "One P-5 number in, every Texas RRC obligation out, dated and prioritized; inspections, NOVs and enforcement dockets read before the P-5 hold.", channels: ["linkedin", "linkedin-page", "x"], queries: ["Texas RRC P-5 compliance operator", "oil gas regulatory reporting software Texas"] },
-  wellsite: { audience: "oil and gas operators in Texas, Oklahoma and New Mexico", pitch: "Regulatory reporting and GIS for operators: RRC Form PR, OCC monthly production, OCD C-11, electronic filing, field to office.", channels: ["linkedin", "linkedin-page", "x"], queries: ["oil gas production reporting software", "RRC Form PR filing software"] },
-  leasexplorer: { audience: "South Texas land and lease professionals, mineral buyers", pitch: "Deal sourcing, pipeline, VDR, field capture, land accounting and regulatory records with agents that score deals and flag title issues.", channels: ["linkedin", "linkedin-page", "x"], queries: ["mineral rights acquisition software Texas", "landman lease pipeline software"] },
+  wellsite: { audience: "oil and gas operators and their pumpers in the 30 producing states", pitch: "Regulatory reporting, a compliance calendar and a data room for operators in 30 states; the pumper files from the phone in the field with photos and the operator's workspace updates; EDI and hard-copy filing.", channels: ["linkedin", "linkedin-page", "x"], queries: ["oil gas production reporting software", "RRC Form PR filing software", "pumper field reporting app"] },
+  leasexplorer: { audience: "lease and mineral acquisition companies such as Buffalo Bayou Resources, land managers and landmen", pitch: "Finds lease opportunities on average three months before the field sees them and manages the whole life cycle: pipeline, VDR, field capture, land accounting, regulatory records and partner portal, with agents that score deals and flag title issues.", channels: ["linkedin", "linkedin-page", "x"], queries: ["mineral rights acquisition software Texas", "landman lease pipeline software", "oil gas lease acquisition company Texas"] },
   toxictort: { audience: "toxic tort plaintiff firms", pitch: "The practice site for toxic tort matters.", channels: ["linkedin"], queries: [] },
   tortplus: { audience: "toxic tort litigation teams, paralegals and associates", pitch: "Deposition evidence intelligence: every answer cites the transcript page, receipts record which documents were read, connectors to Dropbox, Drive, SharePoint and Box.", channels: ["linkedin", "linkedin-page", "x"], queries: ["deposition transcript analysis software litigation", "toxic tort litigation support software"] },
   tortgraph: { audience: "toxic tort litigators and expert consultants", pitch: "A defendant relationship graph with sourced evidence tiers, review status and conflicts, so causation chains are documented, not asserted.", channels: ["linkedin", "linkedin-page", "x"], queries: ["silica litigation defendant research", "asbestos defendant corporate history database"] },
@@ -41,8 +41,8 @@ export const BRIEFS = {
   ricorsa: { audience: "professionals who want an answer engine that learns them", pitch: "Your living intelligence: cited answers, an identity graph that gets smarter, 500 gas free to start, no subscription.", channels: ["linkedin", "x", "instagram", "threads"], queries: ["Perplexity alternative with memory", "AI answer engine that learns you"] },
   smeprotech: { audience: "SMEPro's customers and partners", pitch: "SMEPro Technologies: governed intelligence for regulated industries.", channels: ["linkedin-page"], queries: [] },
   smeprotec: { audience: "SMEPro's customers and partners", pitch: "SMEPro Technologies.", channels: ["linkedin-page"], queries: [] },
-  ailu: { audience: "to be set", pitch: "ailu.igl.dev", channels: ["linkedin"], queries: [] },
-  luconcourse: { audience: "to be set", pitch: "luconcourse.igl.dev", channels: ["linkedin"], queries: [] },
+  ailu: { audience: "Lamar University", pitch: "A custom application for Lamar University; not marketed.", channels: [], queries: [] },
+  luconcourse: { audience: "Lamar University", pitch: "A custom application for Lamar University; not marketed.", channels: [], queries: [] },
 };
 
 const SCHEMA = `
@@ -195,8 +195,8 @@ export async function runAgent(env, appId, trigger = "manual", { integrations } 
   if (postizConfigured(env)) { try { connected = integrations || await postizIntegrations(env); const have = new Set(connected.filter((i) => !i.disabled).map((i) => i.identifier)); const wanted = brief.channels.filter((c) => have.has(c)); if (wanted.length) channels = wanted; detail.postiz = { connected: connected.length, used: channels }; } catch (e) { detail.postiz = { error: e.message }; } }
   else detail.postiz = { error: "POSTIZ_API_KEY is not set; drafts are queued for a channel to be chosen at approval" };
   // 4. drafts
-  const drafted = await draftWithModel(env, app, brief, audit, numbers, channels);
-  detail.content = drafted.error ? { error: drafted.error } : { drafted: drafted.posts.length };
+  const drafted = brief.channels.length ? await draftWithModel(env, app, brief, audit, numbers, channels) : { posts: [], skipped: "not marketed: no channels in the brief" };
+  detail.content = drafted.error ? { error: drafted.error } : (drafted.skipped ? { skipped: drafted.skipped } : { drafted: drafted.posts.length });
   for (const p of drafted.posts || []) {
     if (!p.body || typeof p.body !== "string") continue;
     const integ = connected.find((i) => i.identifier === p.channel && !i.disabled);

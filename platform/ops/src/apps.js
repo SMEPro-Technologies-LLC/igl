@@ -22,8 +22,8 @@ const iso = (v) => (v === null || v === undefined || v === "") ? null : (typeof 
 
 export const APPS = [
   { id: "wellreporter", name: "WellReporter", domain: "wellreporter.com", worker: "wellreporter-landing", store: null, kind: "energy intelligence" },
-  { id: "wellsite", name: "WellSite", domain: "wellsite.app", worker: null, store: null, kind: "regulatory reporting and GIS" },
-  { id: "leasexplorer", name: "LeaseXplorer", domain: "leasexplorer.com", worker: null, store: null, kind: "land and lease pipeline" },
+  { id: "wellsite", name: "WellSite", domain: "wellsite.app", worker: null, store: null, kind: "regulatory reporting, compliance calendar and data room for operators in 30 states; field to office from the pumper's phone; EDI and hard-copy filing" },
+  { id: "leasexplorer", name: "LeaseXplorer", domain: "leasexplorer.com", worker: null, store: null, kind: "lease opportunity discovery three months ahead of the field, through the whole acquisition life cycle" },
   { id: "toxictort", name: "ToxicTort", domain: "toxictort.us", worker: null, store: null, kind: "toxic tort practice" },
   { id: "tortplus", name: "TortPlus", domain: "tortplus.com", worker: "tortplus", store: "TORTGRAPH", kind: "deposition evidence intelligence" },
   { id: "tortgraph", name: "Tortgraph", domain: "tortgraph.ai", worker: "tortgraph", store: "TORTGRAPH", kind: "defendant relationship graph" },
@@ -34,8 +34,8 @@ export const APPS = [
   { id: "ricorsa", name: "Ricorsa", domain: "ricorsa.com", worker: "ricorsa", store: "RICORSA", kind: "living intelligence", console: "RICORSA_CONSOLE" },
   { id: "smeprotech", name: "SMEProtech", domain: "smeprotech.com", worker: "smepro", store: null, kind: "company site and merchant" },
   { id: "smeprotec", name: "SMEProtec", domain: "smeprotec.com", worker: null, store: null, kind: "company site" },
-  { id: "ailu", name: "AILU", domain: "ailu.igl.dev", worker: null, store: null, kind: "igl.dev application" },
-  { id: "luconcourse", name: "LU Concourse", domain: "luconcourse.igl.dev", worker: null, store: null, kind: "igl.dev application" },
+  { id: "ailu", name: "AILU", domain: "ailu.igl.dev", worker: null, store: null, kind: "Lamar University custom application; no billing" },
+  { id: "luconcourse", name: "LU Concourse", domain: "luconcourse.igl.dev", worker: null, store: null, kind: "Lamar University custom application; no billing" },
 ];
 
 export const appById = (id) => APPS.find((a) => a.id === id) || null;

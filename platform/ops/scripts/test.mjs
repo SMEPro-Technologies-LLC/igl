@@ -13,6 +13,8 @@ await run(["wrangler", "d1", "execute", "igl-api-production", "--local", "--file
 for (const [name, file] of [["tortgraph", "tortgraph.sql"], ["ricorsa", "ricorsa.sql"], ["ricorsa-console", "ricorsa-console.sql"], ["vdrpros", "vdrpros.sql"]]) await run(["wrangler", "d1", "execute", name, "--local", "--file=test/fixtures/" + file]);
 // The console's own tables start empty each run (the local state persists between runs otherwise), and the fixture plan change is undone.
 await run(["wrangler", "d1", "execute", "igl-intake", "--local", "--command=DROP TABLE IF EXISTS ops_events; DROP TABLE IF EXISTS ops_notes; DROP TABLE IF EXISTS ops_plan_changes; DROP TABLE IF EXISTS ops_messages; DROP TABLE IF EXISTS ops_agent_runs; DROP TABLE IF EXISTS ops_seo; DROP TABLE IF EXISTS ops_content; DROP TABLE IF EXISTS ops_leads; DROP TABLE IF EXISTS ops_insights;"]);
+// The sign-in attempts table belongs to the intake schema (applied above), so it is cleared, not dropped: a lockout left by an earlier run would fail phase two.
+await run(["wrangler", "d1", "execute", "igl-intake", "--local", "--command=DELETE FROM ops_sign_in_attempts;"]);
 await run(["wrangler", "d1", "execute", "ricorsa", "--local", "--command=UPDATE users SET plan = 'free' WHERE id = 'r2';"]);
 const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "OPS_DEV:1", "--var", 'INGEST_KEYS:{"ricorsa":"fixture-key"}'], { env, stdio: ["ignore", "pipe", "pipe"] });
 let log = ""; dev.stdout.on("data", (d) => { log += d; }); dev.stderr.on("data", (d) => { log += d; });
