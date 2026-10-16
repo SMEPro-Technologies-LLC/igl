@@ -16,7 +16,25 @@ await run(["wrangler", "d1", "execute", "igl-intake", "--local", "--command=DROP
 // The sign-in attempts table belongs to the intake schema (applied above), so it is cleared, not dropped: a lockout left by an earlier run would fail phase two.
 await run(["wrangler", "d1", "execute", "igl-intake", "--local", "--command=DELETE FROM ops_sign_in_attempts;"]);
 await run(["wrangler", "d1", "execute", "ricorsa", "--local", "--command=UPDATE users SET plan = 'free' WHERE id = 'r2';"]);
-const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "OPS_DEV:1", "--var", 'INGEST_KEYS:{"ricorsa":"fixture-key"}'], { env, stdio: ["ignore", "pipe", "pipe"] });
+// A stand-in for TortPlus's management API (projects/tortplus/worker/src/ops.js), the way the console reads applications that keep their data outside D1.
+import { createServer } from "node:http";
+const TP_PORT = 8807; const tpCalls = [];
+const tp = createServer(async (req, res) => {
+  let body = ""; for await (const c of req) body += c; tpCalls.push(req.method + " " + req.url);
+  const send = (o, s = 200) => { res.writeHead(s, { "content-type": "application/json" }); res.end(JSON.stringify(o)); };
+  if (req.headers["x-ops-key"] !== "tp-key") return send({ error: "forbidden" }, 403);
+  const u = new URL(req.url, "http://x"); const p = u.pathname.replace(/^\/api\/ops\/?/, "");
+  if (p === "summary") return send({ customers: 1, active: 1, users: 2, mrr_cents: 19500, month: "2026-10", model_cost_usd: 1.25, imports: 4, plans: [{ plan: "analyst", n: 1 }] });
+  if (p === "customers") return send({ rows: (u.searchParams.get("q") || "").includes("zzz") ? [] : [{ id: "a1234567890abcdef", email: "primary@firm.test", name: "Test Law Group", org: "Test Law Group", plan: "analyst", status: "active", mrr_cents: 19500, created_at: "2026-10-01T00:00:00Z", last_seen_at: "2026-10-16T00:00:00Z", external: { users: 2 } }], total: 1 });
+  if (p === "sessions") return send({ rows: null, kept: false, why: "TortPlus keeps no session table" });
+  if (p === "usage") return send({ rows: [{ customer_id: "a1234567890abcdef", period: "2026-10", meter: "imports", qty: 4, cost_usd: 0 }, { customer_id: "a1234567890abcdef", period: "2026-10", meter: "model_usd", qty: 1.25, cost_usd: 1.63 }] });
+  if (p === "subscriptions") return send({ rows: [{ id: "subscription_x", customer_id: "a1234567890abcdef", plan: "analyst", status: "active", amount_cents: 19500, interval: "month", provider: "finix" }] });
+  if (p === "plans") return send({ rows: [{ id: "pilot", name: "Pilot", amount_cents: 0 }, { id: "analyst", name: "Analyst", amount_cents: 19500 }, { id: "firm", name: "Firm", amount_cents: 65000 }] });
+  if (p === "plan" && req.method === "POST") { const b = JSON.parse(body); return send({ ok: true, customer: b.customer, from: "analyst", to: b.plan, status: "comped" }); }
+  send({ error: "not found" }, 404);
+});
+await new Promise((r) => tp.listen(TP_PORT, r));
+const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local", "--var", "OPS_DEV:1", "--var", 'INGEST_KEYS:{"ricorsa":"fixture-key"}', "--var", 'OPS_KEYS:{"tortplus":"tp-key"}', "--var", `OPS_REMOTE_BASES:{"tortplus":"http://127.0.0.1:${TP_PORT}/api/ops"}`], { env: { ...env, NO_PROXY: "127.0.0.1,localhost", no_proxy: "127.0.0.1,localhost" }, stdio: ["ignore", "pipe", "pipe"] });
 let log = ""; dev.stdout.on("data", (d) => { log += d; }); dev.stderr.on("data", (d) => { log += d; });
 let up = false;
 for (let i = 0; i < 60 && !up; i++) { await new Promise((r) => setTimeout(r, 1000)); try { up = (await fetch(BASE + "/healthz")).ok; } catch {} }
@@ -36,10 +54,17 @@ try {
   if (apps.length !== 15) throw new Error("expected 15 applications, got " + apps.length);
   for (const id of ["tortplus", "tortgraph", "ricorsa", "vdrpros"]) { const a = apps.find((x) => x.id === id); if (!a?.configured) throw new Error(id + " should read its store: " + JSON.stringify(a?.why)); }
   const unbound = apps.find((x) => x.id === "wellsite"); if (unbound.configured || !unbound.why) throw new Error("an application without a store must say so");
-  const tg = await (await fetch(BASE + "/api/apps/tortplus/customers")).json();
+  const tg = await (await fetch(BASE + "/api/apps/tortgraph/customers")).json();
   if (tg.rows.length !== 1 || tg.rows[0].email !== "reviewer@fixture.law" || tg.rows[0].plan !== "pilot") throw new Error("tortgraph customers: " + JSON.stringify(tg));
-  const ss = await (await fetch(BASE + "/api/apps/tortplus/sessions")).json();
+  const ss = await (await fetch(BASE + "/api/apps/tortgraph/sessions")).json();
   if (ss.rows.length !== 2 || ss.rows[0].ended_at !== null || ss.rows[1].end_reason !== "signed_out") throw new Error("tortgraph sessions: " + JSON.stringify(ss.rows));
+  // TortPlus answers through its own management API with the OPS_KEYS key
+  const tpApp = apps.find((x) => x.id === "tortplus"); if (tpApp.summary?.mrr_cents !== 19500 || !/management API/.test(tpApp.describe)) throw new Error("tortplus summary through its API: " + JSON.stringify(tpApp));
+  const tpc = await (await fetch(BASE + "/api/apps/tortplus/customers?q=law")).json(); if (tpc.rows.length !== 1 || tpc.rows[0].plan !== "analyst" || !tpCalls.some((c) => c.includes("/customers?") && c.includes("q=law"))) throw new Error("tortplus customers: " + JSON.stringify(tpc));
+  const tps = await (await fetch(BASE + "/api/apps/tortplus/sessions")).json(); if (tps.kept !== false || !/ingest\/tortplus/.test(tps.why)) throw new Error("tortplus sessions come through ingest: " + JSON.stringify(tps));
+  const tpu = await (await fetch(BASE + "/api/apps/tortplus/usage")).json(); if (!tpu.rows.some((r) => r.meter === "model_usd" && r.cost_usd === 1.63)) throw new Error("tortplus usage: " + JSON.stringify(tpu));
+  const tpp = await (await fetch(BASE + "/api/apps/tortplus/plan/a1234567890abcdef", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: "firm", reason: "pilot firm" }) })).json();
+  if (!tpp.ok || tpp.from !== "analyst" || !tpCalls.some((c) => c === "POST /api/ops/plan")) throw new Error("tortplus plan change through its API: " + JSON.stringify(tpp));
   const ru = await (await fetch(BASE + "/api/apps/ricorsa/usage?customer=r1")).json();
   if (!ru.rows.some((u) => u.meter === "gas" && u.qty === 160)) throw new Error("ricorsa gas meter: " + JSON.stringify(ru.rows));
   const rs = await (await fetch(BASE + "/api/apps/ricorsa/sessions")).json();
@@ -69,7 +94,7 @@ try {
   const vrec = await (await fetch(BASE + "/api/apps/vdrpros/customer/v1")).json();
   if (vrec.notes?.length !== 1 || vrec.activity?.length !== 1) throw new Error("vdrpros record: " + JSON.stringify({ notes: vrec.notes?.length, activity: vrec.activity?.length }));
   console.log("ops console: page renders, overview answers, unconfigured sources are reported, inquiry validation holds");
-  console.log("portfolio: 15 applications, four stores read through their adapters, sessions with login and logout, gas meter, search, ingest with per-app keys, plan change with audit, notes");
+  console.log("portfolio: 15 applications, four stores read through their adapters, TortPlus through its own API, sessions with login and logout, gas meter, search, ingest with per-app keys, plan change with audit, notes");
   // Billing: the catalog is served without Finix; Finix itself reports unconfigured instead of pretending.
   const bill = await (await fetch(BASE + "/api/billing")).json();
   if (bill.configured !== false || !bill.catalog?.tortplus?.plans?.length || !/FINIX_USERNAME/.test(bill.why)) throw new Error("billing should report unconfigured with the catalog: " + JSON.stringify(bill).slice(0, 200));
@@ -88,7 +113,7 @@ try {
   if (badDecision.status !== 404) throw new Error("deciding a missing draft should be 404");
   console.log("billing and marketing: catalog and price lists served, Finix and Postiz report unconfigured, the agent audits id-me.ai live and records the run, insights and findings");
 } catch (e) { console.error("FAIL", e.message); code = 1; }
-dev.kill("SIGKILL");
+dev.kill("SIGKILL"); tp.close();
 if (code) process.exit(code);
 
 // Phase two: built-in sign-in

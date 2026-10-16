@@ -5,6 +5,7 @@
 #   GITHUB_TOKEN          classic or fine-grained token with push access to the repo (traffic, clones); optional
 #   OPS_ADMIN_PASSWORD    the console's own sign-in (username OPS_ADMIN_USER, below); set it and the sign-in page is live
 #   INGEST_KEYS           JSON {"<app id>": "<key>"}; applications post login, logout and usage events to /ingest/<app id> with x-ops-ingest-key
+#   OPS_KEYS              JSON {"<app id>": "<key>"}; the console reads applications that keep their data outside D1 (TortPlus) through their own /api/ops with x-ops-key
 #   FINIX_USERNAME, FINIX_PASSWORD   the Finix API key pair (live); FINIX_ENV=sandbox to point at the sandbox. Billing across the portfolio.
 #   POSTIZ_API_KEY        Postiz public API key; approved drafts are scheduled through it. Without it drafts still queue.
 #   ANTHROPIC_API_KEY     the marketing agents' drafting model. Without it the agents still audit SEO and report.
