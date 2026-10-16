@@ -49,10 +49,21 @@ export async function storeDecision(db, tenantId, decision) {
 /* A GovernanceReceipt as the contract defines it, plus a signature over the
    canonical receipt body under DOMAIN_RECEIPT and the signer's public key, so
    anyone can verify it without calling us. */
+export async function chainHead(db, tenantId) {
+  const head = await db.prepare("SELECT seq, event_hash FROM audit_events WHERE tenant_id = ?1 ORDER BY seq DESC LIMIT 1").bind(tenantId).first();
+  return head ? { seq: head.seq, eventHash: head.event_hash } : { seq: -1, eventHash: GENESIS };
+}
+
+/* Every receipt names the tenant's audit chain head at the moment it was
+   issued. A receipt is signed and leaves the system with the caller, so it is
+   a checkpoint the database administrator cannot rewrite: a later chain that
+   does not reproduce that hash at that sequence was reconstructed. */
 export async function issueReceipt(db, signer, tenantId, { actor, authorityDecision, policiesEvaluated = [], evidenceIds = [], output = null }) {
+  const auditHead = await chainHead(db, tenantId);
   const receipt = {
     receiptId: uuid(), actor, authorityDecision, policiesEvaluated, evidenceIds,
     outputHash: output === null ? null : sha256(canonical(output)),
+    auditHead,
     createdAt: nowIso(),
   };
   const signed = { ...receipt, signer: signer.id, alg: "Ed25519", publicKey: signer.pub(), signature: signer.sign(DOMAIN_RECEIPT, receipt) };

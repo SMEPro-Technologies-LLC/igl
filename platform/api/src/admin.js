@@ -12,7 +12,7 @@
    POST /admin/obligations       platform key or igl.admin: create or attest an obligation
    GET  /admin/implemented       what this deployment serves, for the site generator */
 
-import { E, readJson, validate, json, uuid, nowIso, UUID_RE } from "./lib/http.js";
+import { E, readJson, validate, json, uuid, nowIso } from "./lib/http.js";
 import { sha256, randomToken } from "./lib/crypto.js";
 import { mintToken, newApiKey, SCOPES, rateLimit, authenticate } from "./lib/auth.js";
 import { seedPurposes, newConsent } from "./lib/projection.js";
@@ -43,7 +43,7 @@ async function createTenant(db, env, { name, jurisdiction = "US", settings = {} 
 }
 
 async function platformOrAdmin(request, env, db, signer, url, { adminOk }) {
-  const route = { scopes: adminOk ? ["igl.admin"] : ["igl.platform"], apiKey: true };
+  const route = { scopes: adminOk ? ["igl.admin"] : ["igl.platform"], keyHeader: true };
   const p = await authenticate({ request, env, db, signer, route, url });
   const platform = p.scopes.includes("igl.platform");
   if (!platform && !adminOk) throw E.forbidden("A platform credential is required.", { code: "platform_required" });
@@ -54,7 +54,7 @@ export async function adminFetch({ request, env, ctx, db, url, signer, requestId
   const path = url.pathname; const method = request.method;
 
   if (method === "GET" && path === "/.well-known/jwks.json") return json({ keys: [signer.jwk()] }, 200, { "cache-control": "public, max-age=300" });
-  if (method === "GET" && path === "/.well-known/igl.json") return json({ service: "igl-api", environment: env.IGL_ENV || "production", contract: CONTRACT_VERSION, version: env.SERVICE_VERSION || "1.4.0", signer: signer.id, publicKey: signer.pub(), tokenEndpoint: "/oauth2/token", operations: ROUTES.length }, 200, { "cache-control": "public, max-age=60" });
+  if (method === "GET" && path === "/.well-known/igl.json") return json({ service: "igl-api", environment: env.IGL_ENV || "production", contract: CONTRACT_VERSION, version: env.SERVICE_VERSION || "1.6.0", signer: signer.id, publicKey: signer.pub(), tokenEndpoint: "/oauth2/token", operations: ROUTES.length }, 200, { "cache-control": "public, max-age=60" });
 
   if (method === "POST" && path === "/oauth2/token") {
     const ct = request.headers.get("content-type") || "";

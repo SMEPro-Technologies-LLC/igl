@@ -17,8 +17,9 @@
    governedStep math. Every run seals a hash-chained trace and an Ed25519-signed
    receipt, then re-verifies the receipt from the artifact alone. */
 
-import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@huggingface/transformers";
-import { Bridge, ABSTAIN } from "../src/bridge.js";
+import { Tensor } from "@huggingface/transformers";
+import { loadPinnedModel } from "../provision/model.mjs";
+import { Bridge } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
 import { governedStep } from "../src/decode.js";
 import { Signer, sha256, canonical } from "../src/sign.js";
@@ -30,15 +31,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ARTIFACTS = path.join(HERE, "..", "artifacts");
 fs.mkdirSync(ARTIFACTS, { recursive: true });
 
-const MODEL_ID = "Xenova/distilgpt2";
 const MAX_STEPS = 24;
 
-const round = (x, n = 6) => Number(x.toFixed(n));
-const entropy = (dist) => { let h = 0; for (const p of dist) if (p > 0) h -= p * Math.log2(p); return round(h); };
 
-console.log(`[live] loading ${MODEL_ID} (downloads on first run)…`);
-const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
+const { tokenizer, model, provenance } = await loadPinnedModel({ log: (m) => console.log(`[live] ${m} (downloads on first run)`) });
 const VOCAB = []; // id -> string
 for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
 console.log(`[live] model ready, vocab ${VOCAB.length}`);
@@ -51,7 +47,7 @@ async function rawNextDist(ids) {
   const attention_mask = new Tensor("int64", new BigInt64Array(ids.length).fill(1n), [1, ids.length]);
   const position_ids = new Tensor("int64", BigInt64Array.from({ length: ids.length }, (_, i) => BigInt(i)), [1, ids.length]);
   const out = await model({ input_ids, attention_mask, position_ids });
-  const [_, seq, v] = out.logits.dims;
+  const [, seq, v] = out.logits.dims;
   const row = Array.from(out.logits.data.slice((seq - 1) * v, seq * v));
   const mx = Math.max(...row);
   const exps = row.map((z) => Math.exp(z - mx));
@@ -111,7 +107,7 @@ function sealReceipt({ kind, actor, role, footprint, boundary, envelope, gen, ex
     boundary,
     manifestDigest: envelope.manifest.schemaDigest,
     scopeDigest: envelope.manifest.scopeDigest,
-    model: MODEL_ID,
+    model: provenance.version,
     sampler: "argmax",
     emitted: gen.text,
     outcome: gen.outcome,

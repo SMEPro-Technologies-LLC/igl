@@ -1,0 +1,3 @@
+# the served contract has one stable address; the versioned names it had before point at it
+/igl-openapi-v0.2.yaml /igl-openapi.yaml 301
+/igl-openapi-v0.1.yaml /igl-openapi.yaml 301

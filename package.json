@@ -1,6 +1,6 @@
 {
   "name": "igl",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "description": "Identity Governed Logic, a language and runtime where identity, boundaries, intent, and trace are bound into the computation itself",
   "type": "module",
   "main": "src/index.js",
@@ -18,9 +18,12 @@
     "SECURITY.md"
   ],
   "scripts": {
-    "test": "node --test test/bridge.test.js test/decode.test.js test/extract.test.js test/graph.test.js test/igl.test.js test/sign.test.js test/store.test.js test/security.test.js test/resolver.test.js",
+    "test": "node --test test/bridge.test.js test/decode.test.js test/extract.test.js test/graph.test.js test/igl.test.js test/sign.test.js test/store.test.js test/security.test.js test/resolver.test.js test/audit.test.js",
     "provision": "node provision/server.mjs",
-    "provision:cli": "node provision/cli.mjs"
+    "provision:cli": "node provision/cli.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "repository": {
     "type": "git",
@@ -47,5 +50,12 @@
     "protobufjs": "^7.6.2",
     "sharp": "^0.35.3",
     "adm-zip": "^0.6.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@types/node": "22.19.7",
+    "eslint": "9.39.1",
+    "globals": "16.4.0",
+    "typescript": "5.9.3"
   }
 }

@@ -20,7 +20,6 @@ on:
 
 permissions:
   contents: read
-  deployments: write
 
 concurrency:
   group: deploy-site
@@ -30,6 +29,9 @@ jobs:
   deploy:
     name: Pages deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -37,7 +39,7 @@ jobs:
           node-version: "22"
       - name: Reference is current with the contract
         run: |
-          pip install --quiet pyyaml
+          pip install --quiet pyyaml==6.0.3
           cp platform/site/index.html /tmp/index.before.html
           python3 platform/site/gen_reference.py spec/openapi.yaml platform/api/implemented.json platform/site/index.html
           if ! diff -q /tmp/index.before.html platform/site/index.html >/dev/null; then
@@ -59,13 +61,17 @@ jobs:
           print(f"production serves {len(out['live'])} operations, sandbox {len(out['sandbox'])}")
           EOF
           python3 platform/site/gen_reference.py spec/openapi.yaml platform/api/implemented.json platform/site/index.html
+      - name: Static pages for search engines (how-it-works, docs, enterprise), the sitemap, and the served copy of the contract
+        run: |
+          python3 platform/site/gen_pages.py platform/site/index.html platform/site
+          cp spec/openapi.yaml platform/site/igl-openapi.yaml
       - name: Apply intake schema (idempotent)
-        run: npx --yes wrangler@4 d1 execute igl-intake --remote --file=platform/site/schema/intake.sql
+        run: npx --yes wrangler@4.151.0 d1 execute igl-intake --remote --file=platform/site/schema/intake.sql
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Deploy
-        run: npx --yes wrangler@4 pages deploy platform/site --project-name id-me-ai --branch main --commit-dirty=true
+        run: npx --yes wrangler@4.151.0 pages deploy platform/site --project-name id-me-ai --branch main --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

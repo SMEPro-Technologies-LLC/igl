@@ -1,2 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://id-me.ai/</loc></url></urlset>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://id-me.ai/</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://id-me.ai/how-it-works/</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://id-me.ai/docs/</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://id-me.ai/enterprise/</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://id-me.ai/#console</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://id-me.ai/#account</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://id-me.ai/#sales</loc><changefreq>weekly</changefreq></url>
+</urlset>

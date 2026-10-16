@@ -62,7 +62,10 @@ export function makeGovernedGenerate({ tokenizer, model, maxSteps = 24 }) {
 export class GovernedAI extends AIRuntime {
   constructor({ graph, bridge, prompts, governedGenerate, ...rest }) {
     super(rest);
-    Object.assign(this, { graph, bridge, prompts, governedGenerate });
+    /** @type {any} */ this.graph = graph;
+    /** @type {any} */ this.bridge = bridge;
+    /** @type {Record<string, any>} */ this.prompts = prompts;
+    /** @type {any} */ this.governedGenerate = governedGenerate;
   }
   async extract(args, ctx) {
     const pinned = this.models[args.Model];

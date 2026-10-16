@@ -14,7 +14,7 @@
    reads and writes are scoped to auth.tenant / auth.principal unless
    auth.admin (the service key). There is no query-string credential. */
 
-import { provisionIdentity, listProvisioned, getProvisioned, searchProvisioned, whoAmI } from "./service.mjs";
+import { provisionIdentity, listProvisioned, getProvisioned, searchProvisioned, whoAmI, modelInfo } from "./service.mjs";
 import { allowedOrigins, corsHeaders, clientError } from "./auth.mjs";
 const ORIGINS = allowedOrigins();
 
@@ -49,7 +49,7 @@ function ownerFor(auth, requested) {
 export async function callTool(name, args, auth) {
   switch (name) {
     case "check_health":
-      return { ok: true, model: "Xenova/distilgpt2", graphs: listProvisioned(auth).length };
+      return { ok: true, model: modelInfo(), graphs: listProvisioned(auth).length };
     case "list_graphs":
       return { graphs: listProvisioned(auth).map(summarize) };
     case "get_graph": {

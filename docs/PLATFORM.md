@@ -5,7 +5,7 @@ This repository holds two layers of one system. This page explains how they fit 
 ## Layers
 
 ```
-Customer applications  (Ricorsa, WellSite, LeaseXPlorer, VDRPros, TortGraph, RealEChat, RealStar, …)
+Customer applications  (Ricorsa, WellSite, LeaseXPlorer, VDRPros, TortGraph, RealEChat, RealStar, and others)
         │  call
         ▼
 IGL API, the platform contract in spec/openapi.yaml, served at api.id-me.ai/v1
@@ -17,7 +17,7 @@ Six governed graphs: Identity, Authority, Knowledge, Policy, Evidence, Outcome
 IGL runtime, this repository's src/: identity binding, boundary enforcement, intent, hash-chained trace
         │  reasoning delegated to
         ▼
-Reasoning layer, Claude, Moonshot, enterprise models, agents, tools (interchangeable)
+Reasoning layer, any model pinned per request (Anthropic on the hosted service today), agents, tools (interchangeable)
 ```
 
 The runtime is open source (Apache-2.0) and its own MCP surface today is the provisioning service's seven tools (`check_health`, `list_graphs`, `get_graph`, `search`, `fetch`, `identity_graph_whoami`, `provision_identity`); the platform's seven tools below are the governed-projection surface specified by contract 0.2. The hosted platform is a product of SMEPro Technologies LLC; its contract is open so that applications and model callers can be built and verified against it independently.
@@ -28,6 +28,7 @@ The runtime is open source (Apache-2.0) and its own MCP surface today is the pro
 |---|---|---|
 | BOUNDARY graph (company) | Identity + Authority graphs for an organization | A tenant's organizational boundary |
 | FOOTPRINT graph (individual) | Identity projection of a person | Served under a purpose; see below |
+| Reuse decay, `Traces=None`, journal tombstone of a failure | Subject service (contract 0.3): pause, forget, reset, export | The platform gives the person the controls; the runtime gives the journal the discipline. `docs/RICORSA.md` maps both to Ricorsa |
 | `granted` | `certified` relationship / `attested` obligation / active `Policy` | Human- or signer-attested authority |
 | `observed: governing` | `proposed` with deterministic provenance | Promotion candidate |
 | `observed: proposed` | `proposed` with model provenance | Never promotes to authority |
