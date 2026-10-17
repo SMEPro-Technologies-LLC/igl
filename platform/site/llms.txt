@@ -1,0 +1,21 @@
+# IGL, Identity Governed Logic
+
+> Governed intelligence. Before execution. IGL makes every AI action answer who is acting, what they are allowed to do, why, and what happened, before it runs, and proves the answer with a signed receipt. Open source runtime (Apache 2.0), hosted API with a free sandbox, and MCP tools for AI assistants. Made by SMEPro Technologies LLC.
+
+## Start here
+- [Home](https://id-me.ai/): the product, a sixty-second sandbox call, and what is live
+- [How it works](https://id-me.ai/how-it-works/): identity, boundary, intent and trace, checked before execution
+- [API reference](https://id-me.ai/docs/): all 51 operations, schemas, webhooks and the seven MCP tools
+- [Enterprise](https://id-me.ai/enterprise/): what a production deployment includes
+
+## Reference
+- [Wiki](https://github.com/SMEPro-Technologies-LLC/igl/wiki): quickstarts, concepts, receipts and audit, security model, FAQ, glossary
+- [Source](https://github.com/SMEPro-Technologies-LLC/igl): the runtime, the OpenAPI 3.1 contract, the platform service, this site
+- [OpenAPI contract](https://id-me.ai/igl-openapi.yaml)
+- [Brand assets](https://github.com/SMEPro-Technologies-LLC/igl/wiki/Brand-Assets)
+
+## Live endpoints
+- Sandbox: https://sandbox.id-me.ai/v1 (self-serve signup at POST /sandbox/signup, igl_test_ keys)
+- Production: https://api.id-me.ai/v1 (igl_live_ keys through Contact Sales)
+- Receipt verification key: https://auth.id-me.ai/.well-known/jwks.json
+- MCP: POST https://api.id-me.ai/v1/mcp (JSON-RPC 2.0, tools: whoami, list_purposes, get_identity_context, explain_projection, list_obligations, search_graph, record_interaction)

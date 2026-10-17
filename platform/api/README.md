@@ -34,7 +34,7 @@ npm test          # starts wrangler dev with a local D1, runs the conformance su
 npm run dev       # keeps a sandbox-mode service on http://127.0.0.1:8801
 ```
 
-The conformance suite (`test/conformance.test.mjs`) exercises all 46 operations against the running service and validates every response body against the schema the contract declares for that status code. It fails if an operation is left uncovered.
+The conformance suite (`test/conformance.test.mjs`) exercises all 51 operations against the running service and validates every response body against the schema the contract declares for that status code. It fails if an operation is left uncovered.
 
 Try it by hand once `npm run dev` is up:
 

@@ -17,21 +17,20 @@
 import { IGLError } from "./lexer.js";
 import { parse } from "./parser.js";
 import { check } from "./check.js";
-import { BUILTINS, INTENTS, SLOTS } from "./builtins.js";
+import { BUILTINS, INTENTS } from "./builtins.js";
 import { IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime } from "./runtime.js";
-import { Signer } from "./sign.js";
+import { Signer, sha256, canonical, runtimeDigest } from "./sign.js";
 
-const hash = s => {
-  // FNV-1a 64-ish, hex; deterministic and dependency-free
-  let h1 = 0x811c9dc5, h2 = 0x01000193;
-  for (let i = 0; i < s.length; i++) {
-    h1 ^= s.charCodeAt(i); h1 = Math.imul(h1, 0x01000193) >>> 0;
-    h2 ^= s.charCodeAt(s.length - 1 - i); h2 = Math.imul(h2, 0x85ebca6b) >>> 0;
-  }
-  return (h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0"));
-};
+/* Execution identity (F-05). "The same statement" is defined as the same
+   actor, boundary, intent and parameters, the same context selection, the
+   same compute steps with the same bound arguments and pinned model versions,
+   the same declared outputs, and the same runtime build. SHA-256 over the
+   canonical form. One argument is excluded on purpose: an Approval handed to
+   IOS.Attest is a signature OVER this key, so it cannot be part of it. */
+export const EXECUTION_IDENTITY_VERSION = "igl-exec-v1";
 
 export class Interpreter {
+  /** @param {{ identity?: any, udm?: any, ai?: any, ios?: any, intents?: any, builtins?: any, handlers?: any, signers?: any, runtimeSigner?: any, now?: () => string, traceIdSeq?: (() => string) | null }} [options] */
   constructor({
     identity = new IdentityRuntime(),
     udm = new UDMRuntime(),
@@ -45,7 +44,13 @@ export class Interpreter {
     now = () => new Date().toISOString(),
     traceIdSeq = null,
   } = {}) {
-    Object.assign(this, { identity, udm, ai, ios, intents, builtins, handlers, signers, runtimeSigner, now });
+    /** @type {any} */ this.identity = identity;
+    /** @type {any} */ this.udm = udm;
+    /** @type {any} */ this.ai = ai;
+    /** @type {any} */ this.ios = ios;
+    this.intents = intents; this.builtins = builtins; this.handlers = handlers; this.signers = signers;
+    /** @type {any} */ this.runtimeSigner = runtimeSigner;
+    this.now = now;
     this._seq = 0;
     this._traceId = traceIdSeq || (() => `TRC-${String(++this._seq).padStart(6, "0")}`);
     this.env = new Map();       // output name -> value (CRITIQUE B2)
@@ -68,7 +73,7 @@ export class Interpreter {
   }
 
   bindArgs(step) {
-    const sg = this.builtins[`${step.subsystem}.${step.fn}`];
+    const sg = this.builtins[`${step.subsystem}.${step.fn}`] || { params: [] };
     const out = {};
     const positional = step.args.filter(a => a.kind === "Positional");
     positional.forEach((a, i) => { const prm = sg.params[i]; if (prm) out[prm.name] = this.evalValue(a.value); });
@@ -98,6 +103,33 @@ export class Interpreter {
       }
     }
     return spec;
+  }
+
+  /* ---------- execution identity ---------- */
+  executionIdentity(st, { ident, boundary, params, cspec }) {
+    const compute = st.compute.steps.map(step => {
+      const args = this.bindArgs(step);
+      if (step.subsystem === "IOS" && step.fn === "Attest") delete args.Approval;
+      const pinned = step.subsystem === "AI" && args.Model != null && this.ai.models ? this.ai.models[args.Model] : null;
+      return { fn: `${step.subsystem}.${step.fn}`, args, ...(pinned ? { modelVersion: pinned.version ?? null } : {}) };
+    });
+    const outputs = st.output.items.map(item => ({ name: item.name, value: item.value ? this.evalValue(item.value) : null }));
+    const identity = { v: EXECUTION_IDENTITY_VERSION, actor: ident.id, boundary, intent: st.intent.name, params, context: cspec, compute, outputs, runtime: runtimeDigest() };
+    return { key: sha256(canonical(identity)), identity };
+  }
+
+  /* The statement keys a program would run under, without running it. A
+     human approver uses this to see what they are signing. Refs must be
+     bound in `env` first, as they would be at run time. */
+  statementKeys(source) {
+    const ast = typeof source === "string" ? parse(source) : source;
+    return ast.statements.map(st => {
+      const ident = this.identity.resolve(st.identity.actor);
+      const boundary = this.udm.validateBoundary(st.identity.boundary);
+      const params = Object.fromEntries(st.intent.params.map(p => [p.name, this.evalValue(p.value)]));
+      const { key } = this.executionIdentity(st, { ident, boundary, params, cspec: this.contextSpec(st.context) });
+      return { line: st.line, intent: st.intent.name, actor: ident.actor, boundary, statementKey: key };
+    });
   }
 
   /* ---------- one statement ---------- */
@@ -131,17 +163,17 @@ export class Interpreter {
     if (!spec.roles.includes(ident.role))
       throw new IGLError(`${ident.id} may not perform ${st.intent.name} in this boundary`, { line: st.intent.line, phase: "authz", code: "IGL_UNAUTHORISED" });
 
-    /* 4. idempotency (CRITIQUE B6) */
+    /* 4. idempotency (CRITIQUE B6, F-05): the key covers every material
+       input, and only a durably committed trace can answer for it. */
     const params = Object.fromEntries(st.intent.params.map(p => [p.name, this.evalValue(p.value)]));
-    const statementKey = hash(JSON.stringify({ a: ident.id, b: boundary, i: st.intent.name, p: params,
-      c: st.compute.steps.map(s => `${s.subsystem}.${s.fn}`) }));
+    const cspec = this.contextSpec(st.context);
+    const { key: statementKey } = this.executionIdentity(st, { ident, boundary, params, cspec });
     if (!force) {
       const prior = this.ios.byStatementKey(statementKey);
-      if (prior) return { status: "idempotent", traceId: prior.id, outputs: prior.outputs, trace: prior };
+      if (prior && prior.state === "committed") return { status: "idempotent", traceId: prior.id, outputs: prior.outputs, trace: prior };
     }
 
     /* 5. context traces */
-    const cspec = this.contextSpec(st.context);
     const { traces: contextTraces, predicate } = this.ios.select(cspec, { identity: ident, boundary, intent: st.intent.name });
 
     /* 6. compute */
@@ -154,7 +186,10 @@ export class Interpreter {
       const key = `${step.subsystem}.${step.fn}`;
       const args = this.bindArgs(step);
       if (step.subsystem === "UDM") {
-        assertions.push({ step: key, ...this.udm[step.fn](args) });
+        // Only a function the declared signature table names may be called, and it must be a method of the runtime itself (not "constructor", "__proto__" or anything from Object).
+        const udmFn = Object.prototype.hasOwnProperty.call(this.builtins, key) && !(step.fn in Object.prototype) && typeof this.udm[step.fn] === "function" ? this.udm[step.fn] : null;
+        if (!udmFn) throw new IGLError(`UDM.${step.fn} is not a declared resolver`, { line: step.line, phase: "exec", code: "IGL_UNKNOWN_RESOLVER" });
+        assertions.push({ step: key, ...udmFn.call(this.udm, args) });
       } else if (step.subsystem === "AI") {
         const a = step.fn === "Extract"
           ? await this.ai.extract(args, { ...ctx, udm: this.udm })
@@ -200,8 +235,8 @@ export class Interpreter {
             attestation: cls,
             confidence: cls === "ai" ? 0.5 : 1,
             ...(approval ? { approval } : {}),
-            ...(cls === "ai" ? { note: (args.Note ? args.Note + " · " : "") + "unkeyed attestation, human class requires a registered signing key and an approval" } : {}),
-            ...(cls === "service" ? { note: (args.Note ? args.Note + " · " : "") + "service attestation, signed by a key the runtime holds; not evidence of human review" } : {}) });
+            ...(cls === "ai" ? { note: (args.Note ? args.Note + "; " : "") + "unkeyed attestation, human class requires a registered signing key and an approval" } : {}),
+            ...(cls === "service" ? { note: (args.Note ? args.Note + "; " : "") + "service attestation, signed by a key the runtime holds; not evidence of human review" } : {}) });
         } else if (step.fn === "Stage") {
           assertions.push({ step: key, assertion: "staged", artifact: args.Artifact, attestation: "deterministic", confidence: 1 });
         }
@@ -270,8 +305,9 @@ export class Interpreter {
     if (!written) throw new IGLError("trace capture returned no id; staged outputs discarded", { phase: "trace", code: "IGL_TRACE_FAILED" });
 
     /* 9b. release, and close the loop: the committed trace folds back into the
-       identity graph. Its own attestation class decides which layer it reaches, an ai-class trace can never land anywhere that widens authority. */
-    this.ios.markReused(contextTraces);
+       identity graph. Its own attestation class decides which layer it reaches, an ai-class trace can never land anywhere that widens authority.
+       Reuse of the context traces is journaled as its own event (F-06). */
+    this.ios.markReused(contextTraces, { statementTraceId: traceId });
     if (typeof this.identity.fold === "function") this.identity.fold(trace);
     if (committed) for (const [k, v] of Object.entries(staged)) this.env.set(k, v);
     this.env.set("TurnTrace_ID", traceId);
@@ -298,11 +334,11 @@ export class Interpreter {
     for (const h of st.onFail.handlers) {
       const args = Object.fromEntries(h.args.filter(a => a.kind === "Named").map(a => [a.name, this.evalValue(a.value)]));
       const positional = h.args.filter(a => a.kind === "Positional").map(a => this.evalValue(a.value));
-      const fn = this.handlers[h.name];
+      const fn = Object.prototype.hasOwnProperty.call(this.handlers, h.name) && !(h.name in Object.prototype) && typeof this.handlers[h.name] === "function" ? this.handlers[h.name] : null;
       const record = { handler: h.name, args, positional };
       if (fn) record.result = await fn({ statement: st, error, args, positional, interpreter: this });
       actions.push(record);
-      if (h.name === "Halt") { const e = new IGLError(`halted: ${error.message}`, { phase: "onfail", code: "IGL_HALTED" }); e.actions = actions; e.cause = error; throw e; }
+      if (h.name === "Halt") { const e = /** @type {any} */ (new IGLError(`halted: ${error.message}`, { phase: "onfail", code: "IGL_HALTED" })); e.actions = actions; e.cause = error; throw e; }
       if (h.name === "Retry") {
         const times = Number(args.Times ?? positional[0] ?? 1);
         for (let i = 0; i < times; i++) {
@@ -314,6 +350,13 @@ export class Interpreter {
     return { status: "failed", error: { message: error.message, code: error.code, phase: error.phase }, actions };
   }
 
+  async recordFailure(st, error) {
+    if (typeof this.ios.recordFailure !== "function") return;
+    const actor = Array.isArray(st.identity?.actor) ? st.identity.actor[0] : null;
+    this.ios.recordFailure({ actor, intent: st.intent?.name ?? null, code: error.code ?? null, phase: error.phase ?? null, line: error.line ?? st.line ?? null, message: error.message });
+    if (typeof this.ios.flush === "function") { try { await this.ios.flush(); } catch { /* the failure of the failure record is reported by the next flush */ } }
+  }
+
   /* ---------- program ---------- */
   async run(source, { skipCheck = false } = {}) {
     const ast = typeof source === "string" ? parse(source) : source;
@@ -321,7 +364,7 @@ export class Interpreter {
       const errors = check(ast, { intents: this.intents, builtins: this.builtins, inputs: [...this.env.keys()] });
       if (errors.length) {
         const e = new IGLError(`${errors.length} static error(s); nothing was executed`, { phase: "check", code: "IGL_STATIC_ERRORS" });
-        e.errors = errors;
+        /** @type {any} */ (e).errors = errors;
         throw e;
       }
     }
@@ -331,6 +374,9 @@ export class Interpreter {
       try { results.push(await this.execStatement(st)); }
       catch (err) {
         if (!(err instanceof IGLError)) throw err;
+        /* F-09: a refusal or failure is a governed event with a durable
+           record, the same as a success. Recorded before any handler runs. */
+        await this.recordFailure(st, err);
         const handled = await this.handleFailure(st, err);
         results.push(handled);
         if (handled.halted) { halted = true; break; }

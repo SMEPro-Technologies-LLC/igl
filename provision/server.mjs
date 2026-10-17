@@ -17,12 +17,14 @@
      · CORS origins are an allow-list (PROVISION_ALLOWED_ORIGINS); CORS is not auth */
 
 import http from "node:http";
-import { warmRuntime, provisionIdentity, listProvisioned, getProvisioned, whoAmI } from "./service.mjs";
+import { warmRuntime, provisionIdentity, listProvisioned, getProvisioned, whoAmI, modelInfo } from "./service.mjs";
 import { handleMcp } from "./mcp.mjs";
 import { readFile } from "node:fs/promises";
 import { makeGate, listenConfig, RateLimiter, Semaphore, allowedOrigins, corsHeaders as cors, clientError } from "./auth.mjs";
 /* Real caller registry is gitignored (identities.mjs); the example ships in
-   the repo so the service boots out of the box. */
+   the repo so the service boots out of the box. The type checker runs in CI
+   where the real file never exists, hence the ignore on the import. */
+// @ts-ignore identities.mjs is gitignored; when it is absent the example registry is used
 const { resolveCaller } = await import("./identities.mjs").catch(() => import("./identities.example.mjs"));
 
 const cfg = listenConfig(process.env);            // throws on PUBLIC without a key
@@ -67,7 +69,7 @@ export const server = http.createServer(async (req, res) => {
       return res.end(html);
     }
     if (req.method === "GET" && url.pathname === "/api/health")
-      return send(req, res, 200, { ok: true, model: "Xenova/distilgpt2", public: cfg.isPublic });
+      return send(req, res, 200, { ok: true, model: modelInfo(), public: cfg.isPublic });
     if (req.method === "GET" && url.pathname === "/api/whoami") {
       if (!auth.caller) return send(req, res, 401, { error: "unrecognized caller, present a registered identity key" });
       return send(req, res, 200, await withInference(() => whoAmI(auth.caller, ownerFor(auth))));

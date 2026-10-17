@@ -1,6 +1,6 @@
 /* IGL lexer, v0.2
    Token classes are deliberately narrow: the value types the language can
-   express are the value types UDM can govern. See docs/CRITIQUE.md §A2. */
+   express are the value types UDM can govern. See docs/CRITIQUE.md item A2. */
 
 export class IGLError extends Error {
   constructor(message, { line = 0, col = 0, phase = "lex", code = "IGL_ERROR" } = {}) {
@@ -32,15 +32,14 @@ const isIdentStart = c => /[A-Za-z_]/.test(c);
 const isIdentPart = c => /[A-Za-z0-9_]/.test(c);
 /* Codes carry hyphens but never dots: `.` is always the subsystem scoping
    operator, so `UDM.Resolve` can never be mistaken for a single token.
-   A value needing a dot is a string. See SPEC.md §3.2. */
-const isCodePart = c => /[A-Za-z0-9_\-]/.test(c);
+   A value needing a dot is a string. See SPEC.md item 3.2. */
+const isCodePart = c => /[A-Za-z0-9_-]/.test(c);
 const isDigit = c => c >= "0" && c <= "9";
 const NUMBER_RE = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/;
 
 export function lex(src) {
   const toks = [];
   let i = 0, line = 1, col = 1;
-  const at = () => src[i];
   const push = (type, value, l, c) => toks.push({ type, value, line: l, col: c });
   const err = (m, code) => { throw new IGLError(m, { line, col, phase: "lex", code }); };
 
@@ -118,7 +117,7 @@ export function lex(src) {
         continue;
       }
       // governed code: TX-RRC, PR-202, 2026-Q3, TRC-004982
-      if (/^[A-Za-z0-9_][A-Za-z0-9_\-]*$/.test(text) && !text.endsWith("-")) {
+      if (/^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(text) && !text.endsWith("-")) {
         advance(); push("CODE", text, line, startCol); continue;
       }
       err(`cannot tokenise ${JSON.stringify(text)}`, "IGL_BAD_TOKEN");

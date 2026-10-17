@@ -1,0 +1,22 @@
+name: Feature request
+description: Something the runtime or the platform should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do and where IGL stops short. Which of the four guarantees (identity, boundaries, intent, trace) it touches.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The shape you have in mind, if any. API, program syntax, contract operation. Rough is fine.
+  - type: checkboxes
+    id: roadmap
+    attributes:
+      label: Roadmap
+      options:
+        - label: I checked the open issues labelled `roadmap` and this is not one of them

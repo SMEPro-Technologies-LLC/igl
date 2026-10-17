@@ -6,7 +6,6 @@
 const CF_API = "https://api.cloudflare.com/client/v4";
 const GQL = "https://api.cloudflare.com/client/v4/graphql";
 
-const dayAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 const iso = (d) => new Date(d).toISOString();
 
 async function cf(env, path, init = {}) {
@@ -143,22 +142,40 @@ export async function health(env) {
   return out;
 }
 
-/* Where people are talking about it. Public search endpoints, no keys. */
+/* Where people are talking about it. Public search endpoints, no keys.
+
+   The query is always sent as an exact phrase. Unquoted, GitHub and Algolia
+   split "id-me.ai" into the words id, me and ai, and "repositories
+   mentioning it" becomes every repository on GitHub with "ai" in its README
+   (393,695 of them, on the day this was noticed). The repository's own
+   organization is excluded from the GitHub count, and every hit is checked
+   again for the literal phrase before it is shown. */
 export async function mentions(env) {
   const q = env.MENTION_QUERY || "id-me.ai";
+  const phrase = `"${q.replace(/"/g, "")}"`;
+  const ownOrg = (env.GITHUB_REPO || "SMEPro-Technologies-LLC/igl").split("/")[0];
+  const has = (...texts) => texts.some((t) => typeof t === "string" && t.toLowerCase().includes(q.toLowerCase()));
   const out = { query: q };
   try {
-    const hn = await fetch(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=(story,comment)&hitsPerPage=20`, { headers: { "user-agent": "igl-ops" } });
-    if (hn.ok) { const j = await hn.json(); out.hackerNews = { total: j.nbHits, items: j.hits.slice(0, 10).map((h) => ({ title: h.title || h.story_title, url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`, points: h.points, comments: h.num_comments, at: h.created_at })) }; }
+    const hn = await fetch(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(phrase)}&tags=(story,comment)&hitsPerPage=50`, { headers: { "user-agent": "igl-ops" } });
+    if (hn.ok) {
+      const j = await hn.json();
+      const hits = (j.hits || []).filter((h) => has(h.title, h.story_title, h.url, h.story_url, h.comment_text, h.story_text));
+      out.hackerNews = { total: hits.length, items: hits.slice(0, 10).map((h) => ({ title: h.title || h.story_title, url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`, points: h.points, comments: h.num_comments, at: h.created_at })) };
+    } else out.hackerNews = { error: `HTTP ${hn.status}` };
   } catch (e) { out.hackerNews = { error: e.message }; }
   try {
-    const gh = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(q + " in:readme,description")}&per_page=10`, { headers: { "user-agent": "igl-ops", accept: "application/vnd.github+json", ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) } });
-    if (gh.ok) { const j = await gh.json(); out.githubRepos = { total: j.total_count, items: (j.items || []).map((r) => ({ name: r.full_name, url: r.html_url, stars: r.stargazers_count })) }; }
+    const gh = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(`${phrase} in:readme,description -org:${ownOrg}`)}&per_page=30`, { headers: { "user-agent": "igl-ops", accept: "application/vnd.github+json", ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) } });
+    if (gh.ok) {
+      const j = await gh.json();
+      const items = (j.items || []).filter((r) => r.owner?.login !== ownOrg).map((r) => ({ name: r.full_name, url: r.html_url, stars: r.stargazers_count, description: r.description }));
+      out.githubRepos = { total: j.total_count, items: items.slice(0, 10), note: j.total_count > items.length ? "exact-phrase search; the own organization is excluded" : null };
+    } else out.githubRepos = { error: `HTTP ${gh.status}` };
   } catch (e) { out.githubRepos = { error: e.message }; }
   try {
-    const rd = await fetch(`https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=10`, { headers: { "user-agent": "igl-ops/1.0 (operator console)" } });
-    if (rd.ok) { const j = await rd.json(); out.reddit = { items: (j.data?.children || []).map((c) => ({ title: c.data.title, url: "https://www.reddit.com" + c.data.permalink, score: c.data.score, subreddit: c.data.subreddit, at: new Date(c.data.created_utc * 1000).toISOString() })) }; }
-    else out.reddit = { error: `HTTP ${rd.status}` };
+    const rd = await fetch(`https://www.reddit.com/search.json?q=${encodeURIComponent(phrase)}&sort=new&limit=10`, { headers: { "user-agent": "igl-ops/1.0 (operator console)" } });
+    if (rd.ok) { const j = await rd.json(); out.reddit = { items: (j.data?.children || []).filter((c) => has(c.data.title, c.data.selftext, c.data.url)).map((c) => ({ title: c.data.title, url: "https://www.reddit.com" + c.data.permalink, score: c.data.score, subreddit: c.data.subreddit, at: new Date(c.data.created_utc * 1000).toISOString() })) }; }
+    else out.reddit = { error: rd.status === 403 ? "Reddit refuses search requests from cloud networks (HTTP 403); this is not a count of zero" : `HTTP ${rd.status}`, searchUrl: `https://www.reddit.com/search/?q=${encodeURIComponent(phrase)}&sort=new` };
   } catch (e) { out.reddit = { error: e.message }; }
   return out;
 }

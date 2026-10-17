@@ -76,24 +76,28 @@ jobs:
         run: |
           npm pack
           sha256sum *.tgz spec/openapi.yaml > SHA256SUMS
-      - name: GitHub release
+      # Releases are immutable once published, so the assets go on a draft first and the draft is published after.
+      - name: GitHub release (draft, with assets)
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: v${{ env.VERSION }}
           name: IGL ${{ env.VERSION }}
           body_path: RELEASE_NOTES.md
-          make_latest: true
+          draft: true
           files: |
             *.tgz
             spec/openapi.yaml
             SHA256SUMS
+      - name: Publish the release
+        run: gh release edit "v$VERSION" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+      # A step's own env is not visible to its if, so the secret is read directly; with env.NODE_AUTH_TOKEN the publish was skipped every time.
       - name: Publish to npm with provenance
-        if: ${{ env.NODE_AUTH_TOKEN != '' }}
+        if: ${{ secrets.NPM_TOKEN != '' }}
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: npm publish skipped
-        if: ${{ env.NODE_AUTH_TOKEN == '' }}
+        if: ${{ secrets.NPM_TOKEN == '' }}
         run: echo "::notice::No NPM_TOKEN secret, so the package was not published to npm. Add one under Settings, Secrets and variables, Actions, then run this workflow again."
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -4,13 +4,13 @@
    resolution produces. Resolution is pure: same description to same graph.
 
    Alignment rules (revised 2026-08-16):
-   · Personal-context language ("at-home mother", "I am", "my store") resolves
+   - Personal-context language ("at-home mother", "I am", "my store") resolves
      to FOOTPRINT even when the person runs a business, the individual is the
      subject. Only an explicit legal entity suffix (LLC/Inc/Corp/Ltd) forces a
      BOUNDARY over personal context.
-   · Unmentioned jurisdiction falls back to the workspace default (TX), never
+   - Unmentioned jurisdiction falls back to the workspace default (TX), never
      a hash roll.
-   · Names are synthesized semantically (Role · Industry), never the raw
+   - Names are synthesized semantically (Role, Industry), never the raw
      sentence slug. */
 
 export function hash53(str, seed = 0) {
@@ -191,7 +191,7 @@ export const ROLE_ACTIONS = {
 
 function extractName(text, isCompany, industryLabel, role) {
   // "called X" / "named X" patterns win; explicit "X, LLC" entity names next;
-  // otherwise everything before the "is a / are the …" descriptor clause.
+  // otherwise everything before the "is a / are the ..." descriptor clause.
   // A sentence boundary ends the name: "My name is Maria Santos. I am" names Maria Santos, not "Maria Santos. I".
   const named = text.match(/(?:called|named|name is)\s+((?:[A-Z][A-Za-z0-9&'-]*)(?:\s+[A-Z][A-Za-z0-9&'-]*){0,5})/);
   if (named) return named[1].trim();
@@ -205,7 +205,7 @@ function extractName(text, isCompany, industryLabel, role) {
     return `${industryLabel} Company`;
   }
   // Individuals get a semantic label, never the raw sentence.
-  return `${toTitle(role)} · ${industryLabel}`;
+  return `${toTitle(role)}, ${industryLabel}`;
 }
 
 function toTitle(s) {

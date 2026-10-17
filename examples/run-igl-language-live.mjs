@@ -7,7 +7,8 @@
 
    Artifacts: artifacts/igl-hilcorp-program-run.json, igl-jordan-avery-program-run.json */
 
-import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@huggingface/transformers";
+import { Tensor } from "@huggingface/transformers";
+import { loadPinnedModel } from "../provision/model.mjs";
 import { Interpreter, UDMRuntime, AIRuntime, IOSRuntime } from "../src/interpreter.js";
 import { Bridge } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
@@ -24,12 +25,9 @@ const ARTIFACTS = path.join(HERE, "..", "artifacts");
 const PROGRAMS = path.join(HERE, "..", "programs");
 fs.mkdirSync(ARTIFACTS, { recursive: true });
 
-const MODEL_ID = "Xenova/distilgpt2";
 const MAX_STEPS = 24;
 
-console.log(`[igl-live] loading ${MODEL_ID}…`);
-const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
+const { tokenizer, model, models } = await loadPinnedModel({ log: (m) => console.log(`[igl-live] ${m}`) });
 const VOCAB = []; // id -> string
 for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
 console.log(`[igl-live] model ready, vocab ${VOCAB.length}`);
@@ -153,7 +151,7 @@ function averyGraph() {
 }
 
 const tok = { encode: (s) => tokenizer.encode(s) };
-const models = { "distilgpt2-local": { version: "Xenova/distilgpt2@onnx-q8" } };
+/* `models` comes from loadPinnedModel: label, pinned revision and the digest of the cached bytes */
 
 /* ================= RUN 1, Hilcorp program ================= */
 async function runHilcorpProgram() {

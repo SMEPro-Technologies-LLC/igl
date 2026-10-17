@@ -6,12 +6,12 @@
 
 import { E, validate, pageParams, cursorWhere, pageOut, parseJson, nowIso, uuid, UUID_RE } from "./lib/http.js";
 import { appendAudit, rowToEvent, storeDecision, issueReceipt } from "./lib/audit.js";
+import { learningState, assertLearning, setLearning, forget, learnedTargets, exportRecord } from "./lib/subject.js";
 import { evaluate, activePolicies, rowToPolicy } from "./lib/policy.js";
-import { project, rowToIdentity, rowToRelationship, rowToObligation, rowToConsent, rowToPurpose, newConsent, typeToNode } from "./lib/projection.js";
+import { project, rowToIdentity, rowToRelationship, rowToObligation, rowToConsent, rowToPurpose, newConsent } from "./lib/projection.js";
 import { runIntelligence, rowToFact, rowToEvidence } from "./lib/intelligence.js";
 import { emit } from "./lib/webhooks.js";
 import { CONTRACT_VERSION } from "./routes.generated.js";
-import { canonical, sha256 } from "./lib/crypto.js";
 
 const IDENTITY_TYPES = ["person", "organization", "system", "agent", "asset", "place", "document", "program", "course", "product", "other"];
 const SOURCE_TYPES = ["document", "database", "api", "web", "email", "transcript", "human", "system", "other"];
@@ -42,11 +42,35 @@ async function getPurpose(db, tenantId, purposeId) {
   if (!row) throw E.unprocessable(`Unknown purpose ${purposeId}. GET /purposes lists the profiles this tenant has.`, { code: "unknown_purpose" });
   return rowToPurpose(row);
 }
-async function decide(db, signer, tenantId, principal, action, resource, context = {}) {
+async function decide(db, signer, tenantId, principal, action, resource, context = {}, { requestId = null, refuseOnEscalate = false } = {}) {
   const policies = await activePolicies(db, tenantId);
   const decision = evaluate(policies, { actor: principal.actor, action, resource, context: { ...context, jurisdiction: principal.jurisdiction || principal.tenantJurisdiction } });
   await storeDecision(db, tenantId, decision);
-  return { decision, policies };
+  /* A deny, or an escalate on a path that cannot park the work, is refused
+     here and now. The refusal gets the same record a success gets: a signed
+     receipt and an entry in the tenant's hash chain, written BEFORE the 403
+     leaves, so there is no refusal without a durable, verifiable trace. */
+  const refused = decision.effect === "deny" || (refuseOnEscalate && decision.effect === "escalate");
+  let receipt = null;
+  if (refused) {
+    receipt = await issueReceipt(db, signer, tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id) });
+    await appendAudit(db, tenantId, { eventType: `authority.${decision.effect === "deny" ? "denied" : "escalated"}`, actor: principal.actor, resource, action, requestId, decisionId: decision.decisionId, details: { effect: decision.effect, reasonCodes: decision.reasonCodes, policiesMatched: decision.policiesMatched, receiptId: receipt.receiptId } });
+  }
+  return { decision, policies, receipt };
+}
+/* forget and reset share one path: policy, tombstones, receipt over the tombstones, chain entry with the ids and hashes and never the content. */
+async function subjectForget(h, identity, targets, { action, eventType, reason }) {
+  const { db, principal, requestId, signer } = h;
+  const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, action, { type: "identity", id: identity.id }, { targets: targets.length }, { requestId, refuseOnEscalate: true });
+  if (decision.effect !== "allow") throw refusal(`A policy ${decision.effect === "deny" ? "denies" : "requires escalation for"} ${action === "subject.reset" ? "resetting" : "forgetting"} on this identity.`, decision.effect === "deny" ? "policy_denied" : "policy_escalate", decision, refusalReceipt);
+  const { forgotten, notFound } = await forget(db, principal.tenantId, identity.id, targets, { reason, decisionId: decision.decisionId });
+  const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), output: { identityId: identity.id, forgotten } });
+  await appendAudit(db, principal.tenantId, { eventType, actor: principal.actor, resource: { type: "identity", id: identity.id }, action, requestId, decisionId: decision.decisionId, details: { forgotten, notFound, reason, receiptId: receipt.receiptId } });
+  return { status: 200, body: { identityId: identity.id, forgotten, notFound, governance: receipt } };
+}
+/* The 403 names the decision and the receipt, so the caller can fetch the signed record of its own refusal. */
+function refusal(detail, code, decision, receipt) {
+  return E.forbidden(detail, { code, decisionId: decision.decisionId, receiptId: receipt?.receiptId ?? null, reasonCodes: decision.reasonCodes });
 }
 function projectionResponse(identity, purpose, p, receipt) {
   return { identityId: identity.id, purpose: purpose.id, nodes: p.admitted, edges: p.edges, truncated: p.truncated, emptyWarning: p.emptyWarning, withheld: p.withheld, governance: receipt, createdAt: nowIso() };
@@ -58,8 +82,8 @@ async function serveProjection(h, identity, { explain = false } = {}) {
   const purpose = await getPurpose(db, principal.tenantId, purposeId);
   const nodeBudget = Math.min(Math.max(Number(url.searchParams.get("nodeBudget") || principal.tenantSettings.nodeBudget || 50), 1), 500);
   const maxDepth = Math.min(Math.max(Number(url.searchParams.get("maxDepth") || 1), 0), 4);
-  const { decision, policies } = await decide(db, signer, principal.tenantId, principal, "projection.read", { type: "identity", id: identity.id }, { purpose: purpose.id });
-  if (decision.effect === "deny") throw E.forbidden("A policy denies projecting this identity for this purpose.", { code: "policy_denied" });
+  const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, "projection.read", { type: "identity", id: identity.id }, { purpose: purpose.id }, { requestId });
+  if (decision.effect === "deny") throw refusal("A policy denies projecting this identity for this purpose.", "policy_denied", decision, refusalReceipt);
   const p = await project(db, principal.tenantId, { identity, purpose, principal, nodeBudget, maxDepth, explain });
   if (explain) return { status: 200, body: { identityId: identity.id, purpose: purpose.id, considered: p.considered, truncated: p.truncated } };
   const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((x) => x.id), evidenceIds: [], output: p.admitted });
@@ -70,10 +94,10 @@ async function serveProjection(h, identity, { explain = false } = {}) {
 export const handlers = {
   /* ---------------- System ---------------- */
   async getHealth({ env }) {
-    return { status: 200, body: { status: "ok", version: env.SERVICE_VERSION || "1.4.0", time: nowIso() }, headers: { "cache-control": "no-store" } };
+    return { status: 200, body: { status: "ok", version: env.SERVICE_VERSION || "1.6.0", time: nowIso() }, headers: { "cache-control": "no-store" } };
   },
   async getCapabilities({ env }) {
-    return { status: 200, body: { apiVersion: CONTRACT_VERSION, features: ["identities", "projections", "purposes", "consents", "obligations", "authority", "knowledge", "policies", "evidence", "outcomes", "graph", "intelligence", "agents", "workflows", "audit", "receipts", "webhooks", "idempotency"], modelProviders: env.ANTHROPIC_API_KEY ? ["anthropic"] : [], maximumGraphHops: 12 } };
+    return { status: 200, body: { apiVersion: CONTRACT_VERSION, features: ["identities", "projections", "purposes", "consents", "obligations", "authority", "knowledge", "policies", "evidence", "outcomes", "graph", "intelligence", "agents", "workflows", "audit", "receipts", "webhooks", "idempotency", "subject-controls"], modelProviders: env.ANTHROPIC_API_KEY ? ["anthropic"] : [], maximumGraphHops: 12 } };
   },
 
   /* ---------------- Identity ---------------- */
@@ -134,6 +158,7 @@ export const handlers = {
     const cur = await getIdentity(db, principal.tenantId, params.identityId);
     validate(body, { required: ["kind", "value"], fields: { kind: { type: "string", enum: ["interest", "goal", "project", "relationship", "expertise", "preference", "constraint", "observation", "other"] }, confidence: { type: "number", min: 0, max: 1 }, source: { type: "object" } } });
     const sources = body.source ? checkSources([body.source], "source") : [];
+    await assertLearning(db, principal.tenantId, cur.id);
     const row = await db.prepare("SELECT context FROM identities WHERE tenant_id = ?1 AND id = ?2").bind(principal.tenantId, cur.id).first();
     const context = parseJson(row.context, []);
     context.push({ id: uuid(), kind: body.kind, value: body.value, confidence: body.confidence ?? null, sources, recordedAt: nowIso(), recordedBy: principal.actor });
@@ -148,7 +173,7 @@ export const handlers = {
     const { limit, cursor } = pageParams(url); const type = url.searchParams.get("type");
     const c = cursorWhere(cursor);
     const p = [principal.tenantId, params.identityId, params.identityId];
-    let sql = "SELECT * FROM relationships WHERE tenant_id = ? AND (from_id = ? OR to_id = ?)";
+    let sql = "SELECT * FROM relationships WHERE tenant_id = ? AND status != 'forgotten' AND (from_id = ? OR to_id = ?)";
     if (type) { sql += " AND type = ?"; p.push(type); }
     sql += c.clause; p.push(...c.params); sql += " ORDER BY created_at DESC, id DESC LIMIT ?"; p.push(limit + 1);
     const { results } = await db.prepare(sql).bind(...p).all();
@@ -191,6 +216,55 @@ export const handlers = {
     const { limit, cursor } = pageParams(url); const c = cursorWhere(cursor, "granted_at");
     const { results } = await db.prepare(`SELECT * FROM consents WHERE tenant_id = ? AND identity_id = ?${c.clause} ORDER BY granted_at DESC, id DESC LIMIT ?`).bind(principal.tenantId, identity.id, ...c.params, limit + 1).all();
     return { status: 200, body: pageOut(results, limit, rowToConsent, "granted_at") };
+  },
+
+  /* ---------------- Subject (contract 0.3) ----------------
+     The controls a person holds over what is learned about them. Each one
+     is evaluated against policy like any other action, receipted and chained;
+     forget and reset leave tombstones (the act and a hash), never content. */
+  async getLearningState({ db, principal, params }) {
+    await getIdentity(db, principal.tenantId, params.identityId);
+    return { status: 200, body: await learningState(db, principal.tenantId, params.identityId) };
+  },
+  async setLearningState(h) {
+    const { db, principal, params, body, requestId, signer } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    validate(body, { required: ["paused"], fields: { paused: { type: "boolean" }, reason: { type: "string", maxLength: 500 } } });
+    const action = body.paused ? "subject.pause" : "subject.resume";
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, action, { type: "identity", id: identity.id }, {}, { requestId, refuseOnEscalate: true });
+    if (decision.effect !== "allow") throw refusal(`A policy ${decision.effect === "deny" ? "denies" : "requires escalation for"} changing learning on this identity.`, decision.effect === "deny" ? "policy_denied" : "policy_escalate", decision, refusalReceipt);
+    const state = await setLearning(db, principal.tenantId, identity.id, { paused: !!body.paused, reason: body.reason ?? null, actor: principal.actor, decisionId: decision.decisionId });
+    const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), output: { identityId: identity.id, paused: state.paused, since: state.since } });
+    await appendAudit(db, principal.tenantId, { eventType: body.paused ? "subject.learning_paused" : "subject.learning_resumed", actor: principal.actor, resource: { type: "identity", id: identity.id }, action, requestId, decisionId: decision.decisionId, details: { reason: body.reason ?? null, receiptId: receipt.receiptId } });
+    return { status: 200, body: { ...state, governance: receipt } };
+  },
+  async forgetRecords(h) {
+    const { db, principal, params, body } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    validate(body, { required: ["targets"], fields: { targets: { type: "array" }, reason: { type: "string", maxLength: 500 } } });
+    if (!body.targets.length || body.targets.length > 200) throw E.unprocessable("targets must hold between 1 and 200 entries.", { code: "validation" });
+    for (const t of body.targets) if (!t || !["fact", "relationship", "context"].includes(t.type) || typeof t.id !== "string") throw E.unprocessable("Each target is { type: fact | relationship | context, id }.", { code: "validation" });
+    return subjectForget(h, identity, body.targets, { action: "subject.forget", eventType: "subject.forgotten", reason: body.reason ?? null });
+  },
+  async resetLearned(h) {
+    const { db, principal, params, body } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    validate(body, { required: ["confirmIdentityId"], fields: { confirmIdentityId: { type: "string", uuid: true }, reason: { type: "string", maxLength: 500 } } });
+    if (body.confirmIdentityId !== identity.id) throw E.unprocessable("confirmIdentityId must equal the identity in the path; a reset is not undoable.", { code: "confirmation_mismatch" });
+    const targets = await learnedTargets(db, principal.tenantId, identity.id);
+    return subjectForget(h, identity, targets, { action: "subject.reset", eventType: "subject.reset", reason: body.reason ?? null });
+  },
+  async exportIdentity(h) {
+    const { db, principal, params, requestId, signer } = h;
+    const identity = await getIdentity(db, principal.tenantId, params.identityId);
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, principal, "subject.export", { type: "identity", id: identity.id }, {}, { requestId, refuseOnEscalate: true });
+    if (decision.effect !== "allow") throw refusal("A policy does not allow exporting this identity's record.", decision.effect === "deny" ? "policy_denied" : "policy_escalate", decision, refusalReceipt);
+    const row = await db.prepare("SELECT * FROM identities WHERE tenant_id = ?1 AND id = ?2").bind(principal.tenantId, identity.id).first();
+    const record = await exportRecord(db, principal.tenantId, row);
+    /* the receipt signs the fingerprint and names the chain head: a holder can show the record was this record at this point in the chain */
+    const receipt = await issueReceipt(db, signer, principal.tenantId, { actor: principal.actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), output: { identityId: identity.id, fingerprint: record.fingerprint } });
+    await appendAudit(db, principal.tenantId, { eventType: "subject.exported", actor: principal.actor, resource: { type: "identity", id: identity.id }, action: "subject.export", requestId, decisionId: decision.decisionId, details: { fingerprint: record.fingerprint, receiptId: receipt.receiptId } });
+    return { status: 200, body: { ...record, governance: receipt }, headers: { "cache-control": "no-store" } };
   },
 
   /* ---------------- Authority and policy ---------------- */
@@ -239,7 +313,7 @@ export const handlers = {
   },
   async listFacts({ db, url, principal }) {
     const { limit, cursor } = pageParams(url); const c = cursorWhere(cursor);
-    const p = [principal.tenantId]; let sql = "SELECT * FROM facts WHERE tenant_id = ?";
+    const p = [principal.tenantId]; let sql = "SELECT * FROM facts WHERE tenant_id = ? AND status != 'forgotten'";
     for (const [k, col] of [["subjectId", "subject_id"], ["predicate", "predicate"], ["status", "status"]]) { const v = url.searchParams.get(k); if (v) { sql += ` AND ${col} = ?`; p.push(v); } }
     sql += c.clause; p.push(...c.params); sql += " ORDER BY created_at DESC, id DESC LIMIT ?"; p.push(limit + 1);
     const { results } = await db.prepare(sql).bind(...p).all();
@@ -248,6 +322,7 @@ export const handlers = {
   async createFact({ db, principal, body, requestId, ctx }) {
     validate(body, { required: ["subjectId", "predicate", "object"], fields: { subjectId: { type: "string", uuid: true }, predicate: { type: "string", maxLength: 200 }, qualifiers: { type: "object" }, status: { type: "string", enum: ["seed", "proposed", "certified"] }, confidence: { type: "number", min: 0, max: 1 }, validFrom: { type: "string", datetime: true }, validTo: { type: "string", datetime: true } } });
     await getIdentity(db, principal.tenantId, body.subjectId);
+    await assertLearning(db, principal.tenantId, body.subjectId, body.object && typeof body.object === "object" ? body.object.id : null);
     const sources = checkSources(body.sources);
     if (body.status === "certified" && !principal.scopes.some((s) => ["igl.admin", "igl.platform"].includes(s))) throw E.forbidden("Only igl.admin may create a fact as certified; create it as proposed and certify through governance.", { code: "certification_requires_admin" });
     const id = uuid(); const now = nowIso();
@@ -339,6 +414,7 @@ export const handlers = {
     validate(body, { required: ["fromId", "type", "toId"], fields: { fromId: { type: "string", uuid: true }, toId: { type: "string", uuid: true }, type: { type: "string", maxLength: 100 }, direction: { type: "string", enum: ["directed", "undirected"] }, attributes: { type: "object" }, effectiveFrom: { type: "string", datetime: true }, effectiveTo: { type: "string", datetime: true }, confidence: { type: "number", min: 0, max: 1 }, status: { type: "string", enum: ["proposed", "certified"] } } });
     await getIdentity(db, principal.tenantId, body.fromId); await getIdentity(db, principal.tenantId, body.toId);
     if (body.fromId === body.toId) throw E.unprocessable("A relationship needs two different identities.", { code: "validation" });
+    await assertLearning(db, principal.tenantId, body.fromId, body.toId);
     if (body.status === "certified" && !principal.scopes.some((s) => ["igl.admin", "igl.platform"].includes(s))) throw E.forbidden("Only igl.admin may create a relationship as certified.", { code: "certification_requires_admin" });
     const sources = checkSources(body.sources);
     const id = uuid(); const now = nowIso();
@@ -423,7 +499,7 @@ export const handlers = {
     return { status: 200, body: rowToAgent(row) };
   },
   async invokeAgent(h) {
-    const { db, env, ctx, principal, params, body, requestId, signer } = h;
+    const { db, ctx, principal, params, body, requestId, signer } = h;
     const row = await db.prepare("SELECT * FROM agents WHERE tenant_id = ?1 AND id = ?2").bind(principal.tenantId, params.agentId).first();
     if (!row) throw E.notFound();
     const agent = rowToAgent(row);
@@ -431,9 +507,9 @@ export const handlers = {
     validate(body, { required: ["instruction"], fields: { instruction: { type: "string", maxLength: 8000 }, input: { type: "object" }, resourceScope: { type: "array" }, requireApproval: { type: "boolean" } } });
     const actor = checkActor(body.actor) || principal.actor;
     const run = await createRun(db, principal.tenantId, "agent", { agentId: agent.id, instruction: body.instruction, input: body.input || {}, resourceScope: body.resourceScope || [], actor });
-    const { decision, policies } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "agent.invoke", { type: "agent", id: agent.id }, { capabilities: agent.capabilities });
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "agent.invoke", { type: "agent", id: agent.id }, { capabilities: agent.capabilities }, { requestId });
     await appendAudit(db, principal.tenantId, { eventType: "agent.invoked", actor, resource: { type: "agent", id: agent.id }, action: "agent.invoke", requestId, decisionId: decision.decisionId, details: { runId: run.id, effect: decision.effect } });
-    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId } }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
+    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId, decisionId: decision.decisionId, receiptId: refusalReceipt.receiptId }, governance: refusalReceipt }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
     if (body.requireApproval || decision.effect !== "allow") {
       await db.prepare("UPDATE runs SET status = 'awaiting_approval', governance = ?1 WHERE id = ?2").bind(JSON.stringify(await issueReceipt(db, signer, principal.tenantId, { actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id) })), run.id).run();
       await emit(db, ctx, principal.tenantId, "approvalRequired", { runId: run.id, requirements: decision.requiredApprovals });
@@ -465,9 +541,9 @@ export const handlers = {
     validate(body || {}, { fields: { input: { type: "object" }, dryRun: { type: "boolean" } } });
     const actor = checkActor(body?.actor) || principal.actor;
     const run = await createRun(db, principal.tenantId, "workflow", { workflowId: wf.id, input: body?.input || {}, dryRun: !!body?.dryRun, actor });
-    const { decision, policies } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "workflow.run", { type: "workflow", id: wf.id });
+    const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, { ...principal, actor }, "workflow.run", { type: "workflow", id: wf.id }, {}, { requestId });
     await appendAudit(db, principal.tenantId, { eventType: "workflow.run_requested", actor, resource: { type: "workflow", id: wf.id }, action: "workflow.run", requestId, decisionId: decision.decisionId, details: { runId: run.id, dryRun: !!body?.dryRun, effect: decision.effect } });
-    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId } }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
+    if (decision.effect === "deny") { await finishRun(db, run.id, { status: "failed", error: { type: "https://id-me.ai/problems/policy_denied", title: "Denied by policy", status: 403, detail: decision.reasonCodes.join(", "), traceId: requestId, decisionId: decision.decisionId, receiptId: refusalReceipt.receiptId }, governance: refusalReceipt }); return { status: 202, body: await loadRun(db, principal.tenantId, run.id) }; }
     ctx.waitUntil(executeWorkflowRun(h, run.id, wf, actor, body || {}, decision, policies));
     return { status: 202, body: await loadRun(db, principal.tenantId, run.id) };
   },
@@ -537,9 +613,9 @@ async function intelligence(h, kind, async) {
   (body.filters || []).forEach((f, i) => validate(f, { required: ["field", "operator", "value"], fields: { field: { type: "string" }, operator: { type: "string", enum: ["eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte", "contains", "exists", "between"] } } }, `filters[${i}]`));
   const actor = checkActor(body.actor) || principal.actor;
   if (body.purpose) await getPurpose(db, principal.tenantId, body.purpose);
-  const { decision, policies } = await decide(db, signer, principal.tenantId, { ...principal, actor }, `intelligence.${kind}`, { type: "intelligence", id: kind }, { purpose: body.purpose ?? null, scope: body.scope || {} });
-  if (decision.effect === "deny") throw E.forbidden("A policy denies this intelligence request.", { code: "policy_denied" });
-  if (decision.effect === "escalate") throw E.forbidden("A policy requires escalation before this request can run.", { code: "policy_escalate" });
+  const { decision, policies, receipt: refusalReceipt } = await decide(db, signer, principal.tenantId, { ...principal, actor }, `intelligence.${kind}`, { type: "intelligence", id: kind }, { purpose: body.purpose ?? null, scope: body.scope || {} }, { requestId, refuseOnEscalate: true });
+  if (decision.effect === "deny") throw refusal("A policy denies this intelligence request.", "policy_denied", decision, refusalReceipt);
+  if (decision.effect === "escalate") throw refusal("A policy requires escalation before this request can run.", "policy_escalate", decision, refusalReceipt);
   if (!async) {
     const result = await runIntelligence(db, env, principal.tenantId, kind, body);
     const receipt = await issueReceipt(db, signer, principal.tenantId, { actor, authorityDecision: decision, policiesEvaluated: policies.map((p) => p.id), evidenceIds: result.findings.map((f) => f.id), output: { answer: result.answer, citations: result.citations.map((c) => c.sourceId) } });

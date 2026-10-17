@@ -4,6 +4,26 @@
 
 Every source reports "not configured" with the reason when its token or binding is missing, so the page is never blank and never pretends.
 
+## The application portfolio
+
+The Applications table manages every product SMEPro operates: WellReporter, WellSite, LeaseXplorer, ToxicTort, TortPlus, Tortgraph, VDRPros, RealEChat, RealStar Global, ID-ME.ai, Ricorsa, SMEProtech, SMEProtec, AILU and LU Concourse. The registry is `src/apps.js`. Each application with a bound store (a D1 binding in `wrangler.toml`) is read through an adapter that turns that store's own tables into one shape: customers, sessions (every sign-in and sign-out with its timestamp, where the application keeps them), activity, metered usage, subscriptions, messages and plans. Nothing is copied or invented; an application without a store shows health only and says so.
+
+What an operator can change: a customer's plan (written to the application's own plan column and recorded in `ops_plan_changes` with who, from, to and why) and notes on a customer (`ops_notes`). Both tables live in the intake database and are created on first use.
+
+Applications that keep no session table post their own events: `POST https://ops.id-me.ai/ingest/<app id>` with header `x-ops-ingest-key` and a body of one event or `{ "events": [...] }`, each `{ "customer": "<their user id>", "email": "...", "kind": "login" | "logout" | "usage" | "event", "meter": "gas", "qty": 12, "at": "<ISO time>", "detail": {...} }`. Keys are the `INGEST_KEYS` secret, a JSON object of app id to key. Events land in `ops_events` and show on the application's Sessions tab and on the customer's record.
+
+An application that keeps its data outside D1 is read through a management API of its own instead of a binding: the registry entry carries `remote` (TortPlus: `https://tortplus.com/api/ops`, kept in KV by its Worker) and the console calls `{remote}/summary`, `/customers`, `/sessions`, `/usage`, `/subscriptions`, `/plans` and `POST /plan` with the application's key from the `OPS_KEYS` secret (JSON of app id to key) in `x-ops-key`. The application answers in the console's row shapes, so the Applications table, the customer drawer and plan changes work the same way as for a D1 store. TortPlus also posts its logins, logouts, model use, imports and billing events to `/ingest/tortplus`.
+
+## Billing (Finix)
+
+Finix, on the SMEPro Technologies merchant, is the billing system of record for every application. `src/billing.js` holds the plan catalog (the prices approved October 16, 2026: monthly tiers per application and the metered items each one charges for) and the console shows it beside what Finix has: plans matched by their `app` and `tier` tags (or, for the plans made by hand before the console existed, by name and amount), the subscriptions on each plan with status and next billing date, transfers tagged with an application, and MRR. "Create missing plans in Finix" creates any catalog plan Finix lacks, tagged so it is found again, and never changes or archives an existing plan; a price change is a new tier. Subscriptions can be canceled from the console. Cards are never collected here: each application collects them with Finix.js and creates its own subscriptions and metered transfers, tagging `app`, `customer` and `meter` so the console can read them. `GET /api/billing/prices/<app>` serves an application its own price list from the one catalog. Secrets: `FINIX_USERNAME`, `FINIX_PASSWORD`, and `FINIX_ENV=sandbox` while testing.
+
+## Marketing agents
+
+One agent per application (`src/marketing.js`), run on the hour for one application at a time (`[triggers]` in `wrangler.toml`) and on demand from the Marketing tab. A run audits the application's live site (title, description, canonical, Open Graph, Twitter card, JSON-LD, H1, indexability, visible text, robots.txt, sitemap.xml, llms.txt) and scores it with the fix for each finding; drafts posts for the channels Postiz has connected, grounded in the page it just read and the application's own numbers, into a queue; records an insight in plain sentences; and, with a search key, sources prospects for the application's market. Nothing is posted by the agent: a person approves a draft on the console, chooses the channel and time, and that approval schedules it in Postiz. Leads carry a status an operator changes. Secrets: `POSTIZ_API_KEY` (scheduling), `ANTHROPIC_API_KEY` (drafting), `BRAVE_API_KEY` (lead sourcing); each is reported as off when missing and the rest of the run still happens.
+
+Local test fixtures in `test/fixtures/` carry the production table shapes of the bound stores (DDL copied from `sqlite_master`) with a few rows, so `npm test` runs the adapters' real SQL.
+
 ## Deploy
 
 ```bash

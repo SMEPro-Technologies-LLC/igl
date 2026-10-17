@@ -16,7 +16,8 @@
 
    The point: authority is a function of the chain, not of any process. */
 
-import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "@huggingface/transformers";
+import { Tensor } from "@huggingface/transformers";
+import { loadPinnedModel } from "../provision/model.mjs";
 import { Interpreter, UDMRuntime, AIRuntime, IOSRuntime } from "../src/interpreter.js";
 import { Bridge } from "../src/bridge.js";
 import { GraphRuntime, DEFAULT_DIMENSIONS } from "../src/graph.js";
@@ -49,11 +50,8 @@ if (MODE === "replay" && (!fs.existsSync(J_HILCORP) || !fs.existsSync(J_AVERY)))
   process.exit(2);
 }
 
-const MODEL_ID = "Xenova/distilgpt2";
 const MAX_STEPS = 24;
-console.log(`[${MODE}] loading ${MODEL_ID}…`);
-const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-const model = await AutoModelForCausalLM.from_pretrained(MODEL_ID);
+const { tokenizer, model, models } = await loadPinnedModel({ log: (m) => console.log(`[${MODE}] ${m}`) });
 const VOCAB = []; // id -> string
 for (const [tokStr, id] of tokenizer.get_vocab()) VOCAB[id] = tokStr;
 console.log(`[${MODE}] model ready, vocab ${VOCAB.length}`);
@@ -131,7 +129,7 @@ class GovernedAI extends AIRuntime {
 }
 
 const tok = { encode: (s) => tokenizer.encode(s) };
-const models = { "distilgpt2-local": { version: "Xenova/distilgpt2@onnx-q8" } };
+/* `models` comes from loadPinnedModel: label, pinned revision and the digest of the cached bytes */
 
 /* ---------------- builders: identical in both boots ---------------- */
 

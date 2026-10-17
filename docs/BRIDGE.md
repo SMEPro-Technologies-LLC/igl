@@ -27,7 +27,7 @@ set, under lattice strictness a specialisation of an admissible value lies
 inside the governed region, while anything broader or lateral does not.
 `ABSTAIN` is a distinguished outcome consumers must handle, not a member of S.
 Span and text slots are outside this property and carry their own guarantee:
-fidelity to cited characters (§4).
+fidelity to cited characters (section 4).
 
 Note what soundness does **not** require: that the model be correct, calibrated,
 or consistent. Only that its output cannot escape the governed region, containment without trust.
@@ -54,7 +54,7 @@ So γ emits a constraint, not a description:
 |---|---|
 | **Schema enum** | the admissible set becomes `{"type":"string","enum":[...]}`, server-side constrained decoding on hosted APIs |
 | **Prefix automaton** | with a tokenizer, `maskPlan` is a trie over each value's token sequence: at every step only tokens that continue at least one admissible completion of the emitted prefix are allowed. A flat token union would admit recombinations (`PR-10` assembled from `PR-202` and `H-10`); the automaton makes them unreachable, `Bridge.maskNext(auto, prefix)` returns the exact allow-set per step, and a prefix outside the language is dead immediately |
-| **Abstain token** | always reachable, see §2.1 |
+| **Abstain token** | always reachable, see section 2.1 |
 | **Pre-resolved scope** | UDM resolves `R[scope]` first, so the model attends over a small exact set instead of searching |
 
 The envelope carries a **manifest**, schema digest, scope digest, strictness,
@@ -154,12 +154,12 @@ the second**:
 | `admissible` (≥ 0.75) | `valueClass: deterministic`, an anchor: never decays, zero depth |
 | `proposed` (≥ 0.40) | `valueClass: proposed`, trace class falls to `ai`, enters the drift budget |
 | `unstated` (no confidence reported) | `valueClass: proposed`, absence of a confidence is not evidence of confidence |
-| `held` (< 0.40) | **dropped**, held means held, exactly as §3 defines it |
+| `held` (< 0.40) | **dropped**, held means held, exactly as section 3 defines it |
 
 Without the gate, a model that was 20% sure where to look could mint a
 non-decaying, zero-depth anchor by pointing at a subtotal or the adjacent
 column: faithfully-read wrong bytes would enter the corpus as `deterministic`.
-The gate is the same asymmetry as `graph.js` §2.1, applied to extraction, reading is deterministic, but *what was read* is only as anchored as the
+The gate is the same asymmetry as `graph.js` item 2.1, applied to extraction, reading is deterministic, but *what was read* is only as anchored as the
 decision about where to read.
 
 An extraction is classed `deterministic` at the trace level only when every
