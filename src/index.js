@@ -9,3 +9,4 @@ export { softmax, entropy, governanceLogitsProcessor, governedStep, governedDeco
 export { IdentityRuntime, UDMRuntime, AIRuntime, IOSRuntime } from "./runtime.js";
 export { GraphRuntime, DEFAULT_DIMENSIONS } from "./graph.js";
 export { Interpreter } from "./interpreter.js";
+export { govern, governHandler } from "./mcp.js";

@@ -4,6 +4,17 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `igl/mcp`: `govern(client, options)` wraps any MCP client and
+  `governHandler(handler, options)` any server-side `tools/call` handler, with
+  no dependency on the MCP SDK. Each call is identified, bounded, intended and
+  traced (receipt when a signer is configured) before it is forwarded;
+  refusals and failed calls are journaled failures; only the argument digest
+  enters the journal. Closes #59
+
 ## [1.7.0] (2026-10-17)
 
 `npx igl demo`, the README that leads with it, and a release workflow that

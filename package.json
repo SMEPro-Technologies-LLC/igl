@@ -6,7 +6,8 @@
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./runtime": "./src/runtime.js"
+    "./runtime": "./src/runtime.js",
+    "./mcp": "./src/mcp.js"
   },
   "files": [
     "bin/",
@@ -19,7 +20,7 @@
     "SECURITY.md"
   ],
   "scripts": {
-    "test": "node --test test/bridge.test.js test/decode.test.js test/extract.test.js test/graph.test.js test/igl.test.js test/sign.test.js test/store.test.js test/security.test.js test/resolver.test.js test/audit.test.js test/cli.test.js",
+    "test": "node --test test/bridge.test.js test/decode.test.js test/extract.test.js test/graph.test.js test/igl.test.js test/sign.test.js test/store.test.js test/security.test.js test/resolver.test.js test/audit.test.js test/cli.test.js test/mcp.test.js",
     "provision": "node provision/server.mjs",
     "provision:cli": "node provision/cli.mjs",
     "lint": "eslint .",

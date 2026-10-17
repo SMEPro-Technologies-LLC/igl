@@ -188,6 +188,22 @@ Attestations in a trace are classed as `ai` (nobody signed), `service` (a key th
 
 ## Using IGL from an AI client
 
+**Govern an agent you already run.** `igl/mcp` wraps any MCP client (anything with `callTool`) or any server-side `tools/call` handler, without depending on the MCP SDK. Every call is identified (actor and role resolved in the identity graph), bounded (the boundary derived from the tool and its arguments is checked by UDM before anything is forwarded), intended, and traced in the hash-chained journal with an Ed25519 receipt; a refusal or a failed call is a journaled failure. Arguments and results never enter the journal, only the argument digest.
+
+```js
+import { govern } from "igl/mcp";
+const client = govern(mcpClient, {
+  identity, udm, ios: new IOSRuntime({ journal }), signer,
+  actor: ["Agent", "Operator"],
+  boundaryOf: (tool, args) => [{ key: "Jurisdiction", value: args.state }],
+  allow: (tool) => tool !== "shell",
+});
+const r = await client.callTool({ name: "file_report", arguments: { state: "TX-RRC" } });
+r._meta.igl.traceId;   // the journaled, signed trace; a call outside the boundary throws IGL_BOUNDARY_REJECTED and never reaches the server
+```
+
+`governHandler(handler, { actorOf })` does the same on the serving side. Both are in `src/mcp.js`; `test/mcp.test.js` walks the allowed, refused and failed paths against an in-memory server.
+
 `provision/mcp.mjs` is a Model Context Protocol endpoint. An MCP client connects with a caller key and is recognized on first contact: the service seeds the caller's own identity graph from the registered profile, and on every later contact it replays the hash-chained journal. From then on the caller's grants and refusals govern every tool call in that session.
 
 The tools this repository serves today are `check_health`, `list_graphs`, `get_graph`, `search`, `fetch`, `identity_graph_whoami` and `provision_identity`. The hosted platform's tools (`whoami`, `list_purposes`, `get_identity_context`, `explain_projection`, `list_obligations`, `search_graph`, `record_interaction`) are specified alongside their REST equivalents in [`docs/PLATFORM.md`](./docs/PLATFORM.md).
