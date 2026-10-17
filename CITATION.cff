@@ -5,8 +5,8 @@ type: software
 authors:
   - name: SMEPro Technologies LLC
     website: https://www.smeprotech.com
-version: 1.6.0
-date-released: 2026-10-15
+version: 1.7.0
+date-released: 2026-10-17
 license: Apache-2.0
 repository-code: https://github.com/SMEPro-Technologies-LLC/igl
 url: https://id-me.ai

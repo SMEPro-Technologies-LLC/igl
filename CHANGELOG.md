@@ -4,7 +4,10 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.7.0] (2026-10-17)
+
+`npx igl demo`, the README that leads with it, and a release workflow that
+ships assets and publishes to npm.
 
 ### Added
 
