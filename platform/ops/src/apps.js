@@ -227,14 +227,14 @@ const IGL_API = {
   sessionsKept: false,
   async summary(db) {
     return await db.prepare(`SELECT (SELECT COUNT(*) FROM tenants) AS customers, (SELECT COUNT(*) FROM tenants WHERE created_at >= ?1) AS new_7d,
-      (SELECT COUNT(*) FROM identities) AS identities, (SELECT COUNT(*) FROM api_keys WHERE revoked_at IS NULL) AS active_keys,
+      (SELECT COUNT(*) FROM identities) AS identities, (SELECT COUNT(*) FROM api_keys WHERE status = 'active') AS active_keys,
       (SELECT COUNT(*) FROM audit_events WHERE occurred_at >= ?1) AS audit_events_7d`).bind(daysAgo(7)).first();
   },
   async customers(db, q) {
     const where = q.search ? "WHERE t.name LIKE ?3 ESCAPE '\\' OR t.id LIKE ?3 ESCAPE '\\'" : "";
     const stmt = db.prepare(`SELECT t.id, t.name, t.jurisdiction, t.settings, t.created_at,
         (SELECT COUNT(*) FROM identities i WHERE i.tenant_id = t.id) AS identities,
-        (SELECT COUNT(*) FROM api_keys k WHERE k.tenant_id = t.id AND k.revoked_at IS NULL) AS keys,
+        (SELECT COUNT(*) FROM api_keys k WHERE k.tenant_id = t.id AND k.status = 'active') AS keys,
         (SELECT MAX(occurred_at) FROM audit_events e WHERE e.tenant_id = t.id) AS last_seen_at
       FROM tenants t ${where} ORDER BY t.created_at DESC LIMIT ?1 OFFSET ?2`);
     const rows = (await (q.search ? stmt.bind(q.limit, q.offset, like(q.search)) : stmt.bind(q.limit, q.offset)).all()).results;
