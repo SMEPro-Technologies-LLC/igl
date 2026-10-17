@@ -4,7 +4,7 @@ labels: [bug, triage]
 body:
   - type: markdown
     attributes:
-      value: For security vulnerabilities use private reporting (see SECURITY.md), not this form.
+      value: For security vulnerabilities use [private reporting](https://github.com/SMEPro-Technologies-LLC/igl/security/advisories/new) (see [SECURITY.md](https://github.com/SMEPro-Technologies-LLC/igl/blob/main/SECURITY.md)), not this form.
   - type: input
     id: version
     attributes:

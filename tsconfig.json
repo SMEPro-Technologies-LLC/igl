@@ -17,6 +17,6 @@
     "types": ["node"],
     "lib": ["es2023", "dom"]
   },
-  "include": ["src/**/*.js", "provision/**/*.mjs", "platform/api/src/**/*.js", "platform/ops/src/**/*.js"],
+  "include": ["bin/**/*.mjs", "src/**/*.js", "provision/**/*.mjs", "platform/api/src/**/*.js", "platform/ops/src/**/*.js"],
   "exclude": ["node_modules", "**/.wrangler/**", "provision/identities.mjs"]
 }

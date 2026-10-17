@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Security policy
+    url: https://github.com/SMEPro-Technologies-LLC/igl/blob/main/SECURITY.md
+    about: Supported versions and instructions for reporting security vulnerabilities.
   - name: Security vulnerability
     url: https://github.com/SMEPro-Technologies-LLC/igl/security/advisories/new
     about: Report privately. Never open a public issue for a vulnerability.

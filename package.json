@@ -4,11 +4,15 @@
   "description": "Identity Governed Logic, a language and runtime where identity, boundaries, intent, and trace are bound into the computation itself",
   "type": "module",
   "main": "src/index.js",
+  "bin": {
+    "igl": "./bin/igl.mjs"
+  },
   "exports": {
     ".": "./src/index.js",
     "./runtime": "./src/runtime.js"
   },
   "files": [
+    "bin/",
     "src/",
     "spec/openapi.yaml",
     "README.md",
@@ -18,7 +22,8 @@
     "SECURITY.md"
   ],
   "scripts": {
-    "test": "node --test test/bridge.test.js test/decode.test.js test/extract.test.js test/graph.test.js test/igl.test.js test/sign.test.js test/store.test.js test/security.test.js test/resolver.test.js test/audit.test.js",
+    "test": "node --test test/bridge.test.js test/decode.test.js test/extract.test.js test/graph.test.js test/igl.test.js test/sign.test.js test/store.test.js test/security.test.js test/resolver.test.js test/audit.test.js test/cli.test.js",
+    "demo": "node bin/igl.mjs demo",
     "provision": "node provision/server.mjs",
     "provision:cli": "node provision/cli.mjs",
     "lint": "eslint .",

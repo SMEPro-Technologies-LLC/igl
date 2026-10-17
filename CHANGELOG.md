@@ -4,6 +4,23 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `npx igl demo`: a model-free CLI showcase of an allowed action, a journaled
+  refusal, Ed25519 receipts, chain verification and tamper detection.
+  Includes `--help`, `--version`, `npm run demo` and CLI regression tests.
+- A runnable JavaScript journal, grant and receipt example in `examples/minimal.mjs`.
+- A README roadmap covering clients, packaging, verification and integrations.
+
+### Changed
+
+- The README leads with the demo, JavaScript and MCP entry points; status and
+  review notes move below the quick start.
+- Existing bug and feature issue templates use `bug_report.yml` and
+  `feature_request.yml`; the issue chooser links Discussions and `SECURITY.md`.
+
 ## [1.6.0] (2026-10-15)
 
 Contract 0.3.0. The Subject service: the controls a person holds over what

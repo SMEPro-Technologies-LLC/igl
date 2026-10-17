@@ -4,8 +4,6 @@
     <img src="docs/assets/igl-logo.png" width="420" alt="IGL, Identity Governed Logic">
   </picture>
 </p>
-<p align="center"><strong>Governed intelligence. Before execution.</strong><br>The open-source runtime and the public API contract behind the IGL Governed Identity Platform.<br><em>Status: the nine findings of the <a href="./docs/audit/SECURITY-AUDIT-2026-10.md">October 2026 security review</a> are closed with regression tests. The review was our own; an independent one has not happened yet, so read the audit before you run the provisioning service anywhere other than your own machine.</em></p>
-
 <p align="center">
   <a href="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/SMEPro-Technologies-LLC/igl"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/SMEPro-Technologies-LLC/igl/badge"></a>
@@ -13,6 +11,61 @@
   <a href="./CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-1.6.0-informational"></a>
   <a href="https://id-me.ai"><img alt="Platform" src="https://img.shields.io/badge/platform-id--me.ai-a9a4f2"></a>
 </p>
+
+When your AI agent tries to do something it was never granted, IGL refuses it and issues a signed receipt.
+
+## Try it in 10 seconds
+
+With Node.js 20 or newer:
+
+```bash
+npx igl demo
+```
+
+The demo runs locally without a model download or network calls. Hashes and signatures change each run; prefixes are shown here:
+
+```text
+IGL demo — local execution, no model or network
+Agent acting for Jordan_Avery:DFIR_Coordinator
+Boundary: draft-incident-report allowed; restore-production-systems not granted
+ALLOWED draft-incident-report — ran; local report draft committed
+  Journal seq 1, hash 9c8b170ebdb99f76…
+  Receipt DEMO-1 | Ed25519 JxsmVk80sfpQJuS6… | chain head e4c36c32610dbf26…
+REFUSED restore-production-systems — IGL_FOOTPRINT_DENIED
+  Journal seq 3, hash b99eda8c6b977764…
+  Receipt DEMO-3 | Ed25519 7rTzEuWVxtJybE7n… | chain head b99eda8c6b977764…
+chain verified, 4 entries
+TAMPER DETECTED — verification failed at sequence 1: body does not reproduce its digest
+Next: README quick start and docs/SPEC.md
+```
+
+The report is a deterministic local draft, not model output. The demo signs an in-memory grant, executes one allowed statement through the interpreter, and receipts the chain after each outcome. Keys and journals are ephemeral; nothing is saved.
+
+## Use it from JavaScript
+
+The journal, graph and signer are also plain JavaScript exports. This example checks a signed grant before appending an application event, then signs and verifies the chain:
+
+```js
+import { MemoryJournal, GraphRuntime, Signer } from "igl";
+const journal = new MemoryJournal();
+const signer = Signer.generate("demo");
+const graph = new GraphRuntime({ journal, dimensions: { Action: { type: "set" } }, grantors: { demo: signer.pub() } });
+graph.grantSigned(signer, "Jordan_Avery", { Action: ["draft-incident-report"] });
+const boundary = { Action: "draft-incident-report" };
+if (!graph.authorize("Jordan_Avery", boundary).ok) throw new Error("Action refused");
+const entry = journal.append("action", { actor: "Jordan_Avery", intent: "Draft_Report", boundary });
+const receipt = signer.headReceipt(journal);
+console.log(entry.digest, receipt.signature);
+console.log(journal.verify(), Signer.verifyHeadReceipt(receipt, { journal }));
+```
+
+Run the same code from a checkout with `node examples/minimal.mjs`. The signing key is generated for this example; verification proves integrity, not an independently trusted identity.
+
+## Use it from an AI client (MCP)
+
+From a checkout, run `npm run provision` to start the local provisioning service.
+The MCP endpoint is `POST http://127.0.0.1:8787/mcp`.
+Register a caller key for your client; see [Using IGL from an AI client](#using-igl-from-an-ai-client).
 
 ## What IGL is
 
@@ -63,14 +116,24 @@ Before changing code, run `npm run check`: lint, type check and the full suite, 
 
 You need Node.js 20 or newer.
 
+See an allowed action, a refused action, signed receipts and tamper detection without downloading a model:
+
+```bash
+npx igl demo
+```
+
+To work from a checkout:
+
 ```bash
 git clone https://github.com/SMEPro-Technologies-LLC/igl.git
 cd igl
 npm ci
-npm run check        # lint, type check, 169 tests
+npm run check        # lint, type check, tests
+npm run demo         # the same model-free demo
+node examples/minimal.mjs
 ```
 
-Run a governed program end to end. A small language model generates text inside the limits the program declares:
+Run a governed program end to end with a model. Unlike the demo, this downloads `distilgpt2` on first use; the model generates text inside the limits the program declares:
 
 ```bash
 node examples/run-igl-language-live.mjs
@@ -162,6 +225,27 @@ The tools this repository serves today are `check_health`, `list_graphs`, `get_g
 - How decisions are made: [GOVERNANCE.md](./GOVERNANCE.md)
 - Contributing: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Roadmap: [issues labelled `roadmap`](https://github.com/SMEPro-Technologies-LLC/igl/issues?q=label%3Aroadmap). Planned but not yet in this repository: a WASM build with a browser playground, Python and TypeScript SDKs, and a policy-pack registry. This README only describes what exists.
+
+## Status
+
+Governed intelligence. Before execution.
+
+The open-source runtime and the public API contract behind the IGL Governed Identity Platform.
+
+The nine findings of the [October 2026 security review](./docs/audit/SECURITY-AUDIT-2026-10.md) are closed with regression tests. The review was our own; an independent one has not happened yet, so read the audit before you run the provisioning service anywhere other than your own machine.
+
+## Roadmap
+
+Planned work, not yet implemented:
+
+- WASM build and browser playground.
+- Python client for the platform API.
+- `npm` publish and provenance attestations.
+- TypeScript type declarations (`.d.ts`) for `src/`.
+- MCP registry listings.
+- Independent security review.
+- Merkle proof CLI: `igl verify <journal>`.
+- Example: wrapping an existing LangChain or Vercel AI SDK agent with IGL receipts.
 
 ## Brand
 

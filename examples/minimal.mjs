@@ -1,0 +1,11 @@
+import { MemoryJournal, GraphRuntime, Signer } from "../src/index.js";
+const journal = new MemoryJournal();
+const signer = Signer.generate("demo");
+const graph = new GraphRuntime({ journal, dimensions: { Action: { type: "set" } }, grantors: { demo: signer.pub() } });
+graph.grantSigned(signer, "Jordan_Avery", { Action: ["draft-incident-report"] });
+const boundary = { Action: "draft-incident-report" };
+if (!graph.authorize("Jordan_Avery", boundary).ok) throw new Error("Action refused");
+const entry = journal.append("action", { actor: "Jordan_Avery", intent: "Draft_Report", boundary });
+const receipt = signer.headReceipt(journal);
+console.log(entry.digest, receipt.signature);
+console.log(journal.verify(), Signer.verifyHeadReceipt(receipt, { journal }));
