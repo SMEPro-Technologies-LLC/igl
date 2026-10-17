@@ -4,6 +4,35 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.7.0] (2026-10-17)
+
+`npx igl demo`, the README that leads with it, and a release workflow that
+ships assets and publishes to npm.
+
+### Added
+
+- `npx igl demo`: the runtime in ten seconds with no clone, no model and no
+  network. An agent acts inside its boundary (committed, Ed25519 receipt),
+  tries one step outside it (refused before execution, the refusal journaled),
+  then the chain, a Merkle inclusion proof for the refusal and the signed head
+  are verified, and an edited copy of the journal is refused. `npx igl verify
+  <file>` checks a journal written by `FileJournal`. The package now declares
+  `bin`, so the command works once it is published to npm; from a checkout it
+  is `npm run demo`
+- A CLI test (`test/cli.test.js`) runs the demo and the verifier in the suite
+
+### Changed
+
+- README: the first screen is the demo, the eight-line JavaScript equivalent
+  and the primitives (`MemoryJournal`, `Signer`, the bridge) as plain exports;
+  the long-form description follows
+- Release workflow: the GitHub release is created as a draft with its assets
+  (npm tarball, OpenAPI contract, checksums) and published afterwards, which
+  is what immutable releases require; 1.6.0's assets had failed to attach.
+  The npm publish step tested its own `env` in its `if`, which is never
+  visible there, so publishing was skipped on every run; it now tests the
+  secret
+
 ## [1.6.0] (2026-10-15)
 
 Contract 0.3.0. The Subject service: the controls a person holds over what

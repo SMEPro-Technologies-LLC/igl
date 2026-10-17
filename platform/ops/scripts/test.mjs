@@ -41,7 +41,9 @@ for (let i = 0; i < 60 && !up; i++) { await new Promise((r) => setTimeout(r, 100
 if (!up) { console.error(log.slice(-3000)); dev.kill("SIGKILL"); process.exit(1); }
 let code = 0;
 try {
-  const page = await fetch(BASE + "/"); if (!page.ok || !(await page.text()).includes("IGL operations")) throw new Error("page did not render");
+  const page = await fetch(BASE + "/"); const pageHtml = await page.text(); if (!page.ok || !pageHtml.includes("IGL operations")) throw new Error("page did not render");
+  // The page's inline script must parse: a stray escape in the template once shipped a SyntaxError and the console sat on "Loading".
+  for (const [, script] of pageHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)) { try { new Function(script); } catch (e) { throw new Error("the page script does not parse: " + e.message); } }
   const ov = await (await fetch(BASE + "/api/overview?days=7")).json();
   for (const k of ["site", "github", "intake", "platform", "health", "npm"]) if (!(k in ov)) throw new Error("overview missing " + k);
   if (ov.site.configured !== false) throw new Error("site should report unconfigured without a token");
@@ -52,7 +54,7 @@ try {
   // The portfolio: every application answers; the four bound stores answer from their own tables.
   const apps = (await (await fetch(BASE + "/api/apps")).json()).apps;
   if (apps.length !== 15) throw new Error("expected 15 applications, got " + apps.length);
-  for (const id of ["tortplus", "tortgraph", "ricorsa", "vdrpros"]) { const a = apps.find((x) => x.id === id); if (!a?.configured) throw new Error(id + " should read its store: " + JSON.stringify(a?.why)); }
+  for (const id of ["tortplus", "tortgraph", "ricorsa", "vdrpros", "idme"]) { const a = apps.find((x) => x.id === id); if (!a?.configured) throw new Error(id + " should read its store: " + JSON.stringify(a?.why)); }
   const unbound = apps.find((x) => x.id === "wellsite"); if (unbound.configured || !unbound.why) throw new Error("an application without a store must say so");
   const tg = await (await fetch(BASE + "/api/apps/tortgraph/customers")).json();
   if (tg.rows.length !== 1 || tg.rows[0].email !== "reviewer@fixture.law" || tg.rows[0].plan !== "pilot") throw new Error("tortgraph customers: " + JSON.stringify(tg));
