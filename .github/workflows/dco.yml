@@ -1,5 +1,10 @@
 name: DCO
 
+# Every commit written by a person must carry a Developer Certificate of
+# Origin sign-off (git commit -s). Commits authored by GitHub's own bots
+# (Copilot, Dependabot, github-actions) are exempt: they cannot sign, and
+# the pull request review is where a human takes responsibility for them.
+
 on:
   pull_request:
     branches: [main]
@@ -23,8 +28,14 @@ jobs:
           set -euo pipefail
           missing=0
           for sha in $(git rev-list --no-merges "$BASE".."$HEAD"); do
+            author="$(git log -1 --format='%an <%ae>' "$sha")"
+            case "$author" in
+              *"[bot]"*|*"@users.noreply.github.com>"*Copilot*|*"+Copilot@"*)
+                echo "::notice::Commit $sha was authored by $author; bot commits are exempt from DCO"
+                continue;;
+            esac
             if ! git log -1 --format=%B "$sha" | grep -Eq '^Signed-off-by: .+ <.+@.+>$'; then
-              echo "::error::Commit $sha lacks a DCO sign-off (git commit -s)"
+              echo "::error::Commit $sha lacks a DCO sign-off (git commit -s), author $author"
               missing=1
             fi
           done

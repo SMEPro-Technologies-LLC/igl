@@ -7,9 +7,15 @@
 
 import { provisionIdentity, listProvisioned } from "./service.mjs";
 
+/* The CLI is the local operator (F-02): one implicit tenant, the same one
+   the server uses when no key is configured. IGL_CLI_TENANT and
+   IGL_CLI_PRINCIPAL select another. */
+const owner = { tenant: process.env.IGL_CLI_TENANT || "local", principal: process.env.IGL_CLI_PRINCIPAL || "local" };
+const auth = { ...owner, admin: false, caller: null };
+
 const args = process.argv.slice(2);
 if (args[0] === "--list") {
-  console.log(JSON.stringify(listProvisioned().map((g) => ({ slug: g.slug, kind: g.kind, boot: g.boot, results: g.results.map((r) => r.status) })), null, 2));
+  console.log(JSON.stringify(listProvisioned(auth).map((g) => ({ slug: g.slug, kind: g.kind, boot: g.boot, results: g.results.map((r) => r.status) })), null, 2));
   process.exit(0);
 }
 
@@ -22,8 +28,8 @@ for (let i = 0; i < args.length; i++) {
 }
 const description = rest.join(" ");
 
-const { resolved, runtime } = await provisionIdentity({ description, kind, auto });
-console.log(`\n[provision] ${resolved.kind} · ${resolved.name} (${resolved.actor}) · boot=${runtime.boot}`);
+const { resolved, runtime } = await provisionIdentity({ description, kind, auto, owner });
+console.log(`\n[provision] ${resolved.kind}, ${resolved.name} (${resolved.actor}), boot=${runtime.boot}`);
 console.log(`[provision] attributes: ${JSON.stringify(resolved.attributes)}`);
 console.log(`[provision] journal: ${runtime.journal.length} entries ok=${runtime.journal.ok} head=${runtime.journal.head.slice(0, 16)}…`);
 console.log(`[provision] footprint digest: ${runtime.footprintDigest.slice(0, 16)}…`);

@@ -136,7 +136,9 @@ test("HEAD-CAS: a concurrent writer having advanced the chain makes this writer 
   j.append("trace", { id: "TRC-000001" });
   await assert.rejects(() => j.flush(), /journal head moved/);
   assert.equal(calls.filter(s => s.startsWith("INSERT")).length, 0, "no partial write");
-  assert.equal(j.pending.length, 1, "the entry stays pending for re-chain and retry");
+  assert.equal(j.pending.length, 0, "the entry that never became durable is rolled back (F-07)");
+  assert.equal(j.entries().length, 0, "and it was never visible");
+  assert.equal(j.list.length, 0, "the writer reloads the durable rows and re-chains against the new head");
 });
 
 test("the schema enforces append-only at the engine, not by convention", async () => {

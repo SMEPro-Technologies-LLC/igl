@@ -4,6 +4,159 @@ All notable changes to IGL are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
 [SemVer](https://semver.org/).
 
+## [1.7.0] (2026-10-17)
+
+`npx igl demo`, the README that leads with it, and a release workflow that
+ships assets and publishes to npm.
+
+### Added
+
+- `npx igl demo`: the runtime in ten seconds with no clone, no model and no
+  network. An agent acts inside its boundary (committed, Ed25519 receipt),
+  tries one step outside it (refused before execution, the refusal journaled),
+  then the chain, a Merkle inclusion proof for the refusal and the signed head
+  are verified, and an edited copy of the journal is refused. `npx igl verify
+  <file>` checks a journal written by `FileJournal`. The package now declares
+  `bin`, so the command works once it is published to npm; from a checkout it
+  is `npm run demo`
+- A CLI test (`test/cli.test.js`) runs the demo and the verifier in the suite
+
+### Changed
+
+- README: the first screen is the demo, the eight-line JavaScript equivalent
+  and the primitives (`MemoryJournal`, `Signer`, the bridge) as plain exports;
+  the long-form description follows
+- Release workflow: the GitHub release is created as a draft with its assets
+  (npm tarball, OpenAPI contract, checksums) and published afterwards, which
+  is what immutable releases require; 1.6.0's assets had failed to attach.
+  The npm publish step tested its own `env` in its `if`, which is never
+  visible there, so publishing was skipped on every run; it now tests the
+  secret
+
+## [1.6.0] (2026-10-15)
+
+Contract 0.3.0. The Subject service: the controls a person holds over what
+is learned about them, the rules Ricorsa is built on, as platform operations.
+
+### Added
+
+- `GET` and `POST /identities/{id}/learning`: pause and resume learning about
+  an identity. While paused, context, facts and relationships that would add
+  to its record are refused with 409 `learning_paused`; what is known is still
+  served under its purposes
+- `POST /identities/{id}/forget`: each target (fact, relationship or context
+  entry) is emptied in place and marked forgotten, leaving every projection,
+  search, path, list and intelligence context at once. A tombstone and the
+  audit chain keep the act, the id and a SHA-256 of the record as it was,
+  never the content. Tombstones are append-only at the schema
+- `POST /identities/{id}/reset`: forgets everything learned in one governed
+  action; the identity, its declared attributes, obligations and consents
+  remain. The identity id is repeated in the body as confirmation
+- `GET /identities/{id}/export`: the whole record with a fingerprint over its
+  canonical form, the sentence that says how to recompute it, the lineage of
+  every chain event about the identity, and a receipt that signs the
+  fingerprint and names the chain head
+- Every control is policy-evaluated (allowed by default, a policy can deny or
+  escalate), receipted and chained. Conformance test covers all five; the
+  suite exercises all 51 operations
+- `docs/RICORSA.md`: how Ricorsa's identity graph, regions, provenance chain,
+  recursive learning loop and Discover map to the platform, and which rules
+  the platform now guarantees
+- The served contract has one stable address, `/igl-openapi.yaml`; the
+  versioned names redirect to it
+
+### Changed
+
+- `GET /capabilities` lists `subject-controls`; the seven MCP tools are
+  unchanged on purpose: a model must not be able to change what is learned
+  about a person
+
+## [1.5.0] (2026-10-15)
+
+The five runtime findings left open by the October 2026 security review are
+closed, each with a regression test. The repository now runs a linter and a
+type check on every pull request. The model the provisioning service reasons
+with is loaded at a pinned revision and its bytes are recorded.
+
+### Security
+
+- F-05: the idempotency key is a SHA-256 execution identity over the actor,
+  boundary, intent and parameters, the context selection, every compute step
+  with its bound arguments and pinned model version, the declared outputs and
+  the runtime build digest. Statements that differ in any material input are
+  different work. Only a durably committed trace can answer an idempotency
+  check. `Interpreter.statementKeys()` previews keys without running
+- F-06: journal records are frozen snapshots; runtimes work on copies. Reuse
+  of a trace as context is its own `reuse` journal event and the counter is
+  derived by replay, so the chain verifies after reuse, receipts stay valid and
+  confidence decay survives a restart
+- F-07: nothing is visible until it is durable. A failed persist leaves no
+  entry; write-behind entries stay pending until `flush()` succeeds and roll
+  back when it fails; `entries()` returns durable entries unless asked for
+  pending ones; the IOS runtime stages traces until durable; `FileJournal`
+  fsyncs every append
+- F-08: checkpoints. `journal.checkpoint()`, `verify({ checkpoint })`, a
+  `checkpoint` option on `FileJournal` and `D1Journal` that refuses a truncated
+  or rewritten history, and `Signer.verifyHeadReceipt(..., { extended: true })`
+  so a signed head receipt serves as the anchor
+- F-09: `Traces=None` returns no context. Every refusal or failure is journaled
+  as a `failure` event with privacy-safe fields before any `OnFail` handler runs
+- Model provenance: `provision/model.mjs` loads `Xenova/distilgpt2` at Hub
+  commit `a41c1048`, hashes the cached files and records `label@revision#digest`
+  as the model version in every AI assertion; `IGL_MODEL_LOCAL_ONLY=1` refuses
+  network fetches; health endpoints report the loaded revision and digest
+- `UDM.Validate` refuses a named ruleset UDM does not define
+  (`IGL_UNKNOWN_RULESET`) instead of validating everything
+
+### Added
+
+- Platform: the refusal record. Every deny, and every escalate on a path that
+  cannot park the work, now produces a signed governance receipt and an entry
+  in the tenant's hash chain before the 403 leaves, and the 403 names the
+  `decisionId` and `receiptId`. Every `AuthorityDecision` carries
+  `policiesMatched` (id, name, version, effect and a SHA-256 of the rule as it
+  stood) and `subject` (action, resource type and id, identity, organization,
+  roles). Every receipt carries `auditHead`, the chain head at issue time, so a
+  receipt held outside the system is a checkpoint the database cannot rewrite.
+  Policies are immutable at the schema (triggers): a change is a new version.
+  Conformance test: a denied investigation is checked the way an auditor would
+- `test/audit.test.js`: the review's probes, promoted into the suite (18 tests;
+  169 in all). `docs/audit/probes-2026-10.mjs` now prints the properties holding
+- ESLint (flat config) and `tsc --checkJs` over `src/`, `provision/`,
+  `platform/api/src` and `platform/ops/src`; `npm run lint`, `npm run typecheck`
+  and `npm run check`; both run in CI before the tests
+- README: a Start Here section that routes runtime users, application builders
+  and AI-client integrators to the right quickstart
+
+### Fixed
+
+- `provision/cli.mjs` had called `provisionIdentity` without the owner that
+  F-02 made mandatory in 1.3.0, so the documented CLI command failed; it now
+  acts as the local operator (`IGL_CLI_TENANT`, `IGL_CLI_PRINCIPAL` to change).
+  Found by the type check on its first run
+- Dead imports and variables across the runtime, the platform service and the
+  tests, found by the linter
+
+### Removed
+
+- `examples/run-vdrpros.js` and `examples/vdrpros-ussh.igl`: the one example
+  that ran against stubbed runtimes (canned inference, constraint checks that
+  always passed). Every remaining example runs the real runtime against the
+  pinned model
+- `spec/openapi-v0.1.yaml` and the served copy: superseded by 0.2.0; the file
+  is in the repository history
+- `OPEN_SOURCE_CHECKLIST.md` and `SECURITY-REVIEW.md`: an internal checklist
+  whose items were done, and scan notes that the audit document supersedes
+- References in `docs/SPEC.md`, `docs/SCOPE.md` and source comments to design
+  documents that are not in the repository now say so instead of linking to them
+
+### Changed
+
+- The README status line no longer says experimental. It says what is true:
+  all nine findings of our own review are closed with tests, and an
+  independent review has not happened yet
+- Attestation notes join clauses with a semicolon instead of a middle dot
+
 ## [1.4.0] (2026-10-15)
 
 ### Added

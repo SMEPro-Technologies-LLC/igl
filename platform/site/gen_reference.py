@@ -8,7 +8,7 @@ site with sections generated from the contract. Every operation carries a
 status taken from implemented.json ({"live": ["GET /health", ...]}), so the
 page can never claim more than the deployed service does.
 """
-import html, json, re, sys
+import html, json, sys
 import yaml
 
 spec_path, impl_path, site_path = sys.argv[1:4]
@@ -77,12 +77,12 @@ srv_rows = []
 for s in servers:
     state = "Deployed" if DEPLOYED else "Reserved"
     srv_rows.append(f'<tr><td>{E(s.get("description","").split(".")[0] or "Server")}</td><td {MONO.replace("0.8rem","0.84rem")}>{E(s["url"])}</td></tr>')
-status_para = ""
 d_rest = f'''<section id="d-rest">
   <h3>API reference <span class="tag acc" style="vertical-align:middle; margin-left:6px">OpenAPI 3.1, v{E(spec["info"]["version"])}</span></h3>
-  <p><b>What changed in v0.2.</b> The MCP governance model is now in the REST contract. A new <b>Projection</b> service adds purpose profiles (<code class="i">GET /purposes</code>), caller resolution (<code class="i">GET /identities/me</code>), purpose-bounded projections with node budgets and a per-node gate explanation, obligations carrying <code class="i">attested</code> or <code class="i">proposed</code> status, read-only consent records, and interaction records (<code class="i">POST /audit/interactions</code>). Every intelligence request accepts a purpose. The 34 v0.1 paths are unchanged.</p>
+  <p><b>What changed in v0.3.</b> The <b>Subject</b> service: the controls a person holds over what is learned about them, as governed operations. Learning can be paused and resumed (<code class="i">/identities/{id}/learning</code>), any learned record can be forgotten (<code class="i">/forget</code>: the record is emptied in place and the chain keeps the act and a SHA-256 of what it was, never the content), the learned graph can be reset (<code class="i">/reset</code>), and the whole record can be exported in one signed document with a fingerprint and the lineage of chain events behind it (<code class="i">/export</code>). Every one is policy-evaluated, receipted and chained. The 42 v0.2 paths are unchanged.</p>
+  <p><b>What changed in v0.2.</b> The MCP governance model entered the REST contract: the <b>Projection</b> service with purpose profiles (<code class="i">GET /purposes</code>), caller resolution (<code class="i">GET /identities/me</code>), purpose-bounded projections with node budgets and a per-node gate explanation, obligations carrying <code class="i">attested</code> or <code class="i">proposed</code> status, read-only consent records, and interaction records (<code class="i">POST /audit/interactions</code>).</p>
   <p>{E(spec["info"].get("description","").strip())}</p>
-  <p>The contract covers <b>{n_paths} paths</b>, <b>{n_ops} operations</b>, <b>{n_schemas} reusable schemas</b> and <b>{n_hooks} webhooks</b>. The source of truth is the specification file in the repository, <a href="https://github.com/SMEPro-Technologies-LLC/igl/blob/main/spec/openapi.yaml" target="_blank" rel="noopener" style="text-decoration:underline">spec/openapi.yaml</a>, also served here as <a href="igl-openapi-v0.2.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">igl-openapi-v0.2.yaml</a> (<a href="igl-openapi-v0.1.yaml.txt" target="_blank" rel="noopener" style="text-decoration:underline">v0.1</a> kept for comparison).</p>
+  <p>The contract covers <b>{n_paths} paths</b>, <b>{n_ops} operations</b>, <b>{n_schemas} reusable schemas</b> and <b>{n_hooks} webhooks</b>. The source of truth is the specification file in the repository, <a href="https://github.com/SMEPro-Technologies-LLC/igl/blob/main/spec/openapi.yaml" target="_blank" rel="noopener" style="text-decoration:underline">spec/openapi.yaml</a>, also served here as <a href="/igl-openapi.yaml" target="_blank" rel="noopener" style="text-decoration:underline">igl-openapi.yaml</a>. Earlier versions are in the repository history.</p>
   <div class="tbl"><table><thead><tr><th>Server</th><th>URL</th></tr></thead><tbody>
 {chr(10).join(srv_rows)}
 </tbody></table></div></section>
@@ -107,7 +107,7 @@ for name, h in spec.get("webhooks", {}).items():
     sch = op.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema", {})
     payload = ref_name(sch) if "$ref" in sch or sch.get("type") == "array" else "{ " + ", ".join(sch.get("properties", {}).keys()) + " }"
     hook_rows.append(f'<tr><td>{E(name)}</td><td>{E(op.get("summary",""))}</td><td {MONO}>{E(payload)}</td></tr>')
-d_hooks = ('<section id="d-hooks"><h3>Webhooks</h3><p>IGL calls your endpoint; reply 200 or 202. Payloads reuse the public schemas. Webhooks are delivered once the hosted service is deployed.</p><div class="tbl"><table><thead><tr><th>Event</th><th>When</th><th>Payload</th></tr></thead><tbody>\n'
+d_hooks = ('<section id="d-hooks"><h3>Webhooks</h3><p>IGL calls your endpoint over https and expects 200 or 202; payloads reuse the public schemas. Subscriptions are registered per tenant with <code class="i">POST /admin/webhooks</code> (a platform or admin credential), which returns the signing secret once. Every delivery carries <code class="i">X-IGL-Event</code>, <code class="i">X-IGL-Delivery</code> and <code class="i">X-IGL-Signature: t=&lt;unix seconds&gt;,v1=&lt;HMAC-SHA256(secret, t + "." + body)&gt;</code>; verify the signature and reject stale timestamps. A delivery that does not get a 2xx is retried twice more with backoff and every attempt is recorded.</p><div class="tbl"><table><thead><tr><th>Event</th><th>When</th><th>Payload</th></tr></thead><tbody>\n'
            + "\n".join(hook_rows) + '\n</tbody></table></div></section>\n')
 
 # ---- d-examples (every request example in the spec)
@@ -137,8 +137,22 @@ def type_str(p):
     if t == "array": return type_str(p.get("items", {})) + "[]"
     if "enum" in p: return "enum(" + ", ".join(map(str, p["enum"])) + ")"
     return t or "object"
+def resolved(s, seen=()):
+    """Merge allOf parts so a composed schema lists every field it carries."""
+    if "allOf" not in s: return s
+    props, req = {}, []
+    for part in s["allOf"]:
+        if "$ref" in part:
+            name = part["$ref"].split("/")[-1]
+            if name in seen: continue
+            part = resolved(spec["components"]["schemas"][name], seen + (name,))
+        else:
+            part = resolved(part, seen)
+        props.update(part.get("properties", {})); req += [r for r in part.get("required", []) if r not in req]
+    return {**s, "properties": props, "required": req}
 sch_blocks = []
 for name, s in spec["components"]["schemas"].items():
+    s = resolved(s, (name,))
     props = s.get("properties", {}); req = set(s.get("required", []))
     items = "".join(f'<li><b>{E(k)}{"*" if k in req else ""}</b> <span class="ty">{E(type_str(v))}</span>{(" <span class=muted>" + E(v["description"]) + "</span>") if isinstance(v, dict) and v.get("description") and len(v["description"]) < 120 else ""}</li>' for k, v in props.items())
     meta = f'{len(props)} fields' + (f', {len(req)} required' if req else "")
@@ -158,6 +172,10 @@ def replace_section(site, sid, new):
     return site[:start] + new + site[end:]
 for sid, new in (("d-rest", d_rest), ("d-ops", d_ops), ("d-hooks", d_hooks), ("d-examples", d_examples), ("d-schemas", d_schemas)):
     site = replace_section(site, sid, new)
+# the developer console builds its requests from a copy of the contract embedded in the page; keep it the same contract
+marker = '<script type="application/json" id="igl-spec">'
+start = site.index(marker) + len(marker); end = site.index("</script>", start)
+site = site[:start] + json.dumps(spec, separators=(",", ":")).replace("</", "<\\/") + site[end:]
 with open(site_path, "w", encoding="utf-8", newline="\n") as f:
     f.write(site)
 print(f"paths={n_paths} ops={n_ops} schemas={n_schemas} hooks={n_hooks} live={n_live} sandbox={n_sandbox} examples={len(ex_blocks)}")

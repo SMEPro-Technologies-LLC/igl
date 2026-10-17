@@ -14,7 +14,7 @@
      R2  a span value is deterministic ONLY when its location band is
          admissible or its locator is itself deterministic. Provenance is
          deterministic; selection is inference. A held-band location is
-         dropped, exactly as §3 defines "held".
+         dropped, exactly as section 3 of the specification defines "held".
      R3  fuzzy edit distance refuses ties and is disabled for codes.
      R4  manifest digests are SHA-256 over canonical (sorted-key) JSON.
      R5  currency parses to integer minor units; span indices are named
@@ -60,7 +60,12 @@ export class Bridge {
   constructor({ udm = null, dimensions = {}, strictness = "lattice",
                 thresholds = { admissible: 0.75, proposed: 0.4 },
                 tokenizer = null, maxEdit = 1 } = {}) {
-    Object.assign(this, { udm, dimensions, strictness, thresholds, tokenizer, maxEdit });
+    /** @type {any} */ this.udm = udm;
+    /** @type {Record<string, any>} */ this.dimensions = dimensions;
+    /** @type {string} */ this.strictness = strictness;
+    /** @type {Record<string, number>} */ this.thresholds = thresholds;
+    /** @type {any} */ this.tokenizer = tokenizer;
+    this.maxEdit = maxEdit;
   }
 
   /* =================================================================

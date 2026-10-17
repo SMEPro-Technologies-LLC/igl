@@ -331,4 +331,5 @@ test("SPAN FIDELITY: fuzzed offsets either refuse or reproduce from the cited ch
       "the citation must reproduce the evidence from the document");
   }
   assert.ok(refused > 0, "most random spans must refuse");
+  assert.ok(refused + survived > 0, "the loop exercised the bridge");
 });

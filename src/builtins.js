@@ -1,7 +1,7 @@
 /* Declared signatures for the governed subsystem surface.
    A governed language cannot have an open function namespace: if the checker
    cannot see a call's shape, it cannot reject a malformed one before the model
-   is paid for. See docs/CRITIQUE.md §A1. */
+   is paid for. Design review item A1. */
 
 /* type ::= "code" | "string" | "number" | "symbol" | "list" | "ref" | "any" */
 const sig = (params, opts = {}) => ({ params, ...opts });

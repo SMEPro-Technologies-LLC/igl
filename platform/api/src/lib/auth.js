@@ -56,7 +56,7 @@ export function credentialFrom(request, { allowApiKeyHeader }) {
 
 export async function authenticate({ request, env, db, signer, route, url }) {
   const tenantHeader = request.headers.get("x-igl-tenant-id");
-  const cred = credentialFrom(request, { allowApiKeyHeader: route.apiKey });
+  const cred = credentialFrom(request, { allowApiKeyHeader: route.keyHeader });
   if (!cred) throw E.unauthorized();
   if (cred.kind === "key-not-allowed") throw E.unauthorized("This operation does not accept X-IGL-API-Key; use an OAuth 2.0 bearer token.");
 
@@ -68,14 +68,14 @@ export async function authenticate({ request, env, db, signer, route, url }) {
     if (!safeEqual(row.key_hash, sha256(cred.value))) throw E.unauthorized();
     const envPrefix = keyPrefix(env);
     if (!cred.value.startsWith(envPrefix)) throw E.unauthorized(`This key belongs to the ${cred.value.startsWith("igl_test_") ? "sandbox" : "production"} environment.`);
-    principal = { keyId: row.id, tenantId: row.tenant_id, scopes: JSON.parse(row.scopes), identityId: row.identity_id, jurisdiction: row.jurisdiction, via: "key", tenantSettings: JSON.parse(row.tenant_settings || "{}"), tenantJurisdiction: row.tenant_jurisdiction };
+    principal = { keyId: row.id, tenantId: row.tenant_id, scopes: JSON.parse(row.scopes), identityId: row.identity_id, jurisdiction: row.jurisdiction, via: "key", tenantSettings: JSON.parse(row.tenant_settings || "{}"), tenantJurisdiction: row.tenant_jurisdiction, actor: null };
     db.prepare("UPDATE api_keys SET last_used_at = ?1 WHERE id = ?2").bind(nowIso(), row.id).run().catch(() => {});
   } else {
     const claims = verifyToken(signer, cred.value);
     if (!claims) throw E.unauthorized("Invalid or expired access token.");
     const key = await db.prepare("SELECT k.status, k.identity_id, k.jurisdiction, t.settings AS tenant_settings, t.jurisdiction AS tenant_jurisdiction FROM api_keys k JOIN tenants t ON t.id = k.tenant_id WHERE k.id = ?1").bind(claims.sub).first();
     if (!key || key.status !== "active") throw E.unauthorized("The client behind this token is revoked.");
-    principal = { keyId: claims.sub, tenantId: claims.tid, scopes: claims.scope.split(" ").filter(Boolean), identityId: claims.identity || key.identity_id, jurisdiction: key.jurisdiction, via: "token", tenantSettings: JSON.parse(key.tenant_settings || "{}"), tenantJurisdiction: key.tenant_jurisdiction };
+    principal = { keyId: claims.sub, tenantId: claims.tid, scopes: claims.scope.split(" ").filter(Boolean), identityId: claims.identity || key.identity_id, jurisdiction: key.jurisdiction, via: "token", tenantSettings: JSON.parse(key.tenant_settings || "{}"), tenantJurisdiction: key.tenant_jurisdiction, actor: null };
   }
 
   // scope check

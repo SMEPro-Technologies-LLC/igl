@@ -1,6 +1,6 @@
 # Boundary and footprint as computing substance
 
-*Companion to SPEC.md §9. Implementation: `src/graph.js`. Tests: `test/graph.test.js`.*
+*Companion to SPEC.md section 9. Implementation: `src/graph.js`. Tests: `test/graph.test.js`.*
 
 ---
 
@@ -25,9 +25,9 @@ it. Three properties come free, and three requirements come attached.
 separate audit table; and "current" is the fold running continuously rather than
 a batch job with a staleness window.
 
-**Attached:** the merge must be incremental and associative (§3); the past must
-be reconstructible (§4); and, the one that matters, the descriptive and the
-prescriptive must not share a channel (§2).
+**Attached:** the merge must be incremental and associative (section 3); the past must
+be reconstructible (section 4); and, the one that matters, the descriptive and the
+prescriptive must not share a channel (section 2).
 
 ---
 
@@ -60,7 +60,7 @@ as many words, *observed 500× but observation does not confer authority*.
 
 ### 2.2 Why AI-class evidence must not promote at any volume
 
-This is SPEC §9's anchoring rule applied one layer down.
+This is SPEC section 9's anchoring rule applied one layer down.
 
 The containment invariant is: UDM computes the admissible set, AI proposes an
 element, AI can never widen the set. But if the admissibility sets are
