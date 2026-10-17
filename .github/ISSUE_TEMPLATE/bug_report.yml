@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in the runtime, the provisioning service, the platform service or the console did not behave as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Security problems go to the address in SECURITY.md, not here."
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`npx igl --version`, the release tag, or the commit; for the hosted platform, the `X-IGL-Version` response header"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["Runtime (src/)", "CLI (npx igl)", "Provisioning service (provision/)", "Platform service (platform/api, id-me.ai)", "Operations console (platform/ops)", "Site or docs", "Other"]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you saw. A program, a request and its response, or a command and its output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: journal
+    attributes:
+      label: Trace or journal (optional)
+      description: The trace id, the receipt, or the journal entries involved. Remove anything private; the chain still verifies with bodies redacted as long as you say so.
+      render: json
