@@ -168,8 +168,16 @@ export async function mentions(env) {
     const gh = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(`${phrase} in:readme,description -org:${ownOrg}`)}&per_page=30`, { headers: { "user-agent": "igl-ops", accept: "application/vnd.github+json", ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) } });
     if (gh.ok) {
       const j = await gh.json();
-      const items = (j.items || []).filter((r) => r.owner?.login !== ownOrg).map((r) => ({ name: r.full_name, url: r.html_url, stars: r.stargazers_count, description: r.description }));
-      out.githubRepos = { total: j.total_count, items: items.slice(0, 10), note: j.total_count > items.length ? "exact-phrase search; the own organization is excluded" : null };
+      const candidates = (j.items || []).filter((r) => r.owner?.login !== ownOrg);
+      const matches = await Promise.all(candidates.map(async (r) => {
+        if (has(r.description)) return true;
+        try {
+          const readme = await fetch(`https://api.github.com/repos/${r.full_name}/readme`, { headers: { "user-agent": "igl-ops", accept: "application/vnd.github.raw+json", ...(env.GITHUB_TOKEN ? { authorization: "Bearer " + env.GITHUB_TOKEN } : {}) } });
+          return readme.ok && has(await readme.text());
+        } catch { return false; }
+      }));
+      const items = candidates.filter((_, i) => matches[i]).map((r) => ({ name: r.full_name, url: r.html_url, stars: r.stargazers_count, description: r.description }));
+      out.githubRepos = { verifiedCount: items.length, checkedCount: candidates.length, searchTotal: j.total_count, items: items.slice(0, 10) };
     } else out.githubRepos = { error: `HTTP ${gh.status}` };
   } catch (e) { out.githubRepos = { error: e.message }; }
   try {
