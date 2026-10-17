@@ -6,9 +6,9 @@ test("GitHub mentions are literal-verified against descriptions and READMEs", as
   const originalFetch = globalThis.fetch;
   const readmes = [];
   globalThis.fetch = async (input) => {
-    const url = String(input);
-    if (url.includes("hn.algolia.com")) return Response.json({ hits: [] });
-    if (url.includes("api.github.com/search/repositories")) {
+    const url = new URL(String(input));
+    if (url.hostname === "hn.algolia.com") return Response.json({ hits: [] });
+    if (url.hostname === "api.github.com" && url.pathname === "/search/repositories") {
       return Response.json({
         total_count: 40,
         items: [
@@ -19,12 +19,12 @@ test("GitHub mentions are literal-verified against descriptions and READMEs", as
         ],
       });
     }
-    if (url.includes("api.github.com/repos/other/")) {
-      readmes.push(url);
-      return new Response(url.includes("readme-match") ? "This README mentions id-me.ai." : "No literal mention.", { status: 200 });
+    if (url.hostname === "api.github.com" && url.pathname.startsWith("/repos/other/")) {
+      readmes.push(url.href);
+      return new Response(url.pathname.includes("readme-match") ? "This README mentions id-me.ai." : "No literal mention.", { status: 200 });
     }
-    if (url.includes("reddit.com")) return Response.json({ data: { children: [] } });
-    throw new Error(`Unexpected request: ${url}`);
+    if (url.hostname === "www.reddit.com") return Response.json({ data: { children: [] } });
+    throw new Error(`Unexpected request: ${url.href}`);
   };
 
   try {
