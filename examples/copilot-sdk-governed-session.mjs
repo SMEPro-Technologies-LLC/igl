@@ -9,15 +9,21 @@
      onPreToolUse     each tool call is sent to POST /authority/evaluate as
                       the action `tool.<name>`; "allow" lets it run, "deny"
                       refuses it with the decision id and reason codes, and
-                      "escalate" or "conditional" turns into an "ask" so a
-                      person decides;
+                      "escalate" or "conditional" is refused too: this example
+                      runs headless, there is no person to hand the question
+                      to, so an unresolved approval never becomes an approval;
+                      the refusal names the authority that would be needed.
+                      If evaluation itself fails (network, a non-2xx answer,
+                      a malformed decision) the call is denied: the gate
+                      fails closed, never open;
      onPostToolUse    each completed tool call is recorded with
                       POST /audit/interactions, metadata only.
 
    IGL fails closed: with no policy, `tool.*` actions are denied with the
    reason code `no_policy`. `--setup` creates the agent identity and two
-   active policies (allow `tool.*`, deny `tool.bash`, `tool.shell` and
-   `tool.powershell`) and prints the identity id to put in IGL_AGENT_ID.
+   active policies (allow `tool.*`; deny `tool.bash`, `tool.shell`,
+   `tool.powershell` and `tool.execute`) and prints the identity id to put in
+   IGL_AGENT_ID.
    Policies are immutable once created; run --setup once per tenant.
 
    Environment:
@@ -70,7 +76,7 @@ async function setup() {
   const deny = await igl("POST", "/policies", {
     name: "copilot-no-shell", version: "1", status: "active", effect: "deny",
     description: "Copilot SDK sessions never get a shell.",
-    rule: { actions: ["tool.bash", "tool.shell", "tool.powershell"], resourceTypes: ["tool"], reasonCode: "shell_not_permitted" },
+    rule: { actions: ["tool.bash", "tool.shell", "tool.powershell", "tool.execute"], resourceTypes: ["tool"], reasonCode: "shell_not_permitted" },
   });
   console.log(`agent identity ${agent.id}\npolicies ${allow.id} (allow tool.*), ${deny.id} (deny shell)\n\nexport IGL_AGENT_ID=${agent.id}`);
 }
@@ -85,9 +91,16 @@ async function run(prompt) {
 
   const client = new CopilotClient();
   const session = await client.createSession({
-    /* Copilot's own permission prompt is answered by the IGL decision in onPreToolUse,
-       so nothing here is approved without a policy saying so. */
-    onPermissionRequest: async () => ({ kind: "approve-once" }),
+    /* The SDK does not stream by default; the message_delta listener below needs it. */
+    streaming: true,
+    /* Copilot's own permission prompt is reached only when onPreToolUse did not settle the
+       call. This example runs headless: nothing can be approved here, so the prompt is
+       denied and the agent is told why. A client with a person in the loop would show the
+       question and return their answer instead. */
+    onPermissionRequest: async (request) => {
+      process.stderr.write(`\n[igl] permission for ${request?.toolName ?? "a tool"} needs a person; this headless session has none, so it is denied\n`);
+      return { kind: "deny" };
+    },
     hooks: {
       onSessionStart: async () => ({
         additionalContext:
@@ -97,17 +110,28 @@ async function run(prompt) {
       }),
 
       onPreToolUse: async (input, { sessionId }) => {
-        const decision = await igl("POST", "/authority/evaluate", {
-          actor: { identityId: AGENT },
-          action: `tool.${input.toolName}`,
-          resource: { type: "tool", id: input.toolName },
-          context: { sessionId, workingDirectory: input.workingDirectory, agentId: input.agentId ?? null },
-        });
-        const why = `${decision.reasonCodes.join(", ")} (decision ${decision.decisionId})`;
-        if (decision.effect === "allow") return { permissionDecision: "allow" };
-        if (decision.effect === "deny") return { permissionDecision: "deny", permissionDecisionReason: `IGL refused tool.${input.toolName}: ${why}` };
-        const needs = decision.requiredApprovals.map((a) => a.authorityType).join(", ") || "a person";
-        return { permissionDecision: "ask", permissionDecisionReason: `IGL ${decision.effect}: ${why}; needs ${needs}` };
+        /* Fail closed. The SDK treats a hook that throws as "no opinion", which would remove this gate,
+           so every failure path here returns an explicit deny. */
+        const name = typeof input?.toolName === "string" && input.toolName ? input.toolName : null;
+        if (!name) return { permissionDecision: "deny", permissionDecisionReason: "IGL refused a tool call whose name could not be resolved" };
+        try {
+          const decision = await igl("POST", "/authority/evaluate", {
+            actor: { identityId: AGENT },
+            action: `tool.${name}`,
+            resource: { type: "tool", id: name },
+            context: { sessionId, workingDirectory: input.workingDirectory, agentId: input.agentId ?? null },
+          });
+          if (!decision || typeof decision.effect !== "string" || !Array.isArray(decision.reasonCodes)) throw new Error("malformed decision");
+          const why = `${decision.reasonCodes.join(", ")} (decision ${decision.decisionId})`;
+          if (decision.effect === "allow") return { permissionDecision: "allow" };
+          if (decision.effect === "deny") return { permissionDecision: "deny", permissionDecisionReason: `IGL refused tool.${name}: ${why}` };
+          /* escalate or conditional: an approval is required and nobody here can give one. */
+          const needs = (decision.requiredApprovals || []).map((a) => a.authorityType).join(", ") || "a person";
+          await igl("POST", "/audit/interactions", { identityId: AGENT, purpose, outcome: "escalated", reason: `tool.${name} in Copilot session ${sessionId} needs ${needs}; no approver in this headless session` }).catch(() => {});
+          return { permissionDecision: "deny", permissionDecisionReason: `IGL ${decision.effect} tool.${name}: ${why}; needs ${needs}, and this session has no one to ask` };
+        } catch (e) {
+          return { permissionDecision: "deny", permissionDecisionReason: `IGL could not evaluate tool.${name} (${String(e.message || e).slice(0, 200)}); refused, the gate fails closed` };
+        }
       },
 
       onPostToolUse: async (input, { sessionId }) => {
