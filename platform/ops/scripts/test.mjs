@@ -54,7 +54,7 @@ try {
   // The portfolio: every application answers; the four bound stores answer from their own tables.
   const apps = (await (await fetch(BASE + "/api/apps")).json()).apps;
   if (apps.length !== 15) throw new Error("expected 15 applications, got " + apps.length);
-  for (const id of ["tortplus", "tortgraph", "ricorsa", "vdrpros"]) { const a = apps.find((x) => x.id === id); if (!a?.configured) throw new Error(id + " should read its store: " + JSON.stringify(a?.why)); }
+  for (const id of ["tortplus", "tortgraph", "ricorsa", "vdrpros", "idme"]) { const a = apps.find((x) => x.id === id); if (!a?.configured) throw new Error(id + " should read its store: " + JSON.stringify(a?.why)); }
   const unbound = apps.find((x) => x.id === "wellsite"); if (unbound.configured || !unbound.why) throw new Error("an application without a store must say so");
   const tg = await (await fetch(BASE + "/api/apps/tortgraph/customers")).json();
   if (tg.rows.length !== 1 || tg.rows[0].email !== "reviewer@fixture.law" || tg.rows[0].plan !== "pilot") throw new Error("tortgraph customers: " + JSON.stringify(tg));
