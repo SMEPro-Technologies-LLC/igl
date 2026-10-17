@@ -4,7 +4,7 @@
     <img src="docs/assets/igl-logo.png" width="420" alt="IGL, Identity Governed Logic">
   </picture>
 </p>
-<p align="center"><strong>Governed intelligence. Before execution.</strong><br>The open-source runtime and the public API contract behind the IGL Governed Identity Platform.<br><em>Status: the nine findings of the <a href="./docs/audit/SECURITY-AUDIT-2026-10.md">October 2026 security review</a> are closed with regression tests. The review was our own; an independent one has not happened yet, so read the audit before you run the provisioning service anywhere other than your own machine.</em></p>
+<p align="center"><strong>Your AI agent tried to do something it was not allowed to do. IGL refused it before it ran, and here is the signed, tamper-evident record that proves it.</strong><br>Identity, boundaries, intent and trace, bound into the computation itself. Apache-2.0.</p>
 
 <p align="center">
   <a href="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/SMEPro-Technologies-LLC/igl/actions/workflows/ci.yml/badge.svg"></a>
@@ -13,6 +13,44 @@
   <a href="./CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-1.6.0-informational"></a>
   <a href="https://id-me.ai"><img alt="Platform" src="https://img.shields.io/badge/platform-id--me.ai-a9a4f2"></a>
 </p>
+
+## See it in ten seconds
+
+No clone, no model download, no network. Node 20 or newer.
+
+```bash
+npx igl demo
+```
+
+```
+Action 1 Generate_Compliance_Packet in TX-RRC, 2026-Q3
+         committed  trace TRC-000001  boundary {"Jurisdiction":"TX-RRC","Period":"2026-Q3"}
+         receipt    Ed25519 by igl-demo-runtime, digest 04e40e8355787a4b…  verifies
+
+Action 2 the same agent tries Jurisdiction=NM-OCD
+         refused    IGL_BOUNDARY_REJECTED: Jurisdiction=NM-OCD is not a recognised value
+         recorded   journal entry #1 type=failure  (a refusal is a governed event, not a silent no)
+
+Journal  2 entries, chain intact; Merkle inclusion proof for the refusal verifies; head receipt verifies
+Tamper   change entry #0's intent after the fact: chain refused, body does not reproduce its digest at entry #0
+```
+
+The same thing from plain JavaScript, eight lines (`npm install igl`):
+
+```js
+import { Interpreter, IdentityRuntime, UDMRuntime, IOSRuntime, MemoryJournal, Signer } from "igl";
+const journal = new MemoryJournal();                                   // SHA-256 hash chain, Merkle proofs
+const it = new Interpreter({
+  identity: new IdentityRuntime({ actors: { Agent: { roles: ["Operator"], defaultRole: "Operator" } } }),
+  udm: new UDMRuntime({ boundaries: { Jurisdiction: { values: ["TX-RRC"] }, Period: { values: ["2026-Q3"] } } }),
+  ios: new IOSRuntime({ journal }), runtimeSigner: Signer.generate("my-service") });   // Ed25519 receipts
+const { results } = await it.run(`ID[Agent:Operator | Jurisdiction:NM-OCD, Period:2026-Q3] :: Intent[Generate_Compliance_Packet] => Compute[IOS.Trace(Channels=[Reasoning])] -> Output[Compliance_Packet];`);
+results[0].error.code;   // "IGL_BOUNDARY_REJECTED", refused before anything ran; journal.verify().ok is true and the refusal is entry #0
+```
+
+You do not have to write IGL programs to use the primitives: `MemoryJournal` / `FileJournal` / `D1Journal` (hash-chained, Merkle inclusion proofs), `Signer` (Ed25519 receipts over traces and journal heads, signed grants and approvals) and the governed decode bridge are plain exports of the `igl` package. The language is the path that binds all four guarantees together; the primitives are the path into an agent you already have. An MCP server that governs tool calls ships in `provision/` ([MCP Integration](https://github.com/SMEPro-Technologies-LLC/igl/wiki/MCP-Integration)).
+
+<em>Status: the nine findings of the <a href="./docs/audit/SECURITY-AUDIT-2026-10.md">October 2026 security review</a> are closed with regression tests. The review was our own; an independent one has not happened yet, so read the audit before you run the provisioning service anywhere other than your own machine.</em>
 
 ## What IGL is
 
@@ -61,13 +99,14 @@ Before changing code, run `npm run check`: lint, type check and the full suite, 
 
 ## Quick start
 
-You need Node.js 20 or newer.
+You need Node.js 20 or newer. `npx igl demo` (above) needs nothing else. To work on the runtime itself:
 
 ```bash
 git clone https://github.com/SMEPro-Technologies-LLC/igl.git
 cd igl
 npm ci
-npm run check        # lint, type check, 169 tests
+npm run demo         # the same demo from the checkout
+npm run check        # lint, type check, the full suite
 ```
 
 Run a governed program end to end. A small language model generates text inside the limits the program declares:
