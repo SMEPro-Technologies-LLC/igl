@@ -25,7 +25,10 @@ All notable changes to IGL are documented here. Format follows
   the long-form description follows
 - Release workflow: the GitHub release is created as a draft with its assets
   (npm tarball, OpenAPI contract, checksums) and published afterwards, which
-  is what immutable releases require; 1.6.0's assets had failed to attach
+  is what immutable releases require; 1.6.0's assets had failed to attach.
+  The npm publish step tested its own `env` in its `if`, which is never
+  visible there, so publishing was skipped on every run; it now tests the
+  secret
 
 ## [1.6.0] (2026-10-15)
 
